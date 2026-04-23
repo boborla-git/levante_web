@@ -787,9 +787,7 @@ layoutHeader('Assenze e permessi');
                         <label for="data_a" id="label_data_a">Al giorno</label>
                         <input class="control-standard" type="date" name="data_a" id="data_a" value="<?= h($form['data_a']) ?>">
                     </div>
-                </div>
 
-                <div class="hr-request-row hr-request-row-hours hr-ore-only">
                     <div class="form-group hr-field-time" id="gruppo_ora_da">
                         <label for="ora_da" id="label_ora_da">Dalle ore</label>
                         <input class="control-standard" type="time" name="ora_da" id="ora_da" value="<?= h($form['ora_da']) ?>">

@@ -262,15 +262,18 @@ body.login-page {
     align-items: end;
 }
 .hr-request-row-primary {
-    grid-template-columns: minmax(220px, 1.7fr) minmax(220px, 1.6fr) minmax(140px, 0.85fr) minmax(170px, 1fr) minmax(170px, 1fr);
-}
-.hr-request-row-hours {
-    grid-template-columns: minmax(170px, 1fr) minmax(170px, 1fr);
-    max-width: 420px;
+    grid-template-columns:
+        minmax(220px, 1.8fr)
+        minmax(190px, 1.55fr)
+        minmax(120px, 0.75fr)
+        minmax(150px, 0.95fr)
+        minmax(150px, 0.95fr)
+        minmax(120px, 0.72fr)
+        minmax(120px, 0.72fr);
 }
 .hr-request-row-secondary {
-    grid-template-columns: minmax(220px, 1.6fr) minmax(320px, 2.4fr) auto;
-    align-items: stretch;
+    grid-template-columns: minmax(200px, 1fr) minmax(300px, 1.5fr) auto;
+    align-items: end;
 }
 .hr-request-row-secondary .form-group,
 .hr-request-row-secondary .actions {
@@ -280,13 +283,59 @@ body.login-page {
     display: flex;
     align-items: flex-end;
     justify-content: flex-end;
+    align-self: stretch;
 }
 .hr-request-submit button {
     white-space: nowrap;
+    align-self: flex-end;
 }
+.hr-field-tipologia,
+.hr-field-modalita,
+.hr-field-data,
+.hr-field-time,
+.hr-field-oggetto,
+.hr-field-note { min-width: 0; }
 .hr-field-note textarea {
-    min-height: 96px;
+    min-height: 84px;
     resize: vertical;
+}
+
+@media (max-width: 1400px) {
+    .hr-request-row-primary {
+        grid-template-columns: repeat(4, minmax(180px, 1fr));
+    }
+    .hr-request-row-secondary {
+        grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.35fr);
+    }
+    .hr-request-submit {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 1100px) {
+    .hr-request-grid, .hr-request-grid-form { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+    .hr-request-row-primary { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
+    .hr-request-row-secondary { grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.3fr); }
+    .hr-request-submit { grid-column: 1 / -1; justify-content: flex-start; }
+    .hr-admin-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+    .calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .calendar-weekdays { display: none; }
+}
+
+@media (max-width: 700px) {
+    .container { padding: 0 14px; }
+    .section-head { flex-direction: column; }
+    .hr-request-grid, .hr-request-grid-form, .hr-admin-grid, .dashboard-grid, .modules, .calendar-grid,
+    .hr-request-row-primary, .hr-request-row-secondary, .hr-request-row-hours { grid-template-columns: 1fr; max-width: none; }
+    .hr-col-span-2, .hr-col-span-3 { grid-column: span 1; }
+    .hr-request-submit { grid-column: auto; justify-content: stretch; }
+    .hr-request-submit button { width: 100%; }
+    .topbar-inner { align-items: flex-start; }
+    .topbar-left { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .topbar-right { align-self: stretch; justify-content: space-between; width: 100%; }
+    body.login-page { align-items: flex-start; padding-top: 24px; }
+    .login-card { padding: 22px; }
 }
 
 /* ===== CALENDARIO ===== */
@@ -353,26 +402,6 @@ body.login-page {
 /* ===== CORREZIONI NAV HR ===== */
 .topnav { overflow: visible; }
 .topnav-dropdown-menu { min-width: 220px; }
-
-/* ===== CORREZIONI FORM ASSENZE ===== */
-.hr-request-grid-top {
-    grid-template-columns: minmax(320px, 2.2fr) minmax(180px, 0.8fr);
-    align-items: end;
-}
-.hr-request-grid-days {
-    grid-template-columns: repeat(2, minmax(220px, 1fr));
-    align-items: end;
-    margin-top: 16px;
-}
-.hr-request-grid-hours {
-    grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) minmax(220px, 1fr);
-    align-items: end;
-    margin-top: 16px;
-}
-.hr-field-tipologia,
-.hr-field-modalita,
-.hr-field-data,
-.hr-field-time { min-width: 0; }
 
 /* ===== CALENDARIO POPUP E HOVER SOFT ===== */
 .calendar-cell { transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
@@ -573,3 +602,49 @@ body.modal-open { overflow: hidden; }
     .brand img { width: 170px; }
 }
 
+
+/* ===== OVERRIDE FINALE ASSENZE FORM ===== */
+.hr-request-row-primary {
+    grid-template-columns:
+        minmax(220px, 1.8fr)
+        minmax(190px, 1.55fr)
+        minmax(120px, 0.75fr)
+        minmax(150px, 0.95fr)
+        minmax(150px, 0.95fr)
+        minmax(120px, 0.72fr)
+        minmax(120px, 0.72fr);
+}
+.hr-request-row-secondary {
+    grid-template-columns: minmax(200px, 1fr) minmax(300px, 1.5fr) auto;
+    align-items: end;
+}
+.hr-request-submit {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    align-self: stretch;
+}
+.hr-request-submit button {
+    white-space: nowrap;
+    align-self: flex-end;
+}
+.hr-field-note textarea { min-height: 84px; }
+
+@media (max-width: 1400px) {
+    .hr-request-row-primary { grid-template-columns: repeat(4, minmax(180px, 1fr)); }
+    .hr-request-row-secondary { grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.35fr); }
+    .hr-request-submit { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
+@media (max-width: 1100px) {
+    .hr-request-row-primary { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
+    .hr-request-row-secondary { grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.3fr); }
+    .hr-request-submit { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+@media (max-width: 700px) {
+    .hr-request-row-primary,
+    .hr-request-row-secondary { grid-template-columns: 1fr; }
+    .hr-request-submit { grid-column: auto; justify-content: stretch; }
+    .hr-request-submit button { width: 100%; }
+}
