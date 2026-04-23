@@ -393,14 +393,21 @@ body.login-page {
 @media (max-width: 700px) {
     .container { padding: 0 14px; }
     .section-head { flex-direction: column; }
-    .hr-request-grid, .hr-request-grid-form, .hr-admin-grid, .dashboard-grid, .modules, .calendar-grid,
+    .hr-request-grid, .hr-request-grid-form, .hr-admin-grid, .modules, .calendar-grid,
     .hr-request-row-primary, .hr-request-row-secondary, .hr-request-row-hours { grid-template-columns: 1fr; max-width: none; }
+    .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .dashboard-box { padding: 12px 14px; min-height: 74px; border-radius: 10px; }
+    .dashboard-box h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.2; }
+    .kpi-number { font-size: 18px; line-height: 1.1; }
     .hr-col-span-2, .hr-col-span-3 { grid-column: span 1; }
     .hr-request-submit { grid-column: auto; justify-content: stretch; }
     .hr-request-submit button { width: 100%; }
-    .topbar-inner { align-items: flex-start; }
-    .topbar-left { flex-direction: column; align-items: flex-start; gap: 12px; }
-    .topbar-right { align-self: stretch; justify-content: space-between; width: 100%; }
+    .topbar-inner { min-height: auto; align-items: center; gap: 10px; padding-top: 8px; padding-bottom: 8px; }
+    .topbar-left { width: 100%; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; flex-wrap: nowrap; }
+    .topbar-right { display: none; }
+    .nav-drawer-toggle { flex: 0 0 auto; min-height: 40px; padding: 0 14px; }
+    .brand { min-width: 0; flex: 1 1 auto; display: flex; align-items: center; }
+    .brand img { width: 118px; max-width: 100%; height: auto; display: block; }
     body.login-page { align-items: flex-start; padding-top: 24px; }
     .login-card { padding: 22px; }
 }
