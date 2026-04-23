@@ -734,83 +734,87 @@ layoutHeader('Assenze e permessi');
     <?php if (!$puoScrivere): ?>
         <div class="info-box">Il tuo profilo può consultare la pagina ma non inserire richieste.</div>
     <?php else: ?>
-        <?php if (count($utentiGestibili) > 1): ?>
-        <form method="get" action="assenze.php" style="margin-bottom:18px;">
-            <div class="form-group">
-                <label for="id_utente"><strong>Dipendente</strong></label>
-                <select name="id_utente" id="id_utente" onchange="this.form.submit()">
-                    <?php foreach ($utentiGestibili as $u): ?>
-                        <option value="<?= (int)$u['id_utente'] ?>" <?= (int)$u['id_utente'] === $idUtenteTarget ? 'selected' : '' ?>>
-                            <?= h((string)$u['nominativo']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </form>
-        <?php else: ?>
-        <div class="form-group" style="margin-bottom:18px;">
-            <label><strong>Dipendente</strong></label>
-            <div class="info-box" style="margin-bottom:0;"><?= h($scopeLabel) ?></div>
-        </div>
-        <?php endif; ?>
-
         <form method="post" action="assenze.php" id="form-richiesta-assenza">
             <input type="hidden" name="azione" value="nuova_richiesta">
-            <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
 
-            <div class="hr-request-grid hr-request-grid-form">
-                <div class="form-group hr-col-span-2">
-                    <label for="id_tipologia_evento">Tipologia</label>
-                    <select name="id_tipologia_evento" id="id_tipologia_evento" required>
-                        <option value="">Seleziona...</option>
-                        <?php foreach ($tipologie as $tipologia): ?>
-                            <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= (int)$form['id_tipologia_evento'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
-                                <?= h((string)$tipologia['descrizione']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+            <div class="hr-request-layout">
+                <div class="hr-request-row hr-request-row-primary">
+                    <?php if (count($utentiGestibili) > 1): ?>
+                    <div class="form-group hr-field-dipendente">
+                        <label for="id_utente"><strong>Dipendente</strong></label>
+                        <select name="id_utente" id="id_utente" onchange="window.location.href='assenze.php?id_utente=' + encodeURIComponent(this.value)">
+                            <?php foreach ($utentiGestibili as $u): ?>
+                                <option value="<?= (int)$u['id_utente'] ?>" <?= (int)$u['id_utente'] === $idUtenteTarget ? 'selected' : '' ?>>
+                                    <?= h((string)$u['nominativo']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php else: ?>
+                    <div class="form-group hr-field-dipendente">
+                        <label for="dipendente_visualizzato"><strong>Dipendente</strong></label>
+                        <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
+                        <input type="text" id="dipendente_visualizzato" value="<?= h($scopeLabel) ?>" readonly>
+                    </div>
+                    <?php endif; ?>
+
+                    <div class="form-group hr-field-tipologia">
+                        <label for="id_tipologia_evento">Tipologia</label>
+                        <select name="id_tipologia_evento" id="id_tipologia_evento" required>
+                            <option value="">Seleziona...</option>
+                            <?php foreach ($tipologie as $tipologia): ?>
+                                <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= (int)$form['id_tipologia_evento'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
+                                    <?= h((string)$tipologia['descrizione']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group hr-field-modalita">
+                        <label for="modalita">Modalità</label>
+                        <select name="modalita" id="modalita">
+                            <option value="giorni" <?= $form['modalita'] === 'giorni' ? 'selected' : '' ?>>Giorni</option>
+                            <option value="ore" <?= $form['modalita'] === 'ore' ? 'selected' : '' ?>>Ore</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group hr-field-data" id="gruppo_data_da">
+                        <label for="data_da" id="label_data_da">Dal giorno</label>
+                        <input class="control-standard" type="date" name="data_da" id="data_da" value="<?= h($form['data_da']) ?>" required>
+                    </div>
+
+                    <div class="form-group hr-field-data" id="gruppo_data_a">
+                        <label for="data_a" id="label_data_a">Al giorno</label>
+                        <input class="control-standard" type="date" name="data_a" id="data_a" value="<?= h($form['data_a']) ?>">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="modalita">Modalità</label>
-                    <select name="modalita" id="modalita">
-                        <option value="giorni" <?= $form['modalita'] === 'giorni' ? 'selected' : '' ?>>Giorni</option>
-                        <option value="ore" <?= $form['modalita'] === 'ore' ? 'selected' : '' ?>>Ore</option>
-                    </select>
+                <div class="hr-request-row hr-request-row-hours hr-ore-only">
+                    <div class="form-group hr-field-time" id="gruppo_ora_da">
+                        <label for="ora_da" id="label_ora_da">Dalle ore</label>
+                        <input class="control-standard" type="time" name="ora_da" id="ora_da" value="<?= h($form['ora_da']) ?>">
+                    </div>
+
+                    <div class="form-group hr-field-time" id="gruppo_ora_a">
+                        <label for="ora_a" id="label_ora_a">Alle ore</label>
+                        <input class="control-standard" type="time" name="ora_a" id="ora_a" value="<?= h($form['ora_a']) ?>">
+                    </div>
                 </div>
 
-                <div class="form-group" id="gruppo_data_da">
-                    <label for="data_da" id="label_data_da">Dal giorno</label>
-                    <input class="control-standard" type="date" name="data_da" id="data_da" value="<?= h($form['data_da']) ?>" required>
-                </div>
+                <div class="hr-request-row hr-request-row-secondary">
+                    <div class="form-group hr-field-oggetto">
+                        <label for="oggetto">Oggetto breve</label>
+                        <input type="text" name="oggetto" id="oggetto" maxlength="150" value="<?= h($form['oggetto']) ?>">
+                    </div>
 
-                <div class="form-group" id="gruppo_data_a">
-                    <label for="data_a" id="label_data_a">Al giorno</label>
-                    <input class="control-standard" type="date" name="data_a" id="data_a" value="<?= h($form['data_a']) ?>">
-                </div>
+                    <div class="form-group hr-field-note">
+                        <label for="note_richiedente">Note del richiedente</label>
+                        <textarea name="note_richiedente" id="note_richiedente"><?= h($form['note_richiedente']) ?></textarea>
+                    </div>
 
-                <div class="form-group hr-ore-only" id="gruppo_ora_da">
-                    <label for="ora_da" id="label_ora_da">Dalle ore</label>
-                    <input class="control-standard" type="time" name="ora_da" id="ora_da" value="<?= h($form['ora_da']) ?>">
-                </div>
-
-                <div class="form-group hr-ore-only" id="gruppo_ora_a">
-                    <label for="ora_a" id="label_ora_a">Alle ore</label>
-                    <input class="control-standard" type="time" name="ora_a" id="ora_a" value="<?= h($form['ora_a']) ?>">
-                </div>
-
-                <div class="form-group hr-col-span-3">
-                    <label for="oggetto">Oggetto breve</label>
-                    <input type="text" name="oggetto" id="oggetto" maxlength="150" value="<?= h($form['oggetto']) ?>">
-                </div>
-
-                <div class="form-group hr-col-span-3">
-                    <label for="note_richiedente">Note del richiedente</label>
-                    <textarea name="note_richiedente" id="note_richiedente"><?= h($form['note_richiedente']) ?></textarea>
-                </div>
-
-                <div class="actions hr-col-span-3">
-                    <button type="submit" <?= $infoRecapitoMancante ? 'disabled' : '' ?>>Registra richiesta</button>
+                    <div class="actions hr-request-submit">
+                        <button type="submit" <?= $infoRecapitoMancante ? 'disabled' : '' ?>>Registra richiesta</button>
+                    </div>
                 </div>
             </div>
         </form>

@@ -251,6 +251,44 @@ body.login-page {
 .hr-request-grid-form input[type="time"],
 .hr-request-grid-form select { width: 100%; display: block; }
 
+.hr-request-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.hr-request-row {
+    display: grid;
+    gap: 16px;
+    align-items: end;
+}
+.hr-request-row-primary {
+    grid-template-columns: minmax(220px, 1.7fr) minmax(220px, 1.6fr) minmax(140px, 0.85fr) minmax(170px, 1fr) minmax(170px, 1fr);
+}
+.hr-request-row-hours {
+    grid-template-columns: minmax(170px, 1fr) minmax(170px, 1fr);
+    max-width: 420px;
+}
+.hr-request-row-secondary {
+    grid-template-columns: minmax(220px, 1.6fr) minmax(320px, 2.4fr) auto;
+    align-items: stretch;
+}
+.hr-request-row-secondary .form-group,
+.hr-request-row-secondary .actions {
+    margin-top: 0;
+}
+.hr-request-submit {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+}
+.hr-request-submit button {
+    white-space: nowrap;
+}
+.hr-field-note textarea {
+    min-height: 96px;
+    resize: vertical;
+}
+
 /* ===== CALENDARIO ===== */
 .calendar-month-title { font-size: 24px; font-weight: 700; margin-bottom: 18px; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
@@ -287,6 +325,10 @@ body.login-page {
 
 @media (max-width: 1100px) {
     .hr-request-grid, .hr-request-grid-form { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+    .hr-request-row-primary { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+    .hr-request-row-secondary { grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.4fr); }
+    .hr-request-submit { grid-column: 1 / -1; justify-content: flex-start; }
+    .hr-request-row-hours { grid-template-columns: repeat(2, minmax(170px, 1fr)); max-width: none; }
     .hr-admin-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
     .calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .calendar-weekdays { display: none; }
@@ -295,8 +337,11 @@ body.login-page {
 @media (max-width: 700px) {
     .container { padding: 0 14px; }
     .section-head { flex-direction: column; }
-    .hr-request-grid, .hr-request-grid-form, .hr-admin-grid, .dashboard-grid, .modules, .calendar-grid { grid-template-columns: 1fr; }
+    .hr-request-grid, .hr-request-grid-form, .hr-admin-grid, .dashboard-grid, .modules, .calendar-grid,
+    .hr-request-row-primary, .hr-request-row-secondary, .hr-request-row-hours { grid-template-columns: 1fr; max-width: none; }
     .hr-col-span-2, .hr-col-span-3 { grid-column: span 1; }
+    .hr-request-submit { grid-column: auto; justify-content: stretch; }
+    .hr-request-submit button { width: 100%; }
     .topbar-inner { align-items: flex-start; }
     .topbar-left { flex-direction: column; align-items: flex-start; gap: 12px; }
     .topbar-right { align-self: stretch; justify-content: space-between; width: 100%; }
