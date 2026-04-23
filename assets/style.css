@@ -616,17 +616,18 @@ body.modal-open { overflow: hidden; }
 }
 .hr-request-row-secondary {
     grid-template-columns: minmax(200px, 1fr) minmax(300px, 1.5fr) auto;
-    align-items: end;
+    align-items: start;
 }
 .hr-request-submit {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: flex-end;
-    align-self: stretch;
+    align-self: start;
+    padding-top: 29px;
 }
 .hr-request-submit button {
     white-space: nowrap;
-    align-self: flex-end;
+    align-self: flex-start;
 }
 .hr-field-note textarea { min-height: 84px; }
 
