@@ -321,6 +321,18 @@ if ($dayDetailsJsonEncoded === false) {
     $dayDetailsJsonEncoded = '{}';
 }
 
+$todayKey = date('Y-m-d');
+$selectedDay = trim((string)($_GET['giorno'] ?? ''));
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDay)) {
+    $selectedDay = ($todayKey >= $inizioGriglia->format('Y-m-d') && $todayKey <= $fineGriglia->format('Y-m-d'))
+        ? $todayKey
+        : $primoDelMese->format('Y-m-d');
+}
+$selectedDateForJs = json_encode($selectedDay, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+if ($selectedDateForJs === false) {
+    $selectedDateForJs = 'null';
+}
+
 layoutHeader('Calendario assenze');
 ?>
 <style>
@@ -337,6 +349,12 @@ layoutHeader('Calendario assenze');
     gap: 14px;
     margin-bottom: 18px;
 }
+.hr-cal-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    gap: 18px;
+    align-items: start;
+}
 .hr-cal-grid {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -349,7 +367,7 @@ layoutHeader('Calendario assenze');
     padding: 8px 4px;
 }
 .hr-cal-day {
-    min-height: 132px;
+    min-height: 122px;
     border: 1px solid #d7dee8;
     border-radius: 12px;
     background: #fff;
@@ -357,17 +375,14 @@ layoutHeader('Calendario assenze');
     text-align: left;
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
-}
-.hr-cal-day.has-events {
+    gap: 6px;
     cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
 }
-.hr-cal-day.has-events:hover,
-.hr-cal-day.has-events:focus {
+.hr-cal-day:hover,
+.hr-cal-day:focus {
     border-color: #94a3b8;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, .10);
-    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .08);
     outline: none;
 }
 .hr-cal-day.is-muted {
@@ -378,15 +393,14 @@ layoutHeader('Calendario assenze');
     border-color: #2563eb;
     box-shadow: inset 0 0 0 1px #2563eb;
 }
+.hr-cal-day.is-selected {
+    border-color: #111827;
+    box-shadow: inset 0 0 0 1px #111827, 0 10px 22px rgba(15, 23, 42, .10);
+}
 .hr-cal-day-number {
     font-weight: 800;
     font-size: 16px;
     color: #0f172a;
-}
-.hr-cal-empty {
-    color: #64748b;
-    font-size: 13px;
-    margin-top: 4px;
 }
 .hr-cal-event-line {
     display: flex;
@@ -408,6 +422,43 @@ layoutHeader('Calendario assenze');
 .hr-dot-lg {
     width: 14px;
     height: 14px;
+}
+.hr-day-panel {
+    position: sticky;
+    top: 88px;
+}
+.hr-day-panel-date {
+    margin: 0 0 10px;
+    font-size: 22px;
+}
+.hr-day-panel-empty {
+    color: #64748b;
+    margin: 0;
+}
+.hr-detail-group {
+    margin-top: 16px;
+}
+.hr-detail-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+.hr-detail-row {
+    border: 1px solid #d7dee8;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    margin-bottom: 8px;
+}
+.hr-detail-name {
+    font-weight: 700;
+}
+.hr-detail-meta {
+    color: #64748b;
+    font-size: 13px;
+    margin-top: 3px;
 }
 .hr-person-list {
     display: flex;
@@ -436,6 +487,14 @@ layoutHeader('Calendario assenze');
     color: #3730a3;
     font-size: 11px;
     font-weight: 800;
+}
+@media (max-width: 1100px) {
+    .hr-cal-layout {
+        grid-template-columns: 1fr;
+    }
+    .hr-day-panel {
+        position: static;
+    }
 }
 @media (max-width: 900px) {
     .hr-cal-summary {
@@ -486,38 +545,40 @@ layoutHeader('Calendario assenze');
     </div>
 </section>
 
-<section class="card">
-    <h2><?= h(hrNomeMese($mese, $anno)) ?></h2>
-    <div class="hr-cal-grid" aria-label="Calendario mensile">
-        <?php foreach (['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] as $giorno): ?>
-            <div class="hr-cal-weekday"><?= h($giorno) ?></div>
-        <?php endforeach; ?>
+<section class="hr-cal-layout">
+    <div class="card">
+        <h2><?= h(hrNomeMese($mese, $anno)) ?></h2>
+        <div class="hr-cal-grid" aria-label="Calendario mensile">
+            <?php foreach (['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] as $giorno): ?>
+                <div class="hr-cal-weekday"><?= h($giorno) ?></div>
+            <?php endforeach; ?>
 
-        <?php for ($day = $inizioGriglia; $day <= $fineGriglia; $day = $day->modify('+1 day')): ?>
-            <?php
-            $key = $day->format('Y-m-d');
-            $isCurrentMonth = (int)$day->format('n') === $mese;
-            $isToday = $key === date('Y-m-d');
-            $summaries = $daySummaries[$key] ?? [];
-            $hasEvents = count($summaries) > 0;
-            $classes = 'hr-cal-day' . (!$isCurrentMonth ? ' is-muted' : '') . ($isToday ? ' is-today' : '') . ($hasEvents ? ' has-events' : '');
-            ?>
-            <div class="<?= h($classes) ?>" data-day="<?= h($key) ?>" <?= $hasEvents ? 'role="button" tabindex="0"' : '' ?>>
-                <span class="hr-cal-day-number"><?= h($day->format('j')) ?></span>
-                <?php if (!$hasEvents): ?>
-                    <span class="hr-cal-empty">Nessuna assenza visibile</span>
-                <?php else: ?>
+            <?php for ($day = $inizioGriglia; $day <= $fineGriglia; $day = $day->modify('+1 day')): ?>
+                <?php
+                $key = $day->format('Y-m-d');
+                $isCurrentMonth = (int)$day->format('n') === $mese;
+                $isToday = $key === date('Y-m-d');
+                $summaries = $daySummaries[$key] ?? [];
+                $hasEvents = count($summaries) > 0;
+                $classes = 'hr-cal-day' . (!$isCurrentMonth ? ' is-muted' : '') . ($isToday ? ' is-today' : '') . ($key === $selectedDay ? ' is-selected' : '') . ($hasEvents ? ' has-events' : '');
+                ?>
+                <div class="<?= h($classes) ?>" data-day="<?= h($key) ?>" role="button" tabindex="0">
+                    <span class="hr-cal-day-number"><?= h($day->format('j')) ?></span>
                     <?php foreach ($summaries as $label => $summary): ?>
                         <span class="hr-cal-event-line">
                             <span class="hr-dot" style="--dot-color: <?= h($summary['color']) ?>"></span>
                             <span><?= h(mb_strtolower((string)$label, 'UTF-8')) ?>: <strong><?= (int)$summary['count'] ?></strong></span>
                         </span>
                     <?php endforeach; ?>
-                    <span class="link-like">Dettaglio</span>
-                <?php endif; ?>
-            </div>
-        <?php endfor; ?>
+                </div>
+            <?php endfor; ?>
+        </div>
     </div>
+
+    <aside class="card hr-day-panel" aria-live="polite">
+        <h2 class="hr-day-panel-date" id="hrDayPanelTitle">Dettaglio giorno</h2>
+        <div id="hrDayPanelBody"></div>
+    </aside>
 </section>
 
 <section class="card">
@@ -544,23 +605,12 @@ layoutHeader('Calendario assenze');
     <?php endif; ?>
 </section>
 
-<div class="hr-modal-backdrop" id="hrDayModal" aria-hidden="true">
-    <div class="hr-modal" role="dialog" aria-modal="true" aria-labelledby="hrDayModalTitle">
-        <div class="hr-modal-head">
-            <h2 class="hr-modal-title" id="hrDayModalTitle">Dettaglio giorno</h2>
-            <button type="button" class="btn" id="hrDayModalClose">Chiudi</button>
-        </div>
-        <div id="hrDayModalBody"></div>
-    </div>
-</div>
-
 <script>
 (function () {
     const details = <?= $dayDetailsJsonEncoded ?>;
-    const modal = document.getElementById('hrDayModal');
-    const title = document.getElementById('hrDayModalTitle');
-    const body = document.getElementById('hrDayModalBody');
-    const closeBtn = document.getElementById('hrDayModalClose');
+    const selectedInitialDay = <?= $selectedDateForJs ?>;
+    const title = document.getElementById('hrDayPanelTitle');
+    const body = document.getElementById('hrDayPanelBody');
 
     function escapeHtml(value) {
         return String(value).replace(/[&<>'"]/g, function (char) {
@@ -574,17 +624,18 @@ layoutHeader('Calendario assenze');
         return parts[2] + '/' + parts[1] + '/' + parts[0];
     }
 
-    function closeModal() {
-        modal.classList.remove('is-open');
-        modal.setAttribute('aria-hidden', 'true');
-    }
-
-    function openModal(day) {
+    function renderDay(day) {
         const groups = details[day] || {};
-        title.textContent = 'Dettaglio del ' + formatDate(day);
+        title.textContent = 'Situazione del ' + formatDate(day);
         let html = '';
 
-        Object.keys(groups).forEach(function (label) {
+        const labels = Object.keys(groups);
+        if (labels.length === 0) {
+            body.innerHTML = '<p class="hr-day-panel-empty">Nessuna assenza visibile per questo giorno.</p>';
+            return;
+        }
+
+        labels.forEach(function (label) {
             const group = groups[label];
             const color = group.color || '#6c757d';
             const items = group.items || [];
@@ -602,30 +653,33 @@ layoutHeader('Calendario assenze');
             html += '</div>';
         });
 
-        body.innerHTML = html || '<p>Nessun dettaglio disponibile.</p>';
-        modal.classList.add('is-open');
-        modal.setAttribute('aria-hidden', 'false');
+        body.innerHTML = html;
     }
 
-    document.querySelectorAll('.hr-cal-day.has-events').forEach(function (cell) {
+    function selectDay(day) {
+        document.querySelectorAll('.hr-cal-day.is-selected').forEach(function (cell) {
+            cell.classList.remove('is-selected');
+        });
+        const cell = document.querySelector('.hr-cal-day[data-day="' + day + '"]');
+        if (cell) {
+            cell.classList.add('is-selected');
+        }
+        renderDay(day);
+    }
+
+    document.querySelectorAll('.hr-cal-day').forEach(function (cell) {
         cell.addEventListener('click', function () {
-            openModal(cell.getAttribute('data-day'));
+            selectDay(cell.getAttribute('data-day'));
         });
         cell.addEventListener('keydown', function (event) {
             if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
-                openModal(cell.getAttribute('data-day'));
+                selectDay(cell.getAttribute('data-day'));
             }
         });
     });
 
-    closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', function (event) {
-        if (event.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') closeModal();
-    });
+    selectDay(selectedInitialDay || new Date().toISOString().slice(0, 10));
 }());
 </script>
 

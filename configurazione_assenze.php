@@ -245,12 +245,21 @@ layoutHeader('Configurazione assenze');
     width: 110px;
     text-align: center;
 }
+.hr-config-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
 .hr-muted-note {
     color: #64748b;
     font-size: 13px;
     margin-top: 6px;
 }
 @media (max-width: 1000px) {
+    .hr-config-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .hr-config-table,
     .hr-config-table tbody,
     .hr-config-table tr,
@@ -271,6 +280,11 @@ layoutHeader('Configurazione assenze');
     .hr-config-table td {
         border: 0 !important;
         padding: 8px 0 !important;
+    }
+}
+@media (max-width: 640px) {
+    .hr-config-summary {
+        grid-template-columns: 1fr;
     }
 }
 </style>
@@ -295,7 +309,7 @@ layoutHeader('Configurazione assenze');
     <div class="alert alert-error"><?= h($errore) ?></div>
 <?php endif; ?>
 
-<section class="grid cards-4">
+<section class="hr-config-summary">
     <div class="card metric-card">
         <h3>Tipologie attive</h3>
         <div class="metric-value"><?= (int)$riepilogo['tipologie_attive'] ?></div>
@@ -316,7 +330,7 @@ layoutHeader('Configurazione assenze');
 
 <section class="card">
     <h2>Tipologie evento</h2>
-    <p class="muted">Il pallino selezionato viene usato nel calendario e nel popup di dettaglio.</p>
+    <p class="muted">Il pallino selezionato viene usato nel calendario e nel dettaglio giornaliero.</p>
 
     <div class="table-responsive">
         <table class="table hr-config-table">
