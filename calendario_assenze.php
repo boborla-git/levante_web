@@ -336,223 +336,66 @@ if ($selectedDateForJs === false) {
 layoutHeader('Calendario assenze');
 ?>
 <style>
-.hr-cal-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: flex-end;
-    align-items: center;
-}
-.hr-cal-summary {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-    margin-bottom: 18px;
-}
-.hr-cal-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
-    gap: 18px;
-    align-items: start;
-}
-.hr-cal-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 8px;
-}
-.hr-cal-weekday {
-    font-weight: 700;
-    color: #475569;
-    text-align: center;
-    padding: 8px 4px;
-}
-.hr-cal-day {
-    min-height: 122px;
-    border: 1px solid #d7dee8;
-    border-radius: 12px;
-    background: #fff;
-    padding: 10px;
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    cursor: pointer;
-    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
-}
-.hr-cal-day:hover,
-.hr-cal-day:focus {
-    border-color: #94a3b8;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, .08);
-    outline: none;
-}
-.hr-cal-day.is-muted {
-    background: #f8fafc;
-    color: #94a3b8;
-}
-.hr-cal-day.is-today {
-    border-color: #2563eb;
-    box-shadow: inset 0 0 0 1px #2563eb;
-}
-.hr-cal-day.is-selected {
-    border-color: #111827;
-    box-shadow: inset 0 0 0 1px #111827, 0 10px 22px rgba(15, 23, 42, .10);
-}
-.hr-cal-day-number {
-    font-weight: 800;
-    font-size: 16px;
-    color: #0f172a;
-}
-.hr-cal-event-line {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 13px;
-    line-height: 1.25;
-    color: #334155;
-}
-.hr-dot {
-    display: inline-block;
-    width: 11px;
-    height: 11px;
-    border-radius: 999px;
-    background: var(--dot-color, #6c757d);
-    box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 0 3px rgba(15,23,42,.10);
-    flex: 0 0 auto;
-}
-.hr-dot-lg {
-    width: 14px;
-    height: 14px;
-}
-.hr-day-panel {
-    position: sticky;
-    top: 88px;
-}
-.hr-day-panel-date {
-    margin: 0 0 10px;
-    font-size: 22px;
-}
-.hr-day-panel-empty {
-    color: #64748b;
-    margin: 0;
-}
-.hr-detail-group {
-    margin-top: 16px;
-}
-.hr-detail-group-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 800;
-    margin-bottom: 8px;
-}
-.hr-detail-row {
-    border: 1px solid #d7dee8;
-    border-radius: 10px;
-    padding: 10px 12px;
-    background: #f8fafc;
-    margin-bottom: 8px;
-}
-.hr-detail-name {
-    font-weight: 700;
-}
-.hr-detail-meta {
-    color: #64748b;
-    font-size: 13px;
-    margin-top: 3px;
-}
-.hr-person-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-}
-.hr-person-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    border: 1px solid #d7dee8;
-    border-radius: 999px;
-    padding: 6px 10px;
-    background: #fff;
-    font-size: 13px;
-}
-.hr-person-chip .scope-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    border-radius: 999px;
-    background: #eef2ff;
-    color: #3730a3;
-    font-size: 11px;
-    font-weight: 800;
-}
-@media (max-width: 1100px) {
-    .hr-cal-layout {
-        grid-template-columns: 1fr;
-    }
-    .hr-day-panel {
-        position: static;
-    }
-}
-@media (max-width: 900px) {
-    .hr-cal-summary {
-        grid-template-columns: 1fr;
-    }
-    .hr-cal-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .hr-cal-weekday {
-        display: none;
-    }
-}
-@media (max-width: 560px) {
-    .hr-cal-grid {
-        grid-template-columns: 1fr;
-    }
-}
+.hr-cal-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hr-cal-layout { display: grid; grid-template-columns: minmax(320px, .42fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.hr-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.hr-calendar-head h1, .hr-calendar-head h2, .hr-day-panel h2 { margin: 0; }
+.hr-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.hr-cal-weekday { font-weight: 700; color: #475569; text-align: center; padding: 6px 4px; }
+.hr-cal-day { min-height: 116px; border: 1px solid #d7dee8; border-radius: 12px; background: #fff; padding: 10px; text-align: left; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
+.hr-cal-day:hover, .hr-cal-day:focus { border-color: #94a3b8; box-shadow: 0 8px 20px rgba(15, 23, 42, .08); outline: none; }
+.hr-cal-day.is-muted { background: #f8fafc; color: #94a3b8; }
+.hr-cal-day.is-today { border-color: #2563eb; box-shadow: inset 0 0 0 1px #2563eb; }
+.hr-cal-day.is-selected { border-color: #111827; box-shadow: inset 0 0 0 1px #111827, 0 10px 22px rgba(15, 23, 42, .10); }
+.hr-cal-day-number { font-weight: 800; font-size: 16px; color: #0f172a; }
+.hr-cal-event-line { display: flex; align-items: center; gap: 7px; font-size: 13px; line-height: 1.25; color: #334155; }
+.hr-dot { display: inline-block; width: 11px; height: 11px; border-radius: 999px; background: var(--dot-color, #6c757d); box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 0 3px rgba(15,23,42,.10); flex: 0 0 auto; }
+.hr-dot-lg { width: 14px; height: 14px; }
+.hr-day-panel { position: sticky; top: 88px; }
+.hr-day-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.hr-day-nav { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.hr-day-nav .btn { padding: 7px 10px; }
+.hr-day-panel-empty { color: #64748b; margin: 0; }
+.hr-detail-group { margin-top: 14px; }
+.hr-detail-group-title { display: flex; align-items: center; gap: 8px; font-weight: 800; margin-bottom: 8px; }
+.hr-detail-row { border: 1px solid #d7dee8; border-radius: 10px; padding: 10px 12px; background: #f8fafc; margin-bottom: 8px; }
+.hr-detail-name { font-weight: 700; }
+.hr-detail-meta { color: #64748b; font-size: 13px; margin-top: 3px; }
+@media (max-width: 1100px) { .hr-cal-layout { grid-template-columns: 1fr; } .hr-day-panel { position: static; order: -1; } }
+@media (max-width: 760px) { .hr-calendar-head { align-items: stretch; flex-direction: column; } .hr-cal-toolbar { justify-content: stretch; } .hr-cal-toolbar .btn { flex: 1 1 auto; text-align: center; } .hr-cal-grid { gap: 6px; } .hr-cal-weekday { display: none; } .hr-cal-day { min-height: 78px; padding: 8px; } .hr-cal-day:not(.has-events):not(.is-today):not(.is-selected) { min-height: 54px; } .hr-cal-event-line { font-size: 12px; } }
+@media (max-width: 520px) { .hr-cal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
-
-<section class="card page-hero">
-    <div>
-        <h1>Calendario assenze</h1>
-        <p>Vista mensile delle assenze approvate e degli stati di presenza del tuo perimetro.</p>
-    </div>
-    <div class="hr-cal-toolbar">
-        <a class="btn" href="calendario_assenze.php?mese=<?= (int)$prev->format('n') ?>&anno=<?= (int)$prev->format('Y') ?>">Mese precedente</a>
-        <a class="btn" href="calendario_assenze.php">Oggi</a>
-        <a class="btn" href="calendario_assenze.php?mese=<?= (int)$next->format('n') ?>&anno=<?= (int)$next->format('Y') ?>">Mese successivo</a>
-    </div>
-</section>
 
 <?php if ($error !== ''): ?>
     <div class="alert alert-error"><?= h($error) ?></div>
 <?php endif; ?>
 
-<section class="hr-cal-summary">
-    <div class="card metric-card">
-        <h3>Mese visualizzato</h3>
-        <div class="metric-value"><?= h(hrNomeMese($mese, $anno)) ?></div>
-    </div>
-    <div class="card metric-card">
-        <h3>Persone nel perimetro</h3>
-        <div class="metric-value"><?= (int)$totalUsers ?></div>
-    </div>
-    <div class="card metric-card">
-        <h3>Giorni con eventi</h3>
-        <div class="metric-value"><?= count($daysWithEvents) ?></div>
-    </div>
-</section>
-
 <section class="hr-cal-layout">
+    <aside class="card hr-day-panel" aria-live="polite">
+        <div class="hr-day-panel-head">
+            <h2 id="hrDayPanelTitle">Situazione giorno</h2>
+            <div class="hr-day-nav" aria-label="Navigazione giorno">
+                <button type="button" class="btn" id="hrPrevDay">‹ Giorno</button>
+                <button type="button" class="btn" id="hrTodayDay">Oggi</button>
+                <button type="button" class="btn" id="hrNextDay">Giorno ›</button>
+            </div>
+        </div>
+        <div id="hrDayPanelBody"></div>
+    </aside>
+
     <div class="card">
-        <h2><?= h(hrNomeMese($mese, $anno)) ?></h2>
+        <div class="hr-calendar-head">
+            <h1><?= h(hrNomeMese($mese, $anno)) ?></h1>
+            <div class="hr-cal-toolbar" aria-label="Navigazione mese">
+                <a class="btn" href="calendario_assenze.php?mese=<?= (int)$prev->format('n') ?>&anno=<?= (int)$prev->format('Y') ?>">‹ Mese</a>
+                <a class="btn" href="calendario_assenze.php">Oggi</a>
+                <a class="btn" href="calendario_assenze.php?mese=<?= (int)$next->format('n') ?>&anno=<?= (int)$next->format('Y') ?>">Mese ›</a>
+            </div>
+        </div>
         <div class="hr-cal-grid" aria-label="Calendario mensile">
             <?php foreach (['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] as $giorno): ?>
                 <div class="hr-cal-weekday"><?= h($giorno) ?></div>
             <?php endforeach; ?>
-
             <?php for ($day = $inizioGriglia; $day <= $fineGriglia; $day = $day->modify('+1 day')): ?>
                 <?php
                 $key = $day->format('Y-m-d');
@@ -574,35 +417,6 @@ layoutHeader('Calendario assenze');
             <?php endfor; ?>
         </div>
     </div>
-
-    <aside class="card hr-day-panel" aria-live="polite">
-        <h2 class="hr-day-panel-date" id="hrDayPanelTitle">Dettaglio giorno</h2>
-        <div id="hrDayPanelBody"></div>
-    </aside>
-</section>
-
-<section class="card">
-    <h2>Persone nel perimetro del calendario</h2>
-    <?php if (!$puoConfigurare): ?>
-        <p class="muted">Gerarchia = collaboratori diretti. Gruppo = colleghi presenti nei tuoi gruppi di lavoro.</p>
-    <?php else: ?>
-        <p class="muted">Come amministratore vedi tutti gli utenti attivi.</p>
-    <?php endif; ?>
-
-    <?php if ($scopeMap === []): ?>
-        <p>Non risultano utenti visibili nel tuo perimetro.</p>
-    <?php else: ?>
-        <div class="hr-person-list">
-            <?php foreach ($scopeMap as $info): ?>
-                <span class="hr-person-chip">
-                    <?php if (!$puoConfigurare && ($info['gerarchia'] || $info['gruppo'])): ?>
-                        <span class="scope-mark"><?= $info['gerarchia'] ? 'G' : 'T' ?></span>
-                    <?php endif; ?>
-                    <?= h((string)$info['label']) ?>
-                </span>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
 </section>
 
 <script>
@@ -656,7 +470,21 @@ layoutHeader('Calendario assenze');
         body.innerHTML = html;
     }
 
+    function monthUrlForDay(day) {
+        const date = new Date(day + 'T12:00:00');
+        return 'calendario_assenze.php?mese=' + (date.getMonth() + 1) + '&anno=' + date.getFullYear() + '&giorno=' + encodeURIComponent(day);
+    }
+
+    function addDays(day, delta) {
+        const date = new Date(day + 'T12:00:00');
+        date.setDate(date.getDate() + delta);
+        return date.toISOString().slice(0, 10);
+    }
+
+    let currentDay = selectedInitialDay || new Date().toISOString().slice(0, 10);
+
     function selectDay(day) {
+        currentDay = day;
         document.querySelectorAll('.hr-cal-day.is-selected').forEach(function (cell) {
             cell.classList.remove('is-selected');
         });
@@ -667,6 +495,24 @@ layoutHeader('Calendario assenze');
         renderDay(day);
     }
 
+    function goToDay(day) {
+        const cell = document.querySelector('.hr-cal-day[data-day="' + day + '"]');
+        if (!cell) {
+            window.location.href = monthUrlForDay(day);
+            return;
+        }
+        selectDay(day);
+        cell.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    }
+
+    const prevDayButton = document.getElementById('hrPrevDay');
+    const nextDayButton = document.getElementById('hrNextDay');
+    const todayDayButton = document.getElementById('hrTodayDay');
+    if (prevDayButton) prevDayButton.addEventListener('click', function () { goToDay(addDays(currentDay, -1)); });
+    if (nextDayButton) nextDayButton.addEventListener('click', function () { goToDay(addDays(currentDay, 1)); });
+    if (todayDayButton) todayDayButton.addEventListener('click', function () { goToDay(new Date().toISOString().slice(0, 10)); });
+
+    document.querySelectorAll('.hr-cal-day').forEach(function (cell) {
     document.querySelectorAll('.hr-cal-day').forEach(function (cell) {
         cell.addEventListener('click', function () {
             selectDay(cell.getAttribute('data-day'));

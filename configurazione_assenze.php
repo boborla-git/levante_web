@@ -239,17 +239,25 @@ layoutHeader('Configurazione assenze');
 .hr-config-table input[type="text"],
 .hr-config-table input[type="number"] {
     width: 100%;
-    max-width: 260px;
+    max-width: 240px;
 }
 .hr-config-table .col-actions {
-    width: 110px;
+    width: 100px;
     text-align: center;
 }
-.hr-config-summary {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
-    margin-bottom: 18px;
+.hr-config-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 24px;
+}
+.hr-config-header h1 {
+    margin: 0;
+    font-size: 26px;
+}
+.hr-config-header p {
+    margin: 6px 0 0;
 }
 .hr-muted-note {
     color: #64748b;
@@ -257,8 +265,12 @@ layoutHeader('Configurazione assenze');
     margin-top: 6px;
 }
 @media (max-width: 1000px) {
-    .hr-config-summary {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .hr-config-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .hr-config-actions {
+        justify-content: flex-start;
     }
     .hr-config-table,
     .hr-config-table tbody,
@@ -268,9 +280,7 @@ layoutHeader('Configurazione assenze');
         display: block;
         width: 100%;
     }
-    .hr-config-table thead {
-        display: none;
-    }
+    .hr-config-table thead { display: none; }
     .hr-config-table tr {
         border: 1px solid #d7dee8;
         border-radius: 12px;
@@ -282,17 +292,12 @@ layoutHeader('Configurazione assenze');
         padding: 8px 0 !important;
     }
 }
-@media (max-width: 640px) {
-    .hr-config-summary {
-        grid-template-columns: 1fr;
-    }
-}
 </style>
 
-<section class="card page-hero">
+<section class="card hr-config-header">
     <div>
         <h1>Configurazione assenze</h1>
-        <p>Da qui governi il modulo HR: tipologie, relazioni organizzative, gruppi di lavoro e impostazioni principali.</p>
+        <p>Tipologie, colori, regole principali e impostazioni del modulo HR.</p>
     </div>
     <div class="hr-config-actions">
         <a class="btn" href="relazioni_organizzative.php">Relazioni organizzative</a>
@@ -308,25 +313,6 @@ layoutHeader('Configurazione assenze');
 <?php if ($errore !== ''): ?>
     <div class="alert alert-error"><?= h($errore) ?></div>
 <?php endif; ?>
-
-<section class="hr-config-summary">
-    <div class="card metric-card">
-        <h3>Tipologie attive</h3>
-        <div class="metric-value"><?= (int)$riepilogo['tipologie_attive'] ?></div>
-    </div>
-    <div class="card metric-card">
-        <h3>Relazioni attive</h3>
-        <div class="metric-value"><?= (int)$riepilogo['relazioni_attive'] ?></div>
-    </div>
-    <div class="card metric-card">
-        <h3>Gruppi attivi</h3>
-        <div class="metric-value"><?= (int)$riepilogo['gruppi_attivi'] ?></div>
-    </div>
-    <div class="card metric-card">
-        <h3>Appartenenze attive</h3>
-        <div class="metric-value"><?= (int)$riepilogo['membri_gruppi_attivi'] ?></div>
-    </div>
-</section>
 
 <section class="card">
     <h2>Tipologie evento</h2>
