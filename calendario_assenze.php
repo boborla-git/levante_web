@@ -336,10 +336,10 @@ if ($selectedDateForJs === false) {
 layoutHeader('Calendario assenze');
 ?>
 <style>
-.hr-cal-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.hr-icon-btn { width: 40px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.hr-cal-toolbar { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; }
+.hr-icon-btn { width: 40px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1; background: #f6c500; color: #005baa; border-color: #e0b100; }
+.hr-icon-btn:hover, .hr-icon-btn:focus { background: #ffd633; color: #005baa; border-color: #005baa; }
 .hr-icon-btn svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2.25; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.hr-day-nav, .hr-cal-toolbar { flex-wrap: nowrap; }
 .hr-cal-layout { display: grid; grid-template-columns: minmax(320px, .42fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 .hr-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .hr-calendar-head h1, .hr-calendar-head h2, .hr-day-panel h2 { margin: 0; }
@@ -356,8 +356,8 @@ layoutHeader('Calendario assenze');
 .hr-dot-lg { width: 14px; height: 14px; }
 .hr-day-panel { position: sticky; top: 88px; }
 .hr-day-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.hr-day-nav { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-.hr-day-nav .btn { padding: 7px 10px; }
+.hr-day-nav { display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; flex: 0 0 auto; }
+.hr-day-nav .btn { padding: 0; }
 .hr-day-panel-empty { color: #64748b; margin: 0; }
 .hr-detail-group { margin-top: 14px; }
 .hr-detail-group-title { display: flex; align-items: center; gap: 8px; font-weight: 800; margin-bottom: 8px; }
@@ -365,7 +365,7 @@ layoutHeader('Calendario assenze');
 .hr-detail-name { font-weight: 700; }
 .hr-detail-meta { color: #64748b; font-size: 13px; margin-top: 3px; }
 @media (max-width: 1100px) { .hr-cal-layout { grid-template-columns: 1fr; } .hr-day-panel { position: static; order: -1; } }
-@media (max-width: 760px) { .hr-calendar-head { align-items: stretch; flex-direction: column; } .hr-cal-toolbar { justify-content: stretch; } .hr-cal-toolbar .btn { flex: 1 1 auto; text-align: center; } .hr-cal-grid { gap: 6px; } .hr-cal-weekday { display: none; } .hr-cal-day { min-height: 78px; padding: 8px; } .hr-cal-day:not(.has-events):not(.is-today):not(.is-selected) { min-height: 54px; } .hr-cal-event-line { font-size: 12px; } }
+@media (max-width: 760px) { .hr-calendar-head { align-items: stretch; flex-direction: column; } .hr-cal-toolbar { justify-content: stretch; } .hr-cal-toolbar .btn { flex: 1 1 auto; text-align: center; } .hr-day-panel-head { align-items: flex-start; } .hr-day-panel-head h2 { font-size: 20px; line-height: 1.15; } .hr-day-nav { flex-wrap: nowrap !important; gap: 4px; } .hr-day-nav .hr-icon-btn { width: 36px; height: 34px; } .hr-cal-grid { gap: 6px; } .hr-cal-weekday { display: none; } .hr-cal-day { min-height: 78px; padding: 8px; } .hr-cal-day:not(.has-events):not(.is-today):not(.is-selected) { min-height: 54px; } .hr-cal-event-line { font-size: 12px; } }
 @media (max-width: 520px) { .hr-cal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 
@@ -505,7 +505,6 @@ layoutHeader('Calendario assenze');
             return;
         }
         selectDay(day);
-        cell.scrollIntoView({block: 'nearest', inline: 'nearest'});
     }
 
     const prevDayButton = document.getElementById('hrPrevDay');
