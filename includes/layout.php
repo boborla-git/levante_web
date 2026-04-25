@@ -277,12 +277,61 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
         <link rel="icon" type="image/png" href="/assets/favicon.png">
         <link rel="shortcut icon" href="/assets/favicon.png">
         <link rel="apple-touch-icon" href="/assets/favicon.png">
+
+        <style>
+            :root {
+                --ravioli-blue: #005baa;
+                --ravioli-blue-hover: #004a8f;
+                --ravioli-yellow: #f6c500;
+                --ravioli-yellow-hover: #ffd633;
+            }
+
+            .page-content .btn:not(.btn-light):not(.btn-danger):not(.hr-icon-btn),
+            .page-content button:not(.topnav-parent):not(.nav-drawer-close):not(.nav-drawer-toggle):not(.btn-light):not(.btn-danger):not(.hr-icon-btn),
+            .page-content input[type="submit"] {
+                background: var(--ravioli-blue);
+                color: var(--ravioli-yellow);
+                border-color: var(--ravioli-blue);
+            }
+
+            .page-content .btn:not(.btn-light):not(.btn-danger):not(.hr-icon-btn):hover,
+            .page-content button:not(.topnav-parent):not(.nav-drawer-close):not(.nav-drawer-toggle):not(.btn-light):not(.btn-danger):not(.hr-icon-btn):hover,
+            .page-content input[type="submit"]:hover {
+                background: var(--ravioli-blue-hover);
+                color: var(--ravioli-yellow-hover);
+                border-color: var(--ravioli-blue-hover);
+            }
+
+            .btn-ravioli-primary {
+                background: var(--ravioli-blue) !important;
+                color: var(--ravioli-yellow) !important;
+                border-color: var(--ravioli-blue) !important;
+            }
+
+            .btn-ravioli-primary:hover {
+                background: var(--ravioli-blue-hover) !important;
+                color: var(--ravioli-yellow-hover) !important;
+                border-color: var(--ravioli-blue-hover) !important;
+            }
+
+            .btn-ravioli-secondary {
+                background: var(--ravioli-yellow) !important;
+                color: var(--ravioli-blue) !important;
+                border-color: var(--ravioli-yellow) !important;
+            }
+
+            .btn-ravioli-secondary:hover {
+                background: var(--ravioli-yellow-hover) !important;
+                color: var(--ravioli-blue-hover) !important;
+                border-color: var(--ravioli-yellow-hover) !important;
+            }
+        </style>
     </head>
     <body>
     <header class="topbar">
         <div class="container topbar-inner">
             <div class="topbar-left">
-                <button type="button" class="nav-drawer-toggle" aria-expanded="false" aria-controls="mobile-nav-drawer" aria-label="Apri menu" title="Menu" style="background:#005baa;color:#f6c500;border-color:#005baa;display:inline-flex;align-items:center;justify-content:center;gap:0;width:54px;height:38px;padding:0;">
+                <button type="button" class="nav-drawer-toggle btn-ravioli-primary" aria-expanded="false" aria-controls="mobile-nav-drawer" aria-label="Apri menu" title="Menu" style="background:#005baa;color:#f6c500;border-color:#005baa;display:inline-flex;align-items:center;justify-content:center;gap:0;width:54px;height:38px;padding:0;">
                     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="display:block;stroke:currentColor;stroke-width:2.5;fill:none;stroke-linecap:round;">
                         <path d="M4 7h16M4 12h16M4 17h16"></path>
                     </svg>
