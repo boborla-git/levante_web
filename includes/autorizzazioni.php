@@ -1,21 +1,42 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
+function normalizzaPermesso(string $permesso): string
+{
+    $permesso = strtolower(trim($permesso));
+
+    if ($permesso === 'view') {
+        return 'read';
+    }
+
+    if ($permesso === 'edit') {
+        return 'write';
+    }
+
+    return $permesso;
+}
+
 /**
  * Verifica se l'utente corrente ha un permesso su una risorsa.
- * Ritorna true/false.
- * Se il nuovo modello non trova nulla, usa il fallback legacy.
+ *
+ * Permessi standard attuali:
+ * - read
+ * - write
+ *
+ * Per compatibilita accetta ancora view/edit e li normalizza in read/write.
  */
-function haPermesso(string $codiceRisorsa, string $permesso = 'view'): bool
+function haPermesso(string $codiceRisorsa, string $permesso = 'read'): bool
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
     }
 
-    $idUtente = 0;
+    $permesso = normalizzaPermesso($permesso);
 
+    $idUtente = 0;
     if (isset($_SESSION['id_utente']) && (int)$_SESSION['id_utente'] > 0) {
         $idUtente = (int)$_SESSION['id_utente'];
     } elseif (isset($_SESSION['utente_id']) && (int)$_SESSION['utente_id'] > 0) {
@@ -27,7 +48,6 @@ function haPermesso(string $codiceRisorsa, string $permesso = 'view'): bool
     }
 
     $esitoNuovo = haPermessoNuovoModello($idUtente, $codiceRisorsa, $permesso);
-
     if ($esitoNuovo !== null) {
         return $esitoNuovo;
     }
@@ -44,20 +64,21 @@ function haPermesso(string $codiceRisorsa, string $permesso = 'view'): bool
 function haPermessoNuovoModello(int $idUtente, string $codiceRisorsa, string $permesso): ?bool
 {
     $pdo = db();
+    $permesso = normalizzaPermesso($permesso);
 
     $sql = "
-        SELECT 
+        SELECT
             MAX(CASE WHEN arp.consentito = 1 THEN 1 ELSE 0 END) AS consentito_massimo,
             COUNT(*) AS righe_trovate
         FROM aut_utenti_ruoli aur
         INNER JOIN aut_ruoli ar
             ON ar.id_ruolo = aur.id_ruolo
-           AND ar.attivo = 1
+            AND ar.attivo = 1
         INNER JOIN aut_ruoli_permessi arp
             ON arp.id_ruolo = ar.id_ruolo
         INNER JOIN aut_risorse ars
             ON ars.id_risorsa = arp.id_risorsa
-           AND ars.attivo = 1
+            AND ars.attivo = 1
         WHERE aur.id_utente = :id_utente
           AND aur.attivo = 1
           AND (aur.data_fine IS NULL OR aur.data_fine >= NOW())
@@ -73,13 +94,11 @@ function haPermessoNuovoModello(int $idUtente, string $codiceRisorsa, string $pe
     ]);
 
     $riga = $stmt->fetch(PDO::FETCH_ASSOC);
-
     if (!$riga) {
         return null;
     }
 
     $righeTrovate = (int)($riga['righe_trovate'] ?? 0);
-
     if ($righeTrovate === 0) {
         return null;
     }
@@ -88,24 +107,24 @@ function haPermessoNuovoModello(int $idUtente, string $codiceRisorsa, string $pe
 }
 
 /**
- * Fallback al sistema attuale.
- * Richiama funzioni definite in auth.php.
+ * Fallback al sistema legacy basato su sessione.
  */
 function haPermessoModelloAttuale(string $codiceRisorsa, string $permesso): bool
 {
     $pagina = normalizzaCodiceVecchio($codiceRisorsa);
+    $permesso = normalizzaPermesso($permesso);
 
     if ($pagina === '') {
         return false;
     }
 
-    if ($permesso === 'view') {
+    if ($permesso === 'read') {
         return function_exists('haPermessoLetturaLegacy')
             ? haPermessoLetturaLegacy($pagina)
             : false;
     }
 
-    if (in_array($permesso, ['edit', 'write', 'create', 'delete', 'execute'], true)) {
+    if (in_array($permesso, ['write', 'create', 'delete', 'execute'], true)) {
         return function_exists('haPermessoScritturaLegacy')
             ? haPermessoScritturaLegacy($pagina)
             : false;
@@ -173,12 +192,12 @@ function registraLogAccesso(string $codiceRisorsa, string $azione, string $esito
             ':id_utente' => $idUtente,
             ':username' => $username,
             ':codice_risorsa' => $codiceRisorsa,
-            ':azione' => $azione,
+            ':azione' => normalizzaPermesso($azione),
             ':esito' => $esito,
             ':indirizzo_ip' => $indirizzoIp,
             ':user_agent' => $userAgent,
         ]);
     } catch (Throwable $e) {
-        // mai bloccare il sito per errore di log
+        // Mai bloccare il sito per un errore di log.
     }
 }

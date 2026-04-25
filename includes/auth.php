@@ -42,7 +42,7 @@ function caricaContestoUtenteSessione(int $idUtente): void
         FROM aut_utenti_ruoli aur
         INNER JOIN aut_ruoli ar
             ON ar.id_ruolo = aur.id_ruolo
-           AND ar.attivo = 1
+            AND ar.attivo = 1
         WHERE aur.id_utente = :id_utente
           AND aur.attivo = 1
           AND (aur.data_fine IS NULL OR aur.data_fine >= NOW())
@@ -118,12 +118,12 @@ function haPermessoScritturaLegacy(string $codiceModulo): bool
 
 function haPermessoLettura(string $codiceModulo): bool
 {
-    return haPermesso('pagina.' . $codiceModulo, 'view');
+    return haPermesso('pagina.' . $codiceModulo, 'read');
 }
 
 function haPermessoScrittura(string $codiceModulo): bool
 {
-    return haPermesso('pagina.' . $codiceModulo, 'edit');
+    return haPermesso('pagina.' . $codiceModulo, 'write');
 }
 
 function richiediPermessoLettura(string $codiceModulo): void
@@ -131,12 +131,12 @@ function richiediPermessoLettura(string $codiceModulo): void
     richiediLogin();
 
     if (!haPermessoLettura($codiceModulo)) {
-        registraLogAccesso('pagina.' . $codiceModulo, 'view', 'negato');
+        registraLogAccesso('pagina.' . $codiceModulo, 'read', 'negato');
         http_response_code(403);
         die('Accesso negato.');
     }
 
-    registraLogAccesso('pagina.' . $codiceModulo, 'view', 'consentito');
+    registraLogAccesso('pagina.' . $codiceModulo, 'read', 'consentito');
 }
 
 function richiediPermessoScrittura(string $codiceModulo): void
@@ -144,10 +144,10 @@ function richiediPermessoScrittura(string $codiceModulo): void
     richiediLogin();
 
     if (!haPermessoScrittura($codiceModulo)) {
-        registraLogAccesso('pagina.' . $codiceModulo, 'edit', 'negato');
+        registraLogAccesso('pagina.' . $codiceModulo, 'write', 'negato');
         http_response_code(403);
         die('Accesso negato.');
     }
 
-    registraLogAccesso('pagina.' . $codiceModulo, 'edit', 'consentito');
+    registraLogAccesso('pagina.' . $codiceModulo, 'write', 'consentito');
 }

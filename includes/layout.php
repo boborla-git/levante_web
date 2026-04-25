@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/auth.php';
@@ -7,7 +8,6 @@ require_once __DIR__ . '/db.php';
 function layoutLoadMenuResources(): array
 {
     $pdo = db();
-
     $stmt = $pdo->query("
         SELECT
             id_risorsa,
@@ -39,7 +39,7 @@ function layoutNodeCanOpen(array $node): bool
         return false;
     }
 
-    return haPermesso($codice, 'view');
+    return haPermesso($codice, 'read');
 }
 
 function layoutBuildChildrenMap(array $rows): array
@@ -48,7 +48,6 @@ function layoutBuildChildrenMap(array $rows): array
 
     foreach ($rows as $row) {
         $parentId = null;
-
         if (isset($row['id_risorsa_padre']) && $row['id_risorsa_padre'] !== null) {
             $parentId = (int)$row['id_risorsa_padre'];
             if ($parentId === 0) {
@@ -161,8 +160,8 @@ function layoutRenderDesktopMenu(array $tree, array $childrenMap, string $curren
         $canOpen = (bool)($root['can_open'] ?? false);
         $label = (string)($root['descrizione'] ?? '');
         $href = ltrim((string)($root['percorso'] ?? ''), '/');
-
         $simplified = false;
+
         if (!$canOpen && count($children) === 1) {
             $child = $children[0];
             $childCanOpen = (bool)($child['can_open'] ?? false);
@@ -243,7 +242,6 @@ function layoutRenderMobileTree(array $nodes, array $childrenMap, string $curren
             <?php
             continue;
         }
-
         ?>
         <div class="<?= htmlspecialchars($classes) ?>">
             <?= htmlspecialchars($label) ?>
@@ -260,7 +258,6 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
 
     $utenteLoggato = isset($_SESSION['utente_id']) && (int)$_SESSION['utente_id'] > 0;
     $paginaCorrente = basename($_SERVER['PHP_SELF'] ?? '');
-
     $menuTree = [];
     $menuChildrenMap = [];
 
@@ -282,14 +279,12 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
         <link rel="apple-touch-icon" href="/assets/favicon.png">
     </head>
     <body>
-
     <header class="topbar">
         <div class="container topbar-inner">
             <div class="topbar-left">
                 <button type="button" class="nav-drawer-toggle" aria-expanded="false" aria-controls="mobile-nav-drawer">
                     Menu
                 </button>
-
                 <a class="brand" href="/index.php" aria-label="<?= htmlspecialchars($titoloApplicazione) ?>">
                     <img src="/assets/img/logo-ravioli.png" alt="Ravioli S.p.A.">
                 </a>
@@ -320,12 +315,9 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
                 <div class="nav-drawer-title">Menu</div>
                 <button type="button" class="nav-drawer-close" aria-label="Chiudi menu">×</button>
             </div>
-
             <div class="nav-drawer-body">
                 <?php layoutRenderMobileTree($menuTree, $menuChildrenMap, $paginaCorrente, 0); ?>
-
                 <div class="nav-drawer-sep"></div>
-
                 <div class="drawer-section-title">Utente</div>
                 <a href="/cambia_password.php" class="drawer-item <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>">Cambia password</a>
                 <a href="/logout.php" class="drawer-item">Logout</a>
@@ -349,80 +341,78 @@ function layoutFooter(): void
     </footer>
 
     <script>
-    (function () {
-        var html = document.documentElement;
-        var drawer = document.querySelector('.nav-drawer');
-        var backdrop = document.querySelector('.nav-drawer-backdrop');
-        var toggle = document.querySelector('.nav-drawer-toggle');
-        var closeBtn = document.querySelector('.nav-drawer-close');
+        (function () {
+            var html = document.documentElement;
+            var drawer = document.querySelector('.nav-drawer');
+            var backdrop = document.querySelector('.nav-drawer-backdrop');
+            var toggle = document.querySelector('.nav-drawer-toggle');
+            var closeBtn = document.querySelector('.nav-drawer-close');
 
-        function openDrawer() {
-            if (!drawer) return;
-            html.classList.add('drawer-open');
-            if (toggle) toggle.setAttribute('aria-expanded', 'true');
-        }
-
-        function closeDrawer() {
-            html.classList.remove('drawer-open');
-            if (toggle) toggle.setAttribute('aria-expanded', 'false');
-        }
-
-        if (toggle) toggle.addEventListener('click', openDrawer);
-        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-        if (backdrop) backdrop.addEventListener('click', closeDrawer);
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                closeDrawer();
-                document.querySelectorAll('.topnav-dropdown.is-open').forEach(function (item) {
-                    item.classList.remove('is-open');
-                    var button = item.querySelector('.topnav-parent');
-                    if (button) button.setAttribute('aria-expanded', 'false');
-                });
+            function openDrawer() {
+                if (!drawer) return;
+                html.classList.add('drawer-open');
+                if (toggle) toggle.setAttribute('aria-expanded', 'true');
             }
-        });
 
-        var desktopParents = document.querySelectorAll('.topnav-dropdown > .topnav-parent');
+            function closeDrawer() {
+                html.classList.remove('drawer-open');
+                if (toggle) toggle.setAttribute('aria-expanded', 'false');
+            }
 
-        desktopParents.forEach(function (btn) {
-            btn.addEventListener('click', function (event) {
-                if (window.innerWidth <= 1100) return;
+            if (toggle) toggle.addEventListener('click', openDrawer);
+            if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+            if (backdrop) backdrop.addEventListener('click', closeDrawer);
 
-                event.preventDefault();
-                var dropdown = btn.closest('.topnav-dropdown');
-                var isOpen = dropdown.classList.contains('is-open');
-
-                document.querySelectorAll('.topnav-dropdown.is-open').forEach(function (item) {
-                    if (item !== dropdown) {
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    closeDrawer();
+                    document.querySelectorAll('.topnav-dropdown.is-open').forEach(function (item) {
                         item.classList.remove('is-open');
-                        var other = item.querySelector('.topnav-parent');
-                        if (other) other.setAttribute('aria-expanded', 'false');
-                    }
-                });
-
-                dropdown.classList.toggle('is-open', !isOpen);
-                btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                        var button = item.querySelector('.topnav-parent');
+                        if (button) button.setAttribute('aria-expanded', 'false');
+                    });
+                }
             });
-        });
 
-        document.addEventListener('click', function (event) {
-            if (!event.target.closest('.topnav')) {
-                document.querySelectorAll('.topnav-dropdown.is-open').forEach(function (item) {
-                    item.classList.remove('is-open');
-                    var button = item.querySelector('.topnav-parent');
-                    if (button) button.setAttribute('aria-expanded', 'false');
+            var desktopParents = document.querySelectorAll('.topnav-dropdown > .topnav-parent');
+            desktopParents.forEach(function (btn) {
+                btn.addEventListener('click', function (event) {
+                    if (window.innerWidth <= 1100) return;
+
+                    event.preventDefault();
+                    var dropdown = btn.closest('.topnav-dropdown');
+                    var isOpen = dropdown.classList.contains('is-open');
+
+                    document.querySelectorAll('.topnav-dropdown.is-open').forEach(function (item) {
+                        if (item !== dropdown) {
+                            item.classList.remove('is-open');
+                            var other = item.querySelector('.topnav-parent');
+                            if (other) other.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+
+                    dropdown.classList.toggle('is-open', !isOpen);
+                    btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
                 });
-            }
-        });
+            });
 
-        window.addEventListener('resize', function () {
-            if (window.innerWidth > 1100) {
-                closeDrawer();
-            }
-        });
-    })();
+            document.addEventListener('click', function (event) {
+                if (!event.target.closest('.topnav')) {
+                    document.querySelectorAll('.topnav-dropdown.is-open').forEach(function (item) {
+                        item.classList.remove('is-open');
+                        var button = item.querySelector('.topnav-parent');
+                        if (button) button.setAttribute('aria-expanded', 'false');
+                    });
+                }
+            });
+
+            window.addEventListener('resize', function () {
+                if (window.innerWidth > 1100) {
+                    closeDrawer();
+                }
+            });
+        })();
     </script>
-
     </body>
     </html>
     <?php
