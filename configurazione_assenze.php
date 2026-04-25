@@ -163,13 +163,15 @@ layoutHeader('Configurazione assenze');
     align-items: center;
 }
 .hr-color-palette {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-    min-width: 270px;
+    min-width: 150px;
+    max-width: 190px;
 }
 .hr-color-option {
     position: relative;
+    display: inline-flex;
 }
 .hr-color-option input {
     position: absolute;
@@ -177,42 +179,48 @@ layoutHeader('Configurazione assenze');
     pointer-events: none;
 }
 .hr-color-chip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    width: 26px;
+    height: 26px;
     border: 1px solid #d7dee8;
     background: #fff;
     border-radius: 999px;
-    padding: 7px 10px;
     cursor: pointer;
-    font-size: 13px;
-    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.hr-color-chip:hover {
+    transform: translateY(-1px);
+    border-color: #94a3b8;
 }
 .hr-color-dot {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     border-radius: 999px;
     background: var(--dot-color, #6c757d);
-    box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 0 3px rgba(15,23,42,.10);
+    box-shadow: inset 0 0 0 1px rgba(15,23,42,.16);
     flex: 0 0 auto;
 }
 .hr-color-check {
-    margin-left: auto;
+    position: absolute;
+    right: -5px;
+    bottom: -5px;
     display: none;
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border-radius: 999px;
     background: #16a34a;
     color: #fff;
     font-weight: 900;
-    font-size: 12px;
+    font-size: 10px;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 0 0 2px #fff;
 }
 .hr-color-option input:checked + .hr-color-chip {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
-    background: #f8fbff;
+    border-color: #111827;
+    box-shadow: 0 0 0 2px rgba(17, 24, 39, .14);
 }
 .hr-color-option input:checked + .hr-color-chip .hr-color-check {
     display: inline-flex;
@@ -264,9 +272,6 @@ layoutHeader('Configurazione assenze');
         border: 0 !important;
         padding: 8px 0 !important;
     }
-    .hr-color-palette {
-        grid-template-columns: 1fr;
-    }
 }
 </style>
 
@@ -311,7 +316,7 @@ layoutHeader('Configurazione assenze');
 
 <section class="card">
     <h2>Tipologie evento</h2>
-    <p class="muted">Il colore scelto qui viene usato nel calendario e nel popup di dettaglio. Il segno di spunta indica il colore attualmente selezionato.</p>
+    <p class="muted">Il pallino selezionato viene usato nel calendario e nel popup di dettaglio.</p>
 
     <div class="table-responsive">
         <table class="table hr-config-table">
@@ -371,9 +376,8 @@ layoutHeader('Configurazione assenze');
                                 <?php foreach ($palette as $hex => $label): ?>
                                     <label class="hr-color-option">
                                         <input type="radio" name="colore_calendario" value="<?= h($hex) ?>" <?= strtolower($selectedColor) === strtolower($hex) ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>>
-                                        <span class="hr-color-chip">
+                                        <span class="hr-color-chip" title="<?= h($label) ?>" aria-label="<?= h($label) ?>">
                                             <span class="hr-color-dot" style="--dot-color: <?= h($hex) ?>"></span>
-                                            <span><?= h($label) ?></span>
                                             <span class="hr-color-check">✓</span>
                                         </span>
                                     </label>

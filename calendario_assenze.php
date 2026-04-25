@@ -331,6 +331,12 @@ layoutHeader('Calendario assenze');
     justify-content: flex-end;
     align-items: center;
 }
+.hr-cal-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
 .hr-cal-grid {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -357,10 +363,12 @@ layoutHeader('Calendario assenze');
 .hr-cal-day.has-events {
     cursor: pointer;
 }
-.hr-cal-day.has-events:hover {
+.hr-cal-day.has-events:hover,
+.hr-cal-day.has-events:focus {
     border-color: #94a3b8;
     box-shadow: 0 8px 20px rgba(15, 23, 42, .10);
     transform: translateY(-1px);
+    outline: none;
 }
 .hr-cal-day.is-muted {
     background: #f8fafc;
@@ -373,10 +381,12 @@ layoutHeader('Calendario assenze');
 .hr-cal-day-number {
     font-weight: 800;
     font-size: 16px;
+    color: #0f172a;
 }
 .hr-cal-empty {
     color: #64748b;
     font-size: 13px;
+    margin-top: 4px;
 }
 .hr-cal-event-line {
     display: flex;
@@ -384,6 +394,7 @@ layoutHeader('Calendario assenze');
     gap: 7px;
     font-size: 13px;
     line-height: 1.25;
+    color: #334155;
 }
 .hr-dot {
     display: inline-block;
@@ -398,13 +409,12 @@ layoutHeader('Calendario assenze');
     width: 14px;
     height: 14px;
 }
-.hr-legend {
+.hr-person-list {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
 }
-.hr-legend-item,
 .hr-person-chip {
     display: inline-flex;
     align-items: center;
@@ -427,66 +437,10 @@ layoutHeader('Calendario assenze');
     font-size: 11px;
     font-weight: 800;
 }
-.hr-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    display: none;
-    z-index: 1000;
-    background: rgba(15, 23, 42, .45);
-    padding: 24px;
-}
-.hr-modal-backdrop.is-open {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-}
-.hr-modal {
-    width: min(720px, 100%);
-    max-height: calc(100vh - 48px);
-    overflow: auto;
-    margin-top: 44px;
-    background: #fff;
-    border-radius: 18px;
-    box-shadow: 0 24px 70px rgba(15, 23, 42, .25);
-    padding: 22px;
-}
-.hr-modal-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 18px;
-}
-.hr-modal-title {
-    margin: 0;
-    font-size: 22px;
-}
-.hr-detail-group {
-    margin-top: 16px;
-}
-.hr-detail-group-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 800;
-    margin-bottom: 8px;
-}
-.hr-detail-row {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
-    background: #f8fafc;
-}
-.hr-detail-name {
-    font-weight: 700;
-}
-.hr-detail-meta {
-    color: #64748b;
-    font-size: 13px;
-    margin-top: 2px;
-}
 @media (max-width: 900px) {
+    .hr-cal-summary {
+        grid-template-columns: 1fr;
+    }
     .hr-cal-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -517,7 +471,7 @@ layoutHeader('Calendario assenze');
     <div class="alert alert-error"><?= h($error) ?></div>
 <?php endif; ?>
 
-<section class="grid cards-4">
+<section class="hr-cal-summary">
     <div class="card metric-card">
         <h3>Mese visualizzato</h3>
         <div class="metric-value"><?= h(hrNomeMese($mese, $anno)) ?></div>
@@ -529,18 +483,6 @@ layoutHeader('Calendario assenze');
     <div class="card metric-card">
         <h3>Giorni con eventi</h3>
         <div class="metric-value"><?= count($daysWithEvents) ?></div>
-    </div>
-    <div class="card metric-card">
-        <h3>Colori in uso</h3>
-        <?php if ($legendMap === []): ?>
-            <p class="muted">Nessun evento nel mese.</p>
-        <?php else: ?>
-            <div class="hr-legend">
-                <?php foreach ($legendMap as $label => $color): ?>
-                    <span class="hr-legend-item"><span class="hr-dot" style="--dot-color: <?= h($color) ?>"></span><?= h($label) ?></span>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
     </div>
 </section>
 
@@ -560,7 +502,7 @@ layoutHeader('Calendario assenze');
             $hasEvents = count($summaries) > 0;
             $classes = 'hr-cal-day' . (!$isCurrentMonth ? ' is-muted' : '') . ($isToday ? ' is-today' : '') . ($hasEvents ? ' has-events' : '');
             ?>
-            <button type="button" class="<?= h($classes) ?>" data-day="<?= h($key) ?>" <?= $hasEvents ? '' : 'disabled' ?>>
+            <div class="<?= h($classes) ?>" data-day="<?= h($key) ?>" <?= $hasEvents ? 'role="button" tabindex="0"' : '' ?>>
                 <span class="hr-cal-day-number"><?= h($day->format('j')) ?></span>
                 <?php if (!$hasEvents): ?>
                     <span class="hr-cal-empty">Nessuna assenza visibile</span>
@@ -573,7 +515,7 @@ layoutHeader('Calendario assenze');
                     <?php endforeach; ?>
                     <span class="link-like">Dettaglio</span>
                 <?php endif; ?>
-            </button>
+            </div>
         <?php endfor; ?>
     </div>
 </section>
@@ -589,7 +531,7 @@ layoutHeader('Calendario assenze');
     <?php if ($scopeMap === []): ?>
         <p>Non risultano utenti visibili nel tuo perimetro.</p>
     <?php else: ?>
-        <div class="hr-legend">
+        <div class="hr-person-list">
             <?php foreach ($scopeMap as $info): ?>
                 <span class="hr-person-chip">
                     <?php if (!$puoConfigurare && ($info['gerarchia'] || $info['gruppo'])): ?>
@@ -665,9 +607,15 @@ layoutHeader('Calendario assenze');
         modal.setAttribute('aria-hidden', 'false');
     }
 
-    document.querySelectorAll('.hr-cal-day.has-events').forEach(function (button) {
-        button.addEventListener('click', function () {
-            openModal(button.getAttribute('data-day'));
+    document.querySelectorAll('.hr-cal-day.has-events').forEach(function (cell) {
+        cell.addEventListener('click', function () {
+            openModal(cell.getAttribute('data-day'));
+        });
+        cell.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openModal(cell.getAttribute('data-day'));
+            }
         });
     });
 
