@@ -513,7 +513,6 @@ layoutHeader('Calendario assenze');
     if (todayDayButton) todayDayButton.addEventListener('click', function () { goToDay(new Date().toISOString().slice(0, 10)); });
 
     document.querySelectorAll('.hr-cal-day').forEach(function (cell) {
-    document.querySelectorAll('.hr-cal-day').forEach(function (cell) {
         cell.addEventListener('click', function () {
             selectDay(cell.getAttribute('data-day'));
         });
