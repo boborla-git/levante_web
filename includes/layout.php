@@ -282,8 +282,10 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
     <header class="topbar">
         <div class="container topbar-inner">
             <div class="topbar-left">
-                <button type="button" class="nav-drawer-toggle" aria-expanded="false" aria-controls="mobile-nav-drawer">
-                    Menu
+                <button type="button" class="nav-drawer-toggle" aria-expanded="false" aria-controls="mobile-nav-drawer" aria-label="Apri menu" title="Menu" style="background:#005baa;color:#f6c500;border-color:#005baa;display:inline-flex;align-items:center;justify-content:center;gap:0;width:54px;height:38px;padding:0;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="display:block;stroke:currentColor;stroke-width:2.5;fill:none;stroke-linecap:round;">
+                        <path d="M4 7h16M4 12h16M4 17h16"></path>
+                    </svg>
                 </button>
                 <a class="brand" href="/index.php" aria-label="<?= htmlspecialchars($titoloApplicazione) ?>">
                     <img src="/assets/img/logo-ravioli.png" alt="Ravioli S.p.A.">

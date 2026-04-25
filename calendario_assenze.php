@@ -337,9 +337,12 @@ layoutHeader('Calendario assenze');
 ?>
 <style>
 .hr-cal-toolbar { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; }
-.hr-icon-btn { width: 40px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1; background: #f6c500; color: #005baa; border-color: #e0b100; }
-.hr-icon-btn:hover, .hr-icon-btn:focus { background: #ffd633; color: #005baa; border-color: #005baa; }
-.hr-icon-btn svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2.25; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.hr-icon-btn { width: 40px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1; border-radius: 8px; border: 1px solid transparent; transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.hr-icon-btn svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 2.35; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.hr-icon-btn-primary { background: #005baa; color: #f6c500; border-color: #005baa; }
+.hr-icon-btn-primary:hover, .hr-icon-btn-primary:focus { background: #004a8f; color: #ffd633; border-color: #004a8f; box-shadow: 0 0 0 3px rgba(0, 91, 170, .18); }
+.hr-icon-btn-secondary { background: #f6c500; color: #005baa; border-color: #e0b100; }
+.hr-icon-btn-secondary:hover, .hr-icon-btn-secondary:focus { background: #ffd633; color: #004a8f; border-color: #005baa; box-shadow: 0 0 0 3px rgba(246, 197, 0, .28); }
 .hr-cal-layout { display: grid; grid-template-columns: minmax(320px, .42fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 .hr-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .hr-calendar-head h1, .hr-calendar-head h2, .hr-day-panel h2 { margin: 0; }
@@ -378,9 +381,9 @@ layoutHeader('Calendario assenze');
         <div class="hr-day-panel-head">
             <h2 id="hrDayPanelTitle">Situazione giorno</h2>
             <div class="hr-day-nav" aria-label="Navigazione giorno">
-                <button type="button" class="btn hr-icon-btn" id="hrPrevDay" title="Giorno precedente" aria-label="Giorno precedente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
-                <button type="button" class="btn hr-icon-btn" id="hrTodayDay" title="Oggi" aria-label="Oggi"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16"></path><path d="M9 15h6"></path></svg></button>
-                <button type="button" class="btn hr-icon-btn" id="hrNextDay" title="Giorno successivo" aria-label="Giorno successivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+                <button type="button" class="btn hr-icon-btn hr-icon-btn-primary" id="hrPrevDay" title="Giorno precedente" aria-label="Giorno precedente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+                <button type="button" class="btn hr-icon-btn hr-icon-btn-secondary" id="hrTodayDay" title="Oggi" aria-label="Oggi"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16"></path><path d="M9 15h6"></path></svg></button>
+                <button type="button" class="btn hr-icon-btn hr-icon-btn-primary" id="hrNextDay" title="Giorno successivo" aria-label="Giorno successivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
             </div>
         </div>
         <div id="hrDayPanelBody"></div>
@@ -390,9 +393,9 @@ layoutHeader('Calendario assenze');
         <div class="hr-calendar-head">
             <h1><?= h(hrNomeMese($mese, $anno)) ?></h1>
             <div class="hr-cal-toolbar" aria-label="Navigazione mese">
-                <a class="btn hr-icon-btn" href="calendario_assenze.php?mese=<?= (int)$prev->format('n') ?>&anno=<?= (int)$prev->format('Y') ?>" title="Mese precedente" aria-label="Mese precedente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
-                <a class="btn hr-icon-btn" href="calendario_assenze.php" title="Oggi" aria-label="Oggi"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16"></path><path d="M9 15h6"></path></svg></a>
-                <a class="btn hr-icon-btn" href="calendario_assenze.php?mese=<?= (int)$next->format('n') ?>&anno=<?= (int)$next->format('Y') ?>" title="Mese successivo" aria-label="Mese successivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></a>
+                <a class="btn hr-icon-btn hr-icon-btn-primary" href="calendario_assenze.php?mese=<?= (int)$prev->format('n') ?>&anno=<?= (int)$prev->format('Y') ?>" title="Mese precedente" aria-label="Mese precedente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+                <a class="btn hr-icon-btn hr-icon-btn-secondary" href="calendario_assenze.php" title="Oggi" aria-label="Oggi"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16"></path><path d="M9 15h6"></path></svg></a>
+                <a class="btn hr-icon-btn hr-icon-btn-primary" href="calendario_assenze.php?mese=<?= (int)$next->format('n') ?>&anno=<?= (int)$next->format('Y') ?>" title="Mese successivo" aria-label="Mese successivo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></a>
             </div>
         </div>
         <div class="hr-cal-grid" aria-label="Calendario mensile">
