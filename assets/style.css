@@ -672,238 +672,197 @@ body.modal-open { overflow: hidden; }
     .nav-drawer-toggle { padding: 0 12px; }
 }
 
-/* ===== LINE AWESOME MENU ICONS ===== */
-.menu-icon {
+/* ===== DESIGN SYSTEM RAVIOLI - PULSANTI, LINK AZIONE E ICONE ===== */
+:root {
+    --rav-blue: #0068c9;
+    --rav-blue-dark: #00509f;
+    --rav-yellow: #ffd200;
+    --rav-yellow-soft: #ffe066;
+    --rav-focus: rgba(0, 104, 201, 0.22);
+}
+
+.btn,
+button,
+input[type="submit"],
+a.btn,
+.action-button,
+.link-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 auto;
-    width: 1.25em;
-    min-width: 1.25em;
-    margin-right: 0.45rem;
-    font-size: 1.15rem;
+    gap: 0.42rem;
+    min-height: 38px;
+    padding: 0 15px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 14px;
+    font-weight: 700;
     line-height: 1;
-    color: #005baa;
-    text-align: center;
+    text-decoration: none !important;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.topnav-link.active .menu-icon,
-.topnav-parent.active .menu-icon,
-.topnav-dropdown.active > .topnav-parent .menu-icon,
-.topnav-dropdown-menu a.active .menu-icon,
-.topnav-menu-label.active .menu-icon,
-.drawer-item.active .menu-icon,
-.drawer-group > summary.active .menu-icon,
-.drawer-direct-link.active .menu-icon {
-    color: #005baa;
+.btn i,
+button i,
+.action-button i,
+.link-button i {
+    font-size: 1.12rem;
+    line-height: 1;
 }
 
-.topnav-link,
-.topnav-parent,
-.topnav-dropdown-menu a,
-.topnav-menu-label,
-.drawer-item,
-.drawer-group > summary,
-.drawer-direct-link {
-    gap: 0;
+.btn:not(.btn-light):not(.btn-danger):not(.btn-outline):not(.btn-outline-primary):not(.btn-outline-danger):not(.hr-icon-btn),
+button:not(.topnav-parent):not(.nav-drawer-close):not(.nav-drawer-toggle):not(.btn-light):not(.btn-danger):not(.btn-outline):not(.btn-outline-primary):not(.btn-outline-danger):not(.hr-icon-btn),
+input[type="submit"],
+.btn-primary,
+.btn-ravioli-primary {
+    background: var(--rav-blue) !important;
+    color: var(--rav-yellow) !important;
+    border-color: var(--rav-blue) !important;
 }
 
-.menu-text {
-    display: inline-block;
-    min-width: 0;
+.btn:not(.btn-light):not(.btn-danger):not(.btn-outline):not(.btn-outline-primary):not(.btn-outline-danger):not(.hr-icon-btn):hover,
+button:not(.topnav-parent):not(.nav-drawer-close):not(.nav-drawer-toggle):not(.btn-light):not(.btn-danger):not(.btn-outline):not(.btn-outline-primary):not(.btn-outline-danger):not(.hr-icon-btn):hover,
+input[type="submit"]:hover,
+.btn-primary:hover,
+.btn-ravioli-primary:hover {
+    background: #fff !important;
+    color: var(--rav-blue) !important;
+    border-color: var(--rav-blue) !important;
+    box-shadow: 0 0 0 3px var(--rav-focus);
+    transform: translateY(-1px);
 }
 
-.nav-drawer-toggle .menu-icon,
-.nav-drawer-close .menu-icon {
-    margin-right: 0;
+.btn-light,
+.btn-outline,
+.btn-outline-primary,
+.link-button {
+    background: #fff !important;
+    color: var(--rav-blue) !important;
+    border-color: var(--rav-blue) !important;
 }
 
-@media (max-width: 1100px) {
-    .drawer-item .menu-icon,
-    .drawer-group > summary .menu-icon,
-    .drawer-direct-link .menu-icon {
-        font-size: 1.25rem;
-        margin-right: 0.55rem;
-    }
+.btn-light:hover,
+.btn-outline:hover,
+.btn-outline-primary:hover,
+.link-button:hover {
+    background: var(--rav-yellow) !important;
+    color: var(--rav-blue) !important;
+    border-color: var(--rav-blue) !important;
+    box-shadow: 0 0 0 3px var(--rav-focus);
+    transform: translateY(-1px);
 }
 
-/* ===== LINE AWESOME MENU ICONS - ALLINEAMENTO FINALE ===== */
-.topnav-link,
-.topnav-parent {
-    gap: 7px;
+.btn-ravioli-secondary {
+    background: var(--rav-yellow) !important;
+    color: var(--rav-blue) !important;
+    border-color: var(--rav-blue) !important;
 }
 
-.topnav-link .menu-icon,
-.topnav-parent .menu-icon {
-    margin-right: 0;
+.btn-ravioli-secondary:hover {
+    background: #fff !important;
+    color: var(--rav-blue) !important;
+    border-color: var(--rav-blue) !important;
+    box-shadow: 0 0 0 3px var(--rav-focus);
+    transform: translateY(-1px);
 }
 
-.topnav-dropdown-menu a,
-.topnav-menu-label {
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
-    column-gap: 10px;
+.btn-danger,
+.btn-outline-danger {
+    background: #fff !important;
+    color: var(--danger) !important;
+    border-color: var(--danger) !important;
+}
+
+.btn-danger:hover,
+.btn-outline-danger:hover {
+    background: var(--danger) !important;
+    color: #fff !important;
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 3px rgba(207, 34, 46, 0.16);
+}
+
+.btn-sm,
+.action-button-sm {
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: 9px;
+    font-size: 12px;
+}
+
+.actions,
+.links,
+.section-head-actions,
+.row-actions,
+.table-actions {
+    display: flex;
     align-items: center;
-}
-
-.topnav-dropdown-menu a .menu-icon,
-.topnav-menu-label .menu-icon {
-    width: 22px;
-    min-width: 22px;
-    margin-right: 0;
-    justify-self: center;
-}
-
-.topnav-dropdown-menu a .menu-text,
-.topnav-menu-label .menu-text {
-    display: block;
-    min-width: 0;
-    line-height: 1.22;
-}
-
-.topnav-subtree {
-    margin-left: 18px;
-    padding-left: 12px;
-}
-
-.drawer-item,
-.drawer-group > summary,
-.drawer-direct-link {
+    flex-wrap: wrap;
     gap: 10px;
 }
 
-.drawer-item .menu-icon,
-.drawer-group > summary .menu-icon,
-.drawer-direct-link .menu-icon {
-    width: 22px;
-    min-width: 22px;
-    margin-right: 0;
+.table-actions {
+    gap: 8px;
 }
 
-.drawer-item .menu-text,
-.drawer-group > summary .menu-text,
-.drawer-direct-link .menu-text {
-    display: block;
-    min-width: 0;
-    line-height: 1.22;
+.admin-tabs,
+.page-tabs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
 }
 
-/* ===== RAVIOLI BUTTONS E MOBILE MENU - 2026-04-30 ===== */
-:root {
-    --ravioli-blue: #0068c9;
-    --ravioli-yellow: #ffd400;
+.admin-tabs-label,
+.page-tabs-label {
+    color: var(--muted);
+    font-weight: 700;
+    margin-right: 2px;
 }
 
-.nav-drawer-toggle {
-    width: 54px;
-    height: 40px;
-    min-height: 40px;
-    padding: 0;
+.admin-tabs a,
+.page-tabs a {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    background: var(--ravioli-blue);
-    color: var(--ravioli-yellow);
-    border: 1px solid var(--ravioli-blue);
-    box-shadow: none;
+    gap: 0.38rem;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none !important;
 }
 
-.nav-drawer-toggle .la {
-    font-size: 1.45rem;
-    line-height: 1;
+.admin-tabs a:hover,
+.page-tabs a:hover,
+.admin-tabs a.active,
+.page-tabs a.active {
+    border-color: var(--rav-blue);
+    color: var(--rav-blue);
+    background: var(--rav-yellow);
 }
 
-.nav-drawer-toggle:hover,
-.nav-drawer-toggle:focus-visible,
-.btn-ravioli-primary:hover,
-.btn-ravioli-primary:focus-visible {
-    background: var(--ravioli-blue) !important;
-    color: var(--ravioli-yellow) !important;
-    border-color: var(--ravioli-yellow) !important;
-    box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.55) !important;
-    outline: none !important;
+.table-wrap td a:not(.btn) {
+    color: var(--rav-blue);
+    font-weight: 700;
 }
 
-.btn-ravioli-secondary:hover,
-.btn-ravioli-secondary:focus-visible {
-    background: var(--ravioli-yellow) !important;
-    color: var(--ravioli-blue) !important;
-    border-color: var(--ravioli-blue) !important;
-    box-shadow: 0 0 0 2px rgba(0, 104, 201, 0.28) !important;
-    outline: none !important;
-}
-
-.hr-icon-btn {
-    width: 40px;
-    height: 36px;
-    min-width: 40px;
-    min-height: 36px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease;
-}
-
-.hr-icon-btn .la {
-    font-size: 1.1rem;
-    line-height: 1;
-}
-
-.hr-icon-btn-primary,
-.page-content .hr-icon-btn-primary {
-    background: var(--ravioli-blue) !important;
-    color: var(--ravioli-yellow) !important;
-    border-color: var(--ravioli-blue) !important;
-}
-
-.hr-icon-btn-primary:hover,
-.hr-icon-btn-primary:focus-visible,
-.page-content .hr-icon-btn-primary:hover,
-.page-content .hr-icon-btn-primary:focus-visible {
-    background: var(--ravioli-blue) !important;
-    color: var(--ravioli-yellow) !important;
-    border-color: var(--ravioli-yellow) !important;
-    box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.55) !important;
-    outline: none !important;
-}
-
-.hr-icon-btn-secondary,
-.page-content .hr-icon-btn-secondary {
-    background: var(--ravioli-yellow) !important;
-    color: var(--ravioli-blue) !important;
-    border-color: var(--ravioli-yellow) !important;
-}
-
-.hr-icon-btn-secondary:hover,
-.hr-icon-btn-secondary:focus-visible,
-.page-content .hr-icon-btn-secondary:hover,
-.page-content .hr-icon-btn-secondary:focus-visible {
-    background: var(--ravioli-yellow) !important;
-    color: var(--ravioli-blue) !important;
-    border-color: var(--ravioli-blue) !important;
-    box-shadow: 0 0 0 2px rgba(0, 104, 201, 0.28) !important;
-    outline: none !important;
-}
-
-@media (max-width: 760px) {
-    .nav-drawer-toggle {
-        flex: 0 0 auto;
-        width: 54px;
-        height: 40px;
-        min-height: 40px;
-        padding: 0;
+@media (max-width: 700px) {
+    .actions,
+    .links,
+    .section-head-actions,
+    .row-actions,
+    .table-actions {
+        align-items: stretch;
     }
 
-    .hr-day-nav .hr-icon-btn,
-    .hr-cal-toolbar .hr-icon-btn {
-        width: 36px;
-        height: 34px;
-        min-width: 36px;
-        min-height: 34px;
+    .actions .btn,
+    .links .btn,
+    .section-head-actions .btn {
+        width: 100%;
     }
 }
