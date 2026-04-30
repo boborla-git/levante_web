@@ -1,0 +1,36 @@
+<!-- BLOCCO FILTRI STANDARD -->
+<div class="filtri-bar" id="filtriBar">
+    <div class="filtri-header" onclick="toggleFiltri()">
+        <strong><i class="la la-filter"></i> Filtri</strong>
+        <span><i class="la la-angle-down"></i></span>
+    </div>
+
+    <div class="filtri-body">
+        <form method="get">
+            <div class="filtri-grid">
+                <select name="stato">
+                    <option value="">Tutti gli stati</option>
+                    <option value="IN_ATTESA">Pendenti</option>
+                    <option value="APPROVATA">Approvate</option>
+                    <option value="RIFIUTATA">Rifiutate</option>
+                </select>
+
+                <input type="date" name="data_da">
+                <input type="date" name="data_a">
+
+                <input type="text" name="utente" placeholder="Richiedente...">
+            </div>
+
+            <div style="margin-top:0.8rem;">
+                <button class="btn btn-primary btn-sm">Applica</button>
+                <a href="?" class="btn btn-outline-secondary btn-sm">Pulisci</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleFiltri() {
+    document.getElementById('filtriBar').classList.toggle('open');
+}
+</script>

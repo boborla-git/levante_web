@@ -1,0 +1,32 @@
+
+/* FILTRI ESPANDIBILI */
+.filtri-bar {
+    background: #f8fafc;
+    border: 1px solid #dbe2ea;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+.filtri-header {
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.filtri-body {
+    display: none;
+    padding: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.filtri-bar.open .filtri-body {
+    display: block;
+}
+
+.filtri-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.6rem;
+}
