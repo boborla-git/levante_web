@@ -67,6 +67,41 @@ function layoutRenderLabel(array $node): void
     <?php
 }
 
+
+function layoutUnreadNotificationsCount(int $idUtente): int
+{
+    if ($idUtente <= 0) {
+        return 0;
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*)
+             FROM hr_notifiche_destinatari nd
+             INNER JOIN hr_notifiche n ON n.id_notifica = nd.id_notifica
+             WHERE nd.id_utente = :id_utente
+               AND nd.letta = 0"
+        );
+        $stmt->execute(['id_utente' => $idUtente]);
+        return (int)$stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
+function layoutRenderNotificationBadge(int $numero): void
+{
+    if ($numero <= 0) {
+        return;
+    }
+
+    $label = $numero > 99 ? '99+' : (string)$numero;
+    ?>
+    <span class="notification-badge" aria-label="<?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?> notifiche non lette"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></span>
+    <?php
+}
+
 function layoutNodeCanOpen(array $node): bool
 {
     $percorso = trim((string)($node['percorso'] ?? ''));
@@ -297,6 +332,8 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
     }
 
     $utenteLoggato = isset($_SESSION['utente_id']) && (int)$_SESSION['utente_id'] > 0;
+    $idUtenteLoggato = $utenteLoggato ? (int)$_SESSION['utente_id'] : 0;
+    $notificheNonLette = $utenteLoggato ? layoutUnreadNotificationsCount($idUtenteLoggato) : 0;
     $paginaCorrente = basename($_SERVER['PHP_SELF'] ?? '');
     $menuTree = [];
     $menuChildrenMap = [];
@@ -392,9 +429,10 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
 
                         <div class="topnav-dropdown <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>">
                             <button type="button" class="topnav-link topnav-parent <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>" aria-haspopup="true" aria-expanded="false">
-                                <i class="la la-user menu-icon" aria-hidden="true"></i><span class="menu-text">Utente</span>
+                                <i class="la la-user menu-icon" aria-hidden="true"></i><span class="menu-text">Utente</span><?php layoutRenderNotificationBadge($notificheNonLette); ?>
                             </button>
                             <div class="topnav-dropdown-menu">
+                                <a href="/notifiche.php" class="<?= $paginaCorrente === 'notifiche.php' ? 'active' : '' ?>"><i class="la la-bell menu-icon" aria-hidden="true"></i><span class="menu-text">Notifiche</span><?php layoutRenderNotificationBadge($notificheNonLette); ?></a>
                                 <a href="/cambia_password.php" class="<?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>"><i class="la la-key menu-icon" aria-hidden="true"></i><span class="menu-text">Cambia password</span></a>
                                 <a href="/logout.php"><i class="la la-sign-out-alt menu-icon" aria-hidden="true"></i><span class="menu-text">Logout</span></a>
                             </div>
@@ -416,6 +454,7 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
                 <?php layoutRenderMobileTree($menuTree, $menuChildrenMap, $paginaCorrente, 0); ?>
                 <div class="nav-drawer-sep"></div>
                 <div class="drawer-section-title">Utente</div>
+                <a href="/notifiche.php" class="drawer-item <?= $paginaCorrente === 'notifiche.php' ? 'active' : '' ?>"><i class="la la-bell menu-icon" aria-hidden="true"></i><span class="menu-text">Notifiche</span><?php layoutRenderNotificationBadge($notificheNonLette); ?></a>
                 <a href="/cambia_password.php" class="drawer-item <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>"><i class="la la-key menu-icon" aria-hidden="true"></i><span class="menu-text">Cambia password</span></a>
                 <a href="/logout.php" class="drawer-item"><i class="la la-sign-out-alt menu-icon" aria-hidden="true"></i><span class="menu-text">Logout</span></a>
             </div>

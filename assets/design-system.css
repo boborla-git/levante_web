@@ -447,3 +447,197 @@ textarea:focus {
         gap: 0.45rem;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   10. Notifiche
+--------------------------------------------------------------------------- */
+
+.notification-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    margin-left: 0.35rem;
+    border-radius: 999px;
+    background: var(--rav-yellow);
+    color: var(--rav-blue);
+    border: 1px solid rgba(0, 91, 212, 0.18);
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.notifications-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.notification-item {
+    display: grid;
+    grid-template-columns: 2.4rem 1fr;
+    gap: 0.8rem;
+    padding: 1rem;
+    border: 1px solid var(--rav-gray-200);
+    border-radius: var(--rav-radius-lg);
+    background: #ffffff;
+}
+
+.notification-item.is-unread {
+    border-color: rgba(0, 91, 212, 0.28);
+    background: var(--rav-blue-soft);
+}
+
+.notification-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 999px;
+    color: var(--rav-blue);
+    background: #ffffff;
+    border: 1px solid var(--rav-gray-200);
+}
+
+.notification-icon .la {
+    font-size: 1.35rem;
+}
+
+.notification-body h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--rav-gray-900);
+}
+
+.notification-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.2rem;
+}
+
+.notification-meta {
+    margin-bottom: 0.4rem;
+    color: var(--rav-gray-500);
+    font-size: 0.86rem;
+}
+
+.notification-body p {
+    margin: 0.25rem 0 0.7rem;
+    color: var(--rav-gray-700);
+}
+
+.notification-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.inline-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.empty-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--rav-gray-500);
+}
+
+@media (max-width: 640px) {
+    .notification-item {
+        grid-template-columns: 1fr;
+    }
+
+    .notification-title-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+
+/* ---------------------------------------------------------------------------
+   11. Riepiloghi / KPI
+--------------------------------------------------------------------------- */
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 1.25rem;
+}
+
+.summary-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 76px;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--rav-gray-200);
+    border-radius: var(--rav-radius-lg);
+    background: #ffffff;
+    box-shadow: var(--rav-shadow-soft);
+}
+
+.summary-card.warning {
+    border-color: rgba(255, 193, 7, 0.35);
+    background: var(--rav-yellow-soft);
+}
+
+.summary-card.success {
+    border-color: rgba(22, 163, 74, 0.28);
+    background: var(--rav-green-soft);
+}
+
+.summary-value {
+    font-size: 1.65rem;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--rav-gray-900);
+}
+
+.summary-label {
+    margin-top: 0.35rem;
+    color: var(--rav-gray-500);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+   12. Header pagina
+--------------------------------------------------------------------------- */
+
+.page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.page-header h1 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.text-muted {
+    color: var(--rav-gray-500);
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
