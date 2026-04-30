@@ -726,3 +726,64 @@ body.modal-open { overflow: hidden; }
         margin-right: 0.55rem;
     }
 }
+
+/* ===== LINE AWESOME MENU ICONS - ALLINEAMENTO FINALE ===== */
+.topnav-link,
+.topnav-parent {
+    gap: 7px;
+}
+
+.topnav-link .menu-icon,
+.topnav-parent .menu-icon {
+    margin-right: 0;
+}
+
+.topnav-dropdown-menu a,
+.topnav-menu-label {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    column-gap: 10px;
+    align-items: center;
+}
+
+.topnav-dropdown-menu a .menu-icon,
+.topnav-menu-label .menu-icon {
+    width: 22px;
+    min-width: 22px;
+    margin-right: 0;
+    justify-self: center;
+}
+
+.topnav-dropdown-menu a .menu-text,
+.topnav-menu-label .menu-text {
+    display: block;
+    min-width: 0;
+    line-height: 1.22;
+}
+
+.topnav-subtree {
+    margin-left: 18px;
+    padding-left: 12px;
+}
+
+.drawer-item,
+.drawer-group > summary,
+.drawer-direct-link {
+    gap: 10px;
+}
+
+.drawer-item .menu-icon,
+.drawer-group > summary .menu-icon,
+.drawer-direct-link .menu-icon {
+    width: 22px;
+    min-width: 22px;
+    margin-right: 0;
+}
+
+.drawer-item .menu-text,
+.drawer-group > summary .menu-text,
+.drawer-direct-link .menu-text {
+    display: block;
+    min-width: 0;
+    line-height: 1.22;
+}
