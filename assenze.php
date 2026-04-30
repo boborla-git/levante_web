@@ -196,6 +196,45 @@ function hrHaRecapitoEmailPersonale(PDO $pdo, int $idUtente): bool
     return (bool)$stmt->fetchColumn();
 }
 
+function hrEsisteSovrapposizioneRichiesta(PDO $pdo, int $idUtente, string $dataDa, string $dataA, ?int $idRichiestaDaEscludere = null): ?array
+{
+    $sql = "
+        SELECT
+            r.id_richiesta,
+            r.codice_richiesta,
+            te.descrizione AS tipologia,
+            DATE_FORMAT(p.data_da, '%d/%m/%Y') AS data_da_fmt,
+            DATE_FORMAT(p.data_a, '%d/%m/%Y') AS data_a_fmt,
+            sr.descrizione AS stato
+        FROM hr_richieste r
+        INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
+        INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
+        INNER JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta
+        WHERE r.id_utente_richiedente = :id_utente
+          AND sr.codice IN ('BOZZA', 'IN_ATTESA', 'APPROVATA')
+          AND p.data_da <= :data_a
+          AND p.data_a >= :data_da
+    ";
+
+    $params = [
+        'id_utente' => $idUtente,
+        'data_da' => $dataDa,
+        'data_a' => $dataA,
+    ];
+
+    if ($idRichiestaDaEscludere !== null && $idRichiestaDaEscludere > 0) {
+        $sql .= ' AND r.id_richiesta <> :id_richiesta_da_escludere';
+        $params['id_richiesta_da_escludere'] = $idRichiestaDaEscludere;
+    }
+
+    $sql .= ' ORDER BY p.data_da ASC, r.id_richiesta ASC LIMIT 1';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
 function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigurare): array
 {
     $utenti = [];
@@ -370,6 +409,21 @@ try {
             }
             if ($modalita === 'ore' && (int)$tipologiaSelezionata['consente_ore'] !== 1) {
                 throw new RuntimeException('Questa tipologia non consente richieste a ore.');
+            }
+
+            $sovrapposizione = hrEsisteSovrapposizioneRichiesta($pdo, $idUtenteTarget, $dataDa, $dataA);
+            if ($sovrapposizione !== null) {
+                $periodoSovrapposto = (string)$sovrapposizione['data_da_fmt'];
+                if ((string)$sovrapposizione['data_a_fmt'] !== '' && (string)$sovrapposizione['data_a_fmt'] !== (string)$sovrapposizione['data_da_fmt']) {
+                    $periodoSovrapposto .= ' - ' . (string)$sovrapposizione['data_a_fmt'];
+                }
+
+                throw new RuntimeException(
+                    'Esiste già una richiesta attiva o in attesa nello stesso periodo: '
+                    . (string)$sovrapposizione['codice_richiesta']
+                    . ' - ' . (string)$sovrapposizione['tipologia']
+                    . ' (' . $periodoSovrapposto . ', stato: ' . (string)$sovrapposizione['stato'] . ').'
+                );
             }
 
             if (!$isDelegato && !hrHaRecapitoEmailPersonale($pdo, $idUtenteTarget)) {
@@ -594,6 +648,25 @@ try {
                 'origine' => 'web',
             ]);
 
+            $stmtResp = $pdo->prepare('SELECT id_responsabile_corrente FROM hr_richieste WHERE id_richiesta = :id_richiesta LIMIT 1');
+            $stmtResp->execute(['id_richiesta' => $idRichiesta]);
+            $idResponsabileDaAvvisare = (int)($stmtResp->fetchColumn() ?: 0);
+            $destinatariAnnullamento = [$idUtenteTarget];
+            if ($idResponsabileDaAvvisare > 0 && $idResponsabileDaAvvisare !== $idUtenteLoggato) {
+                $destinatariAnnullamento[] = $idResponsabileDaAvvisare;
+            }
+
+            hrCreaNotificaWeb(
+                $pdo,
+                'RICHIESTA_ASSENZA_ANNULLATA',
+                'Richiesta annullata',
+                'Una richiesta di assenza o permesso è stata annullata.',
+                '/assenze.php?id_utente=' . $idUtenteTarget,
+                $idRichiesta,
+                $idUtenteLoggato,
+                $destinatariAnnullamento
+            );
+
             $pdo->commit();
             header('Location: assenze.php?annullata=1&id_utente=' . $idUtenteTarget);
             exit;
@@ -811,7 +884,7 @@ layoutHeader('Assenze e permessi');
                     </div>
 
                     <div class="actions hr-request-submit">
-                        <button type="submit" <?= $infoRecapitoMancante ? 'disabled' : '' ?>>Registra richiesta</button>
+                        <button type="submit" class="btn btn-primary" <?= $infoRecapitoMancante ? 'disabled' : '' ?>><i class="la la-save" aria-hidden="true"></i> Registra richiesta</button>
                     </div>
                 </div>
             </div>
@@ -876,7 +949,7 @@ layoutHeader('Assenze e permessi');
                                         <input type="hidden" name="azione" value="annulla_richiesta">
                                         <input type="hidden" name="id_richiesta" value="<?= (int)$r['id_richiesta'] ?>">
                                         <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
-                                        <button type="submit" class="btn-light">Annulla</button>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="la la-times" aria-hidden="true"></i> Annulla</button>
                                     </form>
                                 <?php else: ?>
                                     <span class="meta">-</span>
