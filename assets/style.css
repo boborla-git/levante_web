@@ -787,3 +787,123 @@ body.modal-open { overflow: hidden; }
     min-width: 0;
     line-height: 1.22;
 }
+
+/* ===== RAVIOLI BUTTONS E MOBILE MENU - 2026-04-30 ===== */
+:root {
+    --ravioli-blue: #0068c9;
+    --ravioli-yellow: #ffd400;
+}
+
+.nav-drawer-toggle {
+    width: 54px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--ravioli-blue);
+    color: var(--ravioli-yellow);
+    border: 1px solid var(--ravioli-blue);
+    box-shadow: none;
+}
+
+.nav-drawer-toggle .la {
+    font-size: 1.45rem;
+    line-height: 1;
+}
+
+.nav-drawer-toggle:hover,
+.nav-drawer-toggle:focus-visible,
+.btn-ravioli-primary:hover,
+.btn-ravioli-primary:focus-visible {
+    background: var(--ravioli-blue) !important;
+    color: var(--ravioli-yellow) !important;
+    border-color: var(--ravioli-yellow) !important;
+    box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.55) !important;
+    outline: none !important;
+}
+
+.btn-ravioli-secondary:hover,
+.btn-ravioli-secondary:focus-visible {
+    background: var(--ravioli-yellow) !important;
+    color: var(--ravioli-blue) !important;
+    border-color: var(--ravioli-blue) !important;
+    box-shadow: 0 0 0 2px rgba(0, 104, 201, 0.28) !important;
+    outline: none !important;
+}
+
+.hr-icon-btn {
+    width: 40px;
+    height: 36px;
+    min-width: 40px;
+    min-height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease;
+}
+
+.hr-icon-btn .la {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.hr-icon-btn-primary,
+.page-content .hr-icon-btn-primary {
+    background: var(--ravioli-blue) !important;
+    color: var(--ravioli-yellow) !important;
+    border-color: var(--ravioli-blue) !important;
+}
+
+.hr-icon-btn-primary:hover,
+.hr-icon-btn-primary:focus-visible,
+.page-content .hr-icon-btn-primary:hover,
+.page-content .hr-icon-btn-primary:focus-visible {
+    background: var(--ravioli-blue) !important;
+    color: var(--ravioli-yellow) !important;
+    border-color: var(--ravioli-yellow) !important;
+    box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.55) !important;
+    outline: none !important;
+}
+
+.hr-icon-btn-secondary,
+.page-content .hr-icon-btn-secondary {
+    background: var(--ravioli-yellow) !important;
+    color: var(--ravioli-blue) !important;
+    border-color: var(--ravioli-yellow) !important;
+}
+
+.hr-icon-btn-secondary:hover,
+.hr-icon-btn-secondary:focus-visible,
+.page-content .hr-icon-btn-secondary:hover,
+.page-content .hr-icon-btn-secondary:focus-visible {
+    background: var(--ravioli-yellow) !important;
+    color: var(--ravioli-blue) !important;
+    border-color: var(--ravioli-blue) !important;
+    box-shadow: 0 0 0 2px rgba(0, 104, 201, 0.28) !important;
+    outline: none !important;
+}
+
+@media (max-width: 760px) {
+    .nav-drawer-toggle {
+        flex: 0 0 auto;
+        width: 54px;
+        height: 40px;
+        min-height: 40px;
+        padding: 0;
+    }
+
+    .hr-day-nav .hr-icon-btn,
+    .hr-cal-toolbar .hr-icon-btn {
+        width: 36px;
+        height: 34px;
+        min-width: 36px;
+        min-height: 34px;
+    }
+}

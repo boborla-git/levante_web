@@ -321,10 +321,10 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
 
         <style>
             :root {
-                --ravioli-blue: #005baa;
-                --ravioli-blue-hover: #004a8f;
-                --ravioli-yellow: #f6c500;
-                --ravioli-yellow-hover: #ffd633;
+                --ravioli-blue: #0068c9;
+                --ravioli-blue-hover: #0068c9;
+                --ravioli-yellow: #ffd400;
+                --ravioli-yellow-hover: #ffd400;
             }
 
             .page-content .btn:not(.btn-light):not(.btn-danger):not(.hr-icon-btn),
@@ -349,10 +349,13 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
                 border-color: var(--ravioli-blue) !important;
             }
 
-            .btn-ravioli-primary:hover {
-                background: var(--ravioli-blue-hover) !important;
-                color: var(--ravioli-yellow-hover) !important;
-                border-color: var(--ravioli-blue-hover) !important;
+            .btn-ravioli-primary:hover,
+            .btn-ravioli-primary:focus-visible {
+                background: var(--ravioli-blue) !important;
+                color: var(--ravioli-yellow) !important;
+                border-color: var(--ravioli-yellow) !important;
+                box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.55) !important;
+                outline: none !important;
             }
 
             .btn-ravioli-secondary {
@@ -361,10 +364,13 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
                 border-color: var(--ravioli-yellow) !important;
             }
 
-            .btn-ravioli-secondary:hover {
-                background: var(--ravioli-yellow-hover) !important;
-                color: var(--ravioli-blue-hover) !important;
-                border-color: var(--ravioli-yellow-hover) !important;
+            .btn-ravioli-secondary:hover,
+            .btn-ravioli-secondary:focus-visible {
+                background: var(--ravioli-yellow) !important;
+                color: var(--ravioli-blue) !important;
+                border-color: var(--ravioli-blue) !important;
+                box-shadow: 0 0 0 2px rgba(0, 104, 201, 0.28) !important;
+                outline: none !important;
             }
         </style>
     </head>
@@ -372,10 +378,8 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
     <header class="topbar">
         <div class="container topbar-inner">
             <div class="topbar-left">
-                <button type="button" class="nav-drawer-toggle btn-ravioli-primary" aria-expanded="false" aria-controls="mobile-nav-drawer" aria-label="Apri menu" title="Menu" style="background:#005baa;color:#f6c500;border-color:#005baa;display:inline-flex;align-items:center;justify-content:center;gap:0;width:54px;height:38px;padding:0;">
-                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="display:block;stroke:currentColor;stroke-width:2.5;fill:none;stroke-linecap:round;">
-                        <path d="M4 7h16M4 12h16M4 17h16"></path>
-                    </svg>
+                <button type="button" class="nav-drawer-toggle btn-ravioli-primary" aria-expanded="false" aria-controls="mobile-nav-drawer" aria-label="Apri menu" title="Menu">
+                    <i class="la la-bars" aria-hidden="true"></i>
                 </button>
                 <a class="brand" href="/index.php" aria-label="<?= htmlspecialchars($titoloApplicazione) ?>">
                     <img src="/assets/img/logo-ravioli.png" alt="Ravioli S.p.A.">
@@ -465,6 +469,19 @@ function layoutFooter(): void
                     });
                 }
             });
+
+            document.querySelectorAll('.nav-drawer details.drawer-group').forEach(function (group) {
+                group.addEventListener('toggle', function () {
+                    if (!group.open) return;
+
+                    document.querySelectorAll('.nav-drawer details.drawer-group[open]').forEach(function (other) {
+                        if (other !== group && !group.contains(other)) {
+                            other.open = false;
+                        }
+                    });
+                });
+            });
+
 
             var desktopParents = document.querySelectorAll('.topnav-dropdown > .topnav-parent');
             desktopParents.forEach(function (btn) {
