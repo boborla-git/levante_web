@@ -113,13 +113,11 @@ layoutHeader('Ruoli utenti');
 <div class="card card-wide">
     <h1>Admin</h1>
 
-    <div class="links" style="margin-bottom:18px;">
-        <strong>Sezione:</strong>
-        <a href="utenti.php">Utenti</a>
-        &nbsp;|&nbsp;
-        <a href="ruoli_utenti.php"><strong>Ruoli utenti</strong></a>
-        &nbsp;|&nbsp;
-        <a href="permessi_ruoli.php">Permessi ruoli</a>
+    <div class="admin-tabs">
+        <span class="admin-tabs-label">Sezione:</span>
+        <a href="utenti.php"><i class="la la-users" aria-hidden="true"></i> Utenti</a>
+        <a class="active" href="ruoli_utenti.php"><i class="la la-user-tag" aria-hidden="true"></i> Ruoli utenti</a>
+        <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
     <h2>Ruoli utenti</h2>
@@ -180,12 +178,12 @@ layoutHeader('Ruoli utenti');
         </table>
 
         <div class="actions">
-            <button type="submit">Salva ruoli utenti</button>
+            <button type="submit"><i class="la la-save" aria-hidden="true"></i> Salva ruoli utenti</button>
         </div>
     </form>
 
     <div class="links">
-        <a href="index.php">Torna alla dashboard</a>
+        <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla dashboard</a>
     </div>
 </div>
 

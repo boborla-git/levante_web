@@ -143,12 +143,12 @@ layoutHeader('Reset password utente');
         </div>
 
         <div class="actions">
-            <button type="submit">Salva nuova password</button>
+            <button type="submit"><i class="la la-save" aria-hidden="true"></i> Salva nuova password</button>
         </div>
     </form>
 
     <div class="links">
-        <a href="utenti.php">Torna alla gestione utenti</a>
+        <a class="btn btn-light" href="utenti.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla gestione utenti</a>
     </div>
 </div>
 

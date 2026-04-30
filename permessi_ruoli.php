@@ -248,13 +248,11 @@ layoutHeader('Permessi ruoli');
 <div class="card card-wide">
     <h1>Admin</h1>
 
-    <div class="links" style="margin-bottom:18px;">
-        <strong>Sezione:</strong>
-        <a href="utenti.php">Utenti</a>
-        &nbsp;|&nbsp;
-        <a href="ruoli_utenti.php">Ruoli utenti</a>
-        &nbsp;|&nbsp;
-        <a href="permessi_ruoli.php"><strong>Permessi ruoli</strong></a>
+    <div class="admin-tabs">
+        <span class="admin-tabs-label">Sezione:</span>
+        <a href="utenti.php"><i class="la la-users" aria-hidden="true"></i> Utenti</a>
+        <a href="ruoli_utenti.php"><i class="la la-user-tag" aria-hidden="true"></i> Ruoli utenti</a>
+        <a class="active" href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
     <h2>Permessi ruoli</h2>

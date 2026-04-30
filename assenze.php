@@ -680,13 +680,13 @@ layoutHeader('Assenze e permessi');
         </div>
         <div class="section-head-actions">
             <?php if ($puoLeggereCalendario): ?>
-                <a class="btn btn-light" href="calendario_assenze.php">Apri calendario</a>
+                <a class="btn btn-light" href="calendario_assenze.php"><i class="la la-calendar-check" aria-hidden="true"></i> Apri calendario</a>
             <?php endif; ?>
             <?php if ($puoLeggereApprovazioni): ?>
-                <a class="btn btn-light" href="approvazioni_assenze.php">Apri approvazioni</a>
+                <a class="btn btn-light" href="approvazioni_assenze.php"><i class="la la-check-circle" aria-hidden="true"></i> Apri approvazioni</a>
             <?php endif; ?>
             <?php if ($puoConfigurare): ?>
-                <a class="btn btn-light" href="configurazione_assenze.php">Configura modulo</a>
+                <a class="btn btn-light" href="configurazione_assenze.php"><i class="la la-cog" aria-hidden="true"></i> Configura modulo</a>
             <?php endif; ?>
         </div>
     </div>

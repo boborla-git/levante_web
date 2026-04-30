@@ -108,12 +108,12 @@ layoutHeader($obbligoCambioPassword ? 'Imposta una nuova password' : 'Cambia pas
         </div>
 
         <div class="actions">
-            <button type="submit">Aggiorna password</button>
+            <button type="submit"><i class="la la-save" aria-hidden="true"></i> Aggiorna password</button>
         </div>
     </form>
 
     <div class="links">
-        <a href="index.php">Torna alla dashboard</a>
+        <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla dashboard</a>
     </div>
 </div>
 

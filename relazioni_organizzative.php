@@ -123,7 +123,7 @@ layoutHeader('Relazioni organizzative');
             <div class="meta">Qui registri il rapporto tra un utente e un altro utente. Esempio: Mario <strong>risponde funzionalmente a</strong> Paolo. La gerarchia si ferma al primo livello diretto.</div>
         </div>
         <div class="section-head-actions">
-            <a class="btn btn-light" href="configurazione_assenze.php">Torna alla configurazione</a>
+            <a class="btn btn-light" href="configurazione_assenze.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla configurazione</a>
         </div>
     </div>
 </div>

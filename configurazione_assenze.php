@@ -300,9 +300,9 @@ layoutHeader('Configurazione assenze');
         <p>Tipologie, colori, regole principali e impostazioni del modulo HR.</p>
     </div>
     <div class="hr-config-actions">
-        <a class="btn" href="relazioni_organizzative.php">Relazioni organizzative</a>
-        <a class="btn" href="gruppi_lavoro.php">Gruppi di lavoro</a>
-        <a class="btn" href="assenze.php">Vai ad assenze</a>
+        <a class="btn" href="relazioni_organizzative.php"><i class="la la-sitemap" aria-hidden="true"></i> Relazioni organizzative</a>
+        <a class="btn" href="gruppi_lavoro.php"><i class="la la-users-cog" aria-hidden="true"></i> Gruppi di lavoro</a>
+        <a class="btn btn-light" href="assenze.php"><i class="la la-calendar" aria-hidden="true"></i> Vai ad assenze</a>
     </div>
 </section>
 

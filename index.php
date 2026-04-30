@@ -102,7 +102,7 @@ layoutHeader('Dashboard');
     <?php endif; ?>
 
     <div class="links">
-        <a href="cambia_password.php">Cambia password</a>
+        <a class="btn btn-light" href="cambia_password.php"><i class="la la-key" aria-hidden="true"></i> Cambia password</a>
     </div>
 </div>
 

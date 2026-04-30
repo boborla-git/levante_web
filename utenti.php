@@ -36,19 +36,17 @@ layoutHeader('Gestione utenti');
 <div class="card card-wide">
     <h1>Admin</h1>
 
-    <div class="links" style="margin-bottom:18px;">
-        <strong>Sezione:</strong>
-        <a href="utenti.php"><strong>Utenti</strong></a>
-        &nbsp;|&nbsp;
-        <a href="ruoli_utenti.php">Ruoli utenti</a>
-        &nbsp;|&nbsp;
-        <a href="permessi_ruoli.php">Permessi ruoli</a>
+    <div class="admin-tabs">
+        <span class="admin-tabs-label">Sezione:</span>
+        <a class="active" href="utenti.php"><i class="la la-users" aria-hidden="true"></i> Utenti</a>
+        <a href="ruoli_utenti.php"><i class="la la-user-tag" aria-hidden="true"></i> Ruoli utenti</a>
+        <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
     <h2>Gestione utenti</h2>
 
     <div class="actions">
-        <a class="btn" href="utente_nuovo.php">Nuovo utente</a>
+        <a class="btn" href="utente_nuovo.php"><i class="la la-user-plus" aria-hidden="true"></i> Nuovo utente</a>
     </div>
 
     <table>
@@ -91,14 +89,15 @@ layoutHeader('Gestione utenti');
                     <td><?= htmlspecialchars((string)($utente['data_aggiornamento'] ?? '')) ?></td>
                     <td>
                         <?php if ((int)$utente['id_utente'] !== (int)($_SESSION['utente_id'] ?? 0)): ?>
-                            <a href="utente_reset_password.php?id=<?= (int)$utente['id_utente'] ?>">
-                                Reset password
-                            </a>
-                            <br>
-                            <a href="utente_forza_password.php?id=<?= (int)$utente['id_utente'] ?>"
-                               onclick="return confirm('Vuoi obbligare questo utente a cambiare la password al prossimo accesso?');">
-                                Forza cambio password
-                            </a>
+                            <div class="table-actions">
+                                <a class="btn btn-sm btn-light" href="utente_reset_password.php?id=<?= (int)$utente['id_utente'] ?>">
+                                    <i class="la la-key" aria-hidden="true"></i> Reset password
+                                </a>
+                                <a class="btn btn-sm btn-light" href="utente_forza_password.php?id=<?= (int)$utente['id_utente'] ?>"
+                                   onclick="return confirm('Vuoi obbligare questo utente a cambiare la password al prossimo accesso?');">
+                                    <i class="la la-exclamation-circle" aria-hidden="true"></i> Forza cambio password
+                                </a>
+                            </div>
                         <?php else: ?>
                             -
                         <?php endif; ?>
@@ -109,7 +108,7 @@ layoutHeader('Gestione utenti');
     </table>
 
     <div class="links">
-        <a href="index.php">Torna alla dashboard</a>
+        <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla dashboard</a>
     </div>
 </div>
 

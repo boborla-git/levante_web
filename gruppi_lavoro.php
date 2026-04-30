@@ -118,7 +118,7 @@ layoutHeader('Gruppi di lavoro');
             <h1>Gruppi di lavoro</h1>
             <div class="meta">Crea i team operativi e assegna gli utenti ai gruppi per il calendario condiviso. Il gruppo è una relazione tra pari: l'etichetta nel gruppo è solo informativa.</div>
         </div>
-        <div class="section-head-actions"><a class="btn btn-light" href="configurazione_assenze.php">Torna alla configurazione</a></div>
+        <div class="section-head-actions"><a class="btn btn-light" href="configurazione_assenze.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla configurazione</a></div>
     </div>
 </div>
 

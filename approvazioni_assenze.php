@@ -364,7 +364,7 @@ layoutHeader('Approvazioni assenze');
 <div class="card card-wide">
     <div class="section-head">
         <h2>Richieste pendenti</h2>
-        <a class="btn btn-light" href="assenze.php">Vai alle mie richieste</a>
+        <a class="btn btn-light" href="assenze.php"><i class="la la-calendar" aria-hidden="true"></i> Vai alle mie richieste</a>
     </div>
 
     <?php if (count($richiestePendenti) === 0): ?>
