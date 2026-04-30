@@ -315,6 +315,7 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="/assets/vendor/line-awesome/css/line-awesome.min.css">
         <link rel="stylesheet" href="/assets/style.css">
+        <link rel="stylesheet" href="/assets/design-system.css">
         <link rel="icon" type="image/png" href="/assets/favicon.png">
         <link rel="shortcut icon" href="/assets/favicon.png">
         <link rel="apple-touch-icon" href="/assets/favicon.png">

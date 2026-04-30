@@ -198,6 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Area Riservata - Login</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/style.css">
+        <link rel="stylesheet" href="/assets/design-system.css">
     <link rel="icon" type="image/png" href="/assets/favicon.png">
 </head>
 <body class="login-page">
