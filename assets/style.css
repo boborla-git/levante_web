@@ -866,3 +866,45 @@ input[type="submit"]:hover,
         width: 100%;
     }
 }
+
+
+/* ===== LINK TABELLA E AZIONI SECONDARIE ===== */
+.table-wrap td a:not(.btn),
+table td a:not(.btn) {
+    color: var(--rav-blue);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.table-wrap td a:not(.btn):hover,
+table td a:not(.btn):hover {
+    color: var(--rav-blue-dark);
+    text-decoration: none;
+}
+
+.table-link-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    min-height: 28px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 104, 201, 0.22);
+    background: #fff;
+    color: var(--rav-blue) !important;
+    text-decoration: none !important;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.table-link-action:hover {
+    border-color: var(--rav-blue);
+    background: var(--rav-yellow);
+    color: var(--rav-blue) !important;
+    box-shadow: 0 0 0 3px var(--rav-focus);
+}
+
+.table-link-action i {
+    font-size: 1rem;
+    line-height: 1;
+}

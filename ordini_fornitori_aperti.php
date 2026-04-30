@@ -419,7 +419,7 @@ layoutHeader('Ordini fornitori aperti');
                         </select>
                     </div>
 
-                    <a href="ordini_fornitori_aperti.php" class="btn btn-inline" style="text-decoration:none;">Pagina iniziale</a>
+                    <a href="ordini_fornitori_aperti.php" class="btn btn-light"><i class="la la-home" aria-hidden="true"></i> Pagina iniziale</a>
                 </div>
             </form>
         </div>
@@ -449,8 +449,8 @@ layoutHeader('Ordini fornitori aperti');
                         <?php foreach ($ultimeNote as $r): ?>
                             <tr>
                                 <td>
-                                    <a href="ordini_fornitori_aperti.php?fornitore=<?= urlencode((string)$r['fornitore']) ?>">
-                                        <?= htmlspecialchars((string)$r['fornitore']) ?>
+                                    <a class="table-link-action" href="ordini_fornitori_aperti.php?fornitore=<?= urlencode((string)$r['fornitore']) ?>">
+                                        <i class="la la-truck" aria-hidden="true"></i> <?= htmlspecialchars((string)$r['fornitore']) ?>
                                     </a>
                                 </td>
                                 <td><?= htmlspecialchars((string)($r['articolo'] ?? '')) ?></td>
