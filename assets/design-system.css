@@ -1,0 +1,449 @@
+/*
+===============================================================================
+LEVANTE / RAVIOLI - DESIGN SYSTEM CSS
+===============================================================================
+Scopo:
+- standardizzare pulsanti, link azione, icone, badge, tabelle e micro-componenti
+- mantenere coerenza visiva con colori Ravioli
+- usare Line Awesome come set icone unico
+
+Nota:
+questo file è pensato come blocco "design system" da integrare in assets/style.css.
+Non modifica logiche PHP o database.
+===============================================================================
+*/
+
+/* ---------------------------------------------------------------------------
+   1. Design tokens
+--------------------------------------------------------------------------- */
+
+:root {
+    --rav-blue: #005BD4;
+    --rav-blue-hover: #004EBA;
+    --rav-blue-soft: #EAF3FF;
+
+    --rav-yellow: #FFC107;
+    --rav-yellow-hover: #F2B400;
+    --rav-yellow-soft: #FFF6D6;
+
+    --rav-red: #DC2626;
+    --rav-red-hover: #B91C1C;
+    --rav-red-soft: #FEE2E2;
+
+    --rav-green: #16A34A;
+    --rav-green-soft: #DCFCE7;
+
+    --rav-gray-50: #F8FAFC;
+    --rav-gray-100: #F1F5F9;
+    --rav-gray-200: #E2E8F0;
+    --rav-gray-300: #CBD5E1;
+    --rav-gray-500: #64748B;
+    --rav-gray-700: #334155;
+    --rav-gray-900: #0F172A;
+
+    --rav-radius-sm: 8px;
+    --rav-radius-md: 10px;
+    --rav-radius-lg: 14px;
+
+    --rav-shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --rav-focus-ring: 0 0 0 3px rgba(0, 91, 212, 0.18);
+
+    --rav-transition-fast: 140ms ease-in-out;
+}
+
+/* ---------------------------------------------------------------------------
+   2. Icone Line Awesome
+--------------------------------------------------------------------------- */
+
+.la,
+.las,
+.lar,
+.lab {
+    line-height: 1;
+}
+
+.btn .la,
+.btn .las,
+.btn .lar,
+.btn .lab,
+.action-link .la,
+.action-link .las,
+.action-link .lar,
+.action-link .lab {
+    font-size: 1.05rem;
+    flex: 0 0 auto;
+}
+
+/* ---------------------------------------------------------------------------
+   3. Pulsanti standard
+--------------------------------------------------------------------------- */
+
+.btn,
+button.btn,
+a.btn,
+input[type="submit"].btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 38px;
+    padding: 0.52rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: var(--rav-radius-md);
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.15;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        color var(--rav-transition-fast),
+        background-color var(--rav-transition-fast),
+        border-color var(--rav-transition-fast),
+        box-shadow var(--rav-transition-fast),
+        transform var(--rav-transition-fast);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.btn:hover,
+button.btn:hover,
+a.btn:hover {
+    text-decoration: none;
+}
+
+.btn:focus-visible,
+button.btn:focus-visible,
+a.btn:focus-visible,
+input[type="submit"].btn:focus-visible {
+    outline: none;
+    box-shadow: var(--rav-focus-ring);
+}
+
+.btn:active,
+button.btn:active,
+a.btn:active {
+    transform: translateY(1px);
+}
+
+.btn[disabled],
+.btn.disabled,
+button.btn:disabled,
+input[type="submit"].btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Primario - azione principale */
+.btn-primary,
+a.btn-primary,
+button.btn-primary,
+input[type="submit"].btn-primary {
+    color: #ffffff;
+    background: var(--rav-blue);
+    border-color: var(--rav-blue);
+}
+
+.btn-primary:hover,
+a.btn-primary:hover,
+button.btn-primary:hover,
+input[type="submit"].btn-primary:hover {
+    color: var(--rav-blue);
+    background: #ffffff;
+    border-color: var(--rav-blue);
+    box-shadow: var(--rav-focus-ring);
+}
+
+/* Secondario - azione alternativa/evidenziata */
+.btn-secondary,
+.btn-warning,
+a.btn-secondary,
+a.btn-warning,
+button.btn-secondary,
+button.btn-warning {
+    color: var(--rav-gray-900);
+    background: var(--rav-yellow);
+    border-color: var(--rav-yellow);
+}
+
+.btn-secondary:hover,
+.btn-warning:hover,
+a.btn-secondary:hover,
+a.btn-warning:hover,
+button.btn-secondary:hover,
+button.btn-warning:hover {
+    color: #8A5A00;
+    background: #ffffff;
+    border-color: var(--rav-yellow);
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.22);
+}
+
+/* Outline blu - azione secondaria */
+.btn-outline-primary,
+a.btn-outline-primary,
+button.btn-outline-primary {
+    color: var(--rav-blue);
+    background: #ffffff;
+    border-color: var(--rav-blue);
+}
+
+.btn-outline-primary:hover,
+a.btn-outline-primary:hover,
+button.btn-outline-primary:hover {
+    color: #ffffff;
+    background: var(--rav-blue);
+    border-color: var(--rav-blue);
+    box-shadow: var(--rav-focus-ring);
+}
+
+/* Outline giallo */
+.btn-outline-warning,
+a.btn-outline-warning,
+button.btn-outline-warning {
+    color: #9A6500;
+    background: #ffffff;
+    border-color: var(--rav-yellow);
+}
+
+.btn-outline-warning:hover,
+a.btn-outline-warning:hover,
+button.btn-outline-warning:hover {
+    color: var(--rav-gray-900);
+    background: var(--rav-yellow);
+    border-color: var(--rav-yellow);
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.22);
+}
+
+/* Danger - azione distruttiva */
+.btn-danger,
+a.btn-danger,
+button.btn-danger {
+    color: #ffffff;
+    background: var(--rav-red);
+    border-color: var(--rav-red);
+}
+
+.btn-danger:hover,
+a.btn-danger:hover,
+button.btn-danger:hover {
+    color: var(--rav-red);
+    background: #ffffff;
+    border-color: var(--rav-red);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16);
+}
+
+.btn-outline-danger,
+a.btn-outline-danger,
+button.btn-outline-danger {
+    color: var(--rav-red);
+    background: #ffffff;
+    border-color: var(--rav-red);
+}
+
+.btn-outline-danger:hover,
+a.btn-outline-danger:hover,
+button.btn-outline-danger:hover {
+    color: #ffffff;
+    background: var(--rav-red);
+    border-color: var(--rav-red);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16);
+}
+
+/* Dimensioni */
+.btn-sm {
+    min-height: 32px;
+    padding: 0.38rem 0.7rem;
+    border-radius: var(--rav-radius-sm);
+    font-size: 0.86rem;
+}
+
+.btn-lg {
+    min-height: 44px;
+    padding: 0.68rem 1.15rem;
+    border-radius: var(--rav-radius-lg);
+    font-size: 1rem;
+}
+
+/* Pulsanti solo icona */
+.btn-icon {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+}
+
+.btn-icon.btn-sm {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+}
+
+.btn-icon .la,
+.btn-icon .las,
+.btn-icon .lar,
+.btn-icon .lab {
+    font-size: 1.1rem;
+}
+
+/* Gruppi azione */
+.action-row,
+.table-actions,
+.form-actions,
+.page-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------------------
+   4. Link azione
+--------------------------------------------------------------------------- */
+
+a {
+    color: var(--rav-blue);
+}
+
+a:hover {
+    color: var(--rav-blue-hover);
+}
+
+.action-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--rav-blue);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.action-link:hover {
+    color: var(--rav-blue-hover);
+    text-decoration: underline;
+}
+
+.action-link-danger {
+    color: var(--rav-red);
+}
+
+.action-link-danger:hover {
+    color: var(--rav-red-hover);
+}
+
+/* ---------------------------------------------------------------------------
+   5. Tabelle
+--------------------------------------------------------------------------- */
+
+.table,
+table {
+    border-collapse: collapse;
+}
+
+.table th,
+.table td,
+table th,
+table td {
+    vertical-align: middle;
+}
+
+.table-actions {
+    justify-content: flex-start;
+}
+
+/* ---------------------------------------------------------------------------
+   6. Badge/stati
+--------------------------------------------------------------------------- */
+
+.badge,
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.58rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.badge-success,
+.status-active,
+.stato-attivo {
+    color: var(--rav-green);
+    background: var(--rav-green-soft);
+    border: 1px solid rgba(22, 163, 74, 0.22);
+}
+
+.badge-danger,
+.status-inactive,
+.stato-inattivo {
+    color: var(--rav-red);
+    background: var(--rav-red-soft);
+    border: 1px solid rgba(220, 38, 38, 0.22);
+}
+
+.badge-warning {
+    color: #9A6500;
+    background: var(--rav-yellow-soft);
+    border: 1px solid rgba(255, 193, 7, 0.28);
+}
+
+/* ---------------------------------------------------------------------------
+   7. Card e pannelli
+--------------------------------------------------------------------------- */
+
+.card,
+.panel,
+.box {
+    background: #ffffff;
+    border: 1px solid var(--rav-gray-200);
+    border-radius: var(--rav-radius-lg);
+    box-shadow: var(--rav-shadow-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   8. Form
+--------------------------------------------------------------------------- */
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+input[type="number"],
+select,
+textarea {
+    border: 1px solid var(--rav-gray-300);
+    border-radius: var(--rav-radius-sm);
+    transition: border-color var(--rav-transition-fast), box-shadow var(--rav-transition-fast);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--rav-blue);
+    box-shadow: var(--rav-focus-ring);
+}
+
+/* ---------------------------------------------------------------------------
+   9. Mobile
+--------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+    .btn,
+    button.btn,
+    a.btn {
+        min-height: 40px;
+    }
+
+    .action-row,
+    .table-actions,
+    .form-actions,
+    .page-actions {
+        gap: 0.45rem;
+    }
+}
