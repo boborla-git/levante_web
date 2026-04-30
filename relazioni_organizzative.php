@@ -139,7 +139,6 @@ layoutHeader('Relazioni organizzative');
     <form method="post" action="relazioni_organizzative.php">
         <input type="hidden" name="azione" value="nuova_relazione">
         <div class="info-box">Compila la relazione come una frase: <strong>Utente</strong> → <strong>relazione</strong> → <strong>altro utente</strong>.</div>
-        <style>.relation-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#f3efff;color:#5f3dc4;border:1px solid #d9ccff;font-weight:700;margin-right:6px;} .group-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#eef8ff;color:#0b7285;border:1px solid #c5e8ef;font-weight:700;margin-right:6px;}</style>
         <div class="hr-admin-grid">
             <div class="form-group">
                 <label for="id_utente">Utente</label>
@@ -205,7 +204,7 @@ layoutHeader('Relazioni organizzative');
             <?php foreach ($relazioniAttive as $r): ?>
                 <tr>
                     <td><?= h((string)$r['utente']) ?></td>
-                    <td><span class="relation-icon">↕</span><?= h(descrizioneRelazioneBreve((string)$r['codice'] ?? '', (string)$r['tipo_relazione'])) ?></td>
+                    <td><span class="relation-icon"><i class="la la-level-up-alt" aria-hidden="true"></i></span><?= h(descrizioneRelazioneBreve((string)$r['codice'] ?? '', (string)$r['tipo_relazione'])) ?></td>
                     <td><?= h((string)$r['utente_collegato']) ?></td>
                     <td><?= h((string)$r['data_inizio']) ?><?= $r['data_fine'] ? ' → ' . h((string)$r['data_fine']) : '' ?></td>
                     <td><?= h((string)$r['note']) ?></td>
@@ -215,7 +214,7 @@ layoutHeader('Relazioni organizzative');
                             <form method="post" action="relazioni_organizzative.php" onsubmit="return confirm('Chiudere questa relazione?');">
                                 <input type="hidden" name="azione" value="chiudi_relazione">
                                 <input type="hidden" name="id_relazione_organizzativa" value="<?= (int)$r['id_relazione_organizzativa'] ?>">
-                                <button type="submit" class="btn-light">Chiudi</button>
+                                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="la la-times" aria-hidden="true"></i> Chiudi</button>
                             </form>
                         <?php else: ?><span class="meta">-</span><?php endif; ?>
                     </td>

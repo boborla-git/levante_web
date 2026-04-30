@@ -139,7 +139,6 @@ layoutHeader('Gruppi di lavoro');
 </div>
 
 <div class="card card-form">
-    <style>.group-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#eef8ff;color:#0b7285;border:1px solid #c5e8ef;font-weight:700;margin-right:6px;}</style>
     <h2>Nuova appartenenza</h2>
     <div class="meta">Nel gruppo non introduci gerarchie: l'eventuale etichetta serve solo a descrivere il contesto operativo.</div>
     <form method="post" action="gruppi_lavoro.php">
@@ -198,7 +197,7 @@ layoutHeader('Gruppi di lavoro');
             <tbody>
             <?php foreach ($appartenenze as $a): ?>
                 <tr>
-                    <td><span class="group-icon">⇄</span><strong><?= h((string)$a['gruppo_nome']) ?></strong><br><span class="meta"><?= h((string)$a['gruppo_codice']) ?></span></td>
+                    <td><span class="group-icon"><i class="la la-users" aria-hidden="true"></i></span><strong><?= h((string)$a['gruppo_nome']) ?></strong><br><span class="meta"><?= h((string)$a['gruppo_codice']) ?></span></td>
                     <td><?= h((string)$a['utente']) ?></td>
                     <td><?= h((string)$a['ruolo_nel_gruppo']) ?></td>
                     <td><?= h((string)$a['data_inizio']) ?><?= $a['data_fine'] ? ' → ' . h((string)$a['data_fine']) : '' ?></td>
@@ -208,7 +207,7 @@ layoutHeader('Gruppi di lavoro');
                             <form method="post" action="gruppi_lavoro.php" onsubmit="return confirm('Chiudere questa appartenenza?');">
                                 <input type="hidden" name="azione" value="disattiva_appartenenza">
                                 <input type="hidden" name="id_gruppo_utente" value="<?= (int)$a['id_gruppo_utente'] ?>">
-                                <button type="submit" class="btn-light">Chiudi</button>
+                                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="la la-times" aria-hidden="true"></i> Chiudi</button>
                             </form>
                         <?php else: ?><span class="meta">-</span><?php endif; ?>
                     </td>

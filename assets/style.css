@@ -908,3 +908,34 @@ table td a:not(.btn):hover {
     font-size: 1rem;
     line-height: 1;
 }
+
+/* Icone semantiche nei moduli HR */
+.relation-icon,
+.group-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    min-width: 1.45rem;
+    border-radius: 999px;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.relation-icon,
+.group-icon {
+    color: var(--rav-blue);
+    background: rgba(0, 91, 180, 0.08);
+    border: 1px solid rgba(0, 91, 180, 0.18);
+}
+
+.table .btn-sm,
+.data-table .btn-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+}
