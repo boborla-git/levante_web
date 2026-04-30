@@ -671,3 +671,58 @@ body.modal-open { overflow: hidden; }
     .brand img { width: 146px; }
     .nav-drawer-toggle { padding: 0 12px; }
 }
+
+/* ===== LINE AWESOME MENU ICONS ===== */
+.menu-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 1.25em;
+    min-width: 1.25em;
+    margin-right: 0.45rem;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: #005baa;
+    text-align: center;
+}
+
+.topnav-link.active .menu-icon,
+.topnav-parent.active .menu-icon,
+.topnav-dropdown.active > .topnav-parent .menu-icon,
+.topnav-dropdown-menu a.active .menu-icon,
+.topnav-menu-label.active .menu-icon,
+.drawer-item.active .menu-icon,
+.drawer-group > summary.active .menu-icon,
+.drawer-direct-link.active .menu-icon {
+    color: #005baa;
+}
+
+.topnav-link,
+.topnav-parent,
+.topnav-dropdown-menu a,
+.topnav-menu-label,
+.drawer-item,
+.drawer-group > summary,
+.drawer-direct-link {
+    gap: 0;
+}
+
+.menu-text {
+    display: inline-block;
+    min-width: 0;
+}
+
+.nav-drawer-toggle .menu-icon,
+.nav-drawer-close .menu-icon {
+    margin-right: 0;
+}
+
+@media (max-width: 1100px) {
+    .drawer-item .menu-icon,
+    .drawer-group > summary .menu-icon,
+    .drawer-direct-link .menu-icon {
+        font-size: 1.25rem;
+        margin-right: 0.55rem;
+    }
+}

@@ -16,6 +16,7 @@ function layoutLoadMenuResources(): array
             tipo_risorsa,
             id_risorsa_padre,
             percorso,
+            icona,
             ordinamento,
             attivo
         FROM aut_risorse
@@ -25,6 +26,45 @@ function layoutLoadMenuResources(): array
     ");
 
     return $stmt->fetchAll();
+}
+
+function layoutIconClass(array $node): string
+{
+    $icon = trim((string)($node['icona'] ?? ''));
+    if ($icon === '') {
+        return '';
+    }
+
+    $icon = preg_replace('/[^a-zA-Z0-9_\\- ]/', '', $icon) ?? '';
+    $icon = trim($icon);
+    if ($icon === '') {
+        return '';
+    }
+
+    if (strpos($icon, 'la ') === 0 || strpos($icon, 'lab ') === 0 || strpos($icon, 'lar ') === 0 || strpos($icon, 'las ') === 0) {
+        return $icon;
+    }
+
+    return 'la ' . $icon;
+}
+
+function layoutRenderIcon(array $node): void
+{
+    $iconClass = layoutIconClass($node);
+    if ($iconClass === '') {
+        return;
+    }
+    ?>
+    <i class="<?= htmlspecialchars($iconClass, ENT_QUOTES, 'UTF-8') ?> menu-icon" aria-hidden="true"></i>
+    <?php
+}
+
+function layoutRenderLabel(array $node): void
+{
+    layoutRenderIcon($node);
+    ?>
+    <span class="menu-text"><?= htmlspecialchars((string)($node['descrizione'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+    <?php
 }
 
 function layoutNodeCanOpen(array $node): bool
@@ -134,11 +174,11 @@ function layoutRenderDesktopDropdownItems(array $nodes, array $childrenMap, stri
         <div class="topnav-menu-item level-<?= $level ?>">
             <?php if ($canOpen): ?>
                 <a href="/<?= htmlspecialchars($href) ?>" class="<?= $isActive ? 'active' : '' ?>">
-                    <?= htmlspecialchars($label) ?>
+                    <?php layoutRenderLabel($node); ?>
                 </a>
             <?php else: ?>
                 <div class="topnav-menu-label <?= $isActive ? 'active' : '' ?>">
-                    <?= htmlspecialchars($label) ?>
+                    <?php layoutRenderLabel($node); ?>
                 </div>
             <?php endif; ?>
 
@@ -177,7 +217,7 @@ function layoutRenderDesktopMenu(array $tree, array $childrenMap, string $curren
         if (($canOpen && count($children) === 0) || $simplified) {
             ?>
             <a href="/<?= htmlspecialchars($href) ?>" class="topnav-link <?= $isActive ? 'active' : '' ?>">
-                <?= htmlspecialchars($label) ?>
+                    <?php layoutRenderLabel($root); ?>
             </a>
             <?php
             continue;
@@ -186,11 +226,11 @@ function layoutRenderDesktopMenu(array $tree, array $childrenMap, string $curren
         <div class="topnav-dropdown <?= $isActive ? 'active' : '' ?>">
             <?php if ($canOpen): ?>
                 <a href="/<?= htmlspecialchars($href) ?>" class="topnav-link topnav-parent <?= $isActive ? 'active' : '' ?>">
-                    <?= htmlspecialchars($label) ?>
+                    <?php layoutRenderLabel($root); ?>
                 </a>
             <?php else: ?>
                 <button type="button" class="topnav-link topnav-parent <?= $isActive ? 'active' : '' ?>" aria-haspopup="true" aria-expanded="false">
-                    <?= htmlspecialchars($label) ?>
+                    <?php layoutRenderLabel($root); ?>
                 </button>
             <?php endif; ?>
 
@@ -219,12 +259,12 @@ function layoutRenderMobileTree(array $nodes, array $childrenMap, string $curren
             ?>
             <details class="drawer-group level-<?= $level ?>" <?= $isActive ? 'open' : '' ?>>
                 <summary class="<?= htmlspecialchars($classes) ?>">
-                    <span><?= htmlspecialchars($label) ?></span>
+                    <?php layoutRenderLabel($node); ?>
                 </summary>
                 <div class="drawer-children">
                     <?php if ($canOpen): ?>
                         <a href="/<?= htmlspecialchars($href) ?>" class="drawer-direct-link">
-                            Apri <?= htmlspecialchars($label) ?>
+                            <i class="la la-external-link-alt menu-icon" aria-hidden="true"></i><span>Apri <?= htmlspecialchars($label) ?></span>
                         </a>
                     <?php endif; ?>
                     <?php layoutRenderMobileTree($children, $childrenMap, $currentPage, $level + 1); ?>
@@ -237,14 +277,14 @@ function layoutRenderMobileTree(array $nodes, array $childrenMap, string $curren
         if ($canOpen) {
             ?>
             <a href="/<?= htmlspecialchars($href) ?>" class="<?= htmlspecialchars($classes) ?>">
-                <?= htmlspecialchars($label) ?>
+                    <?php layoutRenderLabel($node); ?>
             </a>
             <?php
             continue;
         }
         ?>
         <div class="<?= htmlspecialchars($classes) ?>">
-            <?= htmlspecialchars($label) ?>
+                    <?php layoutRenderLabel($node); ?>
         </div>
         <?php
     }
@@ -273,6 +313,7 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
         <meta charset="utf-8">
         <title><?= htmlspecialchars($titoloPagina) ?> - <?= htmlspecialchars($titoloApplicazione) ?></title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/assets/vendor/line-awesome/css/line-awesome.min.css">
         <link rel="stylesheet" href="/assets/style.css">
         <link rel="icon" type="image/png" href="/assets/favicon.png">
         <link rel="shortcut icon" href="/assets/favicon.png">
@@ -346,11 +387,11 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
 
                         <div class="topnav-dropdown <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>">
                             <button type="button" class="topnav-link topnav-parent <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>" aria-haspopup="true" aria-expanded="false">
-                                Utente
+                                <i class="la la-user menu-icon" aria-hidden="true"></i><span class="menu-text">Utente</span>
                             </button>
                             <div class="topnav-dropdown-menu">
-                                <a href="/cambia_password.php" class="<?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>">Cambia password</a>
-                                <a href="/logout.php">Logout</a>
+                                <a href="/cambia_password.php" class="<?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>"><i class="la la-key menu-icon" aria-hidden="true"></i><span class="menu-text">Cambia password</span></a>
+                                <a href="/logout.php"><i class="la la-sign-out-alt menu-icon" aria-hidden="true"></i><span class="menu-text">Logout</span></a>
                             </div>
                         </div>
                     </nav>
@@ -370,8 +411,8 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
                 <?php layoutRenderMobileTree($menuTree, $menuChildrenMap, $paginaCorrente, 0); ?>
                 <div class="nav-drawer-sep"></div>
                 <div class="drawer-section-title">Utente</div>
-                <a href="/cambia_password.php" class="drawer-item <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>">Cambia password</a>
-                <a href="/logout.php" class="drawer-item">Logout</a>
+                <a href="/cambia_password.php" class="drawer-item <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>"><i class="la la-key menu-icon" aria-hidden="true"></i><span class="menu-text">Cambia password</span></a>
+                <a href="/logout.php" class="drawer-item"><i class="la la-sign-out-alt menu-icon" aria-hidden="true"></i><span class="menu-text">Logout</span></a>
             </div>
         </aside>
     <?php endif; ?>
