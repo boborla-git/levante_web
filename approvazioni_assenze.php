@@ -10,16 +10,7 @@ richiediPermessoLettura('approvazioni_assenze');
 $pdo = db();
 $idUtente = (int)($_SESSION['id_utente'] ?? $_SESSION['utente_id'] ?? 0);
 $puoScrivere = haPermessoScrittura('approvazioni_assenze');
-
 $puoConfigurare = haPermessoLettura('configurazione_assenze');
-
-function hrScopeLabelApprovazioni(bool $puoConfigurare): string
-{
-    if ($puoConfigurare) {
-        return 'tutte le richieste in attesa e storico completo';
-    }
-    return 'riporti diretti di primo livello assegnati a te';
-}
 
 $errore = '';
 $messaggio = '';
@@ -35,6 +26,13 @@ $riepilogo = [
 function h(?string $valore): string
 {
     return htmlspecialchars((string)$valore, ENT_QUOTES, 'UTF-8');
+}
+
+function hrScopeLabelApprovazioni(bool $puoConfigurare): string
+{
+    return $puoConfigurare
+        ? 'tutte le richieste in attesa e lo storico completo'
+        : 'richieste assegnate a te come responsabile';
 }
 
 function hrIdStatoRichiesta(PDO $pdo, string $codice): int
@@ -96,8 +94,8 @@ function hrCreaNotificaWeb(PDO $pdo, string $tipoEvento, string $titolo, string 
     ]);
 
     $idNotifica = (int)$pdo->lastInsertId();
-
     $stmtDest = $pdo->prepare('INSERT INTO hr_notifiche_destinatari (id_notifica, id_utente, id_canale_notifica, inviata, letta, data_invio) VALUES (:id_notifica, :id_utente, :id_canale_notifica, 1, 0, NOW())');
+
     foreach ($destinatari as $idUtenteDest) {
         $stmtDest->execute([
             'id_notifica' => $idNotifica,
@@ -107,7 +105,14 @@ function hrCreaNotificaWeb(PDO $pdo, string $tipoEvento, string $titolo, string 
     }
 }
 
+function hrClasseEsito(string $stato): string
+{
+    return $stato === 'APPROVATA' ? 'status-ok' : 'status-ko';
+}
+
 try {
+    $filtroApprovatore = $puoConfigurare ? '1 = 1' : 'a.id_approvatore_assegnato = :id_utente';
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$puoScrivere) {
             http_response_code(403);
@@ -121,17 +126,16 @@ try {
 
         $idRichiesta = (int)($_POST['id_richiesta'] ?? 0);
         $notaApprovatore = trim((string)($_POST['nota_approvatore'] ?? ''));
-
         if ($idRichiesta <= 0) {
             throw new RuntimeException('Richiesta non valida.');
         }
 
+        $filtroPost = $puoConfigurare ? '' : ' AND a.id_approvatore_assegnato = :id_utente ';
         $stmtRichiesta = $pdo->prepare(
             "SELECT
                 r.id_richiesta,
                 r.codice_richiesta,
                 r.id_utente_richiedente,
-                r.id_stato_richiesta,
                 sr.codice AS stato_richiesta_codice,
                 a.id_richiesta_approvazione,
                 a.stato_approvazione,
@@ -144,24 +148,26 @@ try {
              INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
              INNER JOIN aut_utenti au ON au.id_utente = r.id_utente_richiedente
              WHERE r.id_richiesta = :id_richiesta
-               AND a.id_approvatore_assegnato = :id_utente
+               AND sr.codice = 'IN_ATTESA'
                AND a.stato_approvazione = 'IN_ATTESA'
+               {$filtroPost}
              ORDER BY a.livello_approvazione ASC, a.id_richiesta_approvazione ASC
              LIMIT 1"
         );
-        $stmtRichiesta->execute([
-            'id_richiesta' => $idRichiesta,
-            'id_utente' => $idUtente,
-        ]);
+        $paramsRichiesta = ['id_richiesta' => $idRichiesta];
+        if (!$puoConfigurare) {
+            $paramsRichiesta['id_utente'] = $idUtente;
+        }
+        $stmtRichiesta->execute($paramsRichiesta);
         $richiesta = $stmtRichiesta->fetch(PDO::FETCH_ASSOC);
 
         if (!$richiesta) {
-            throw new RuntimeException('Richiesta non trovata oppure già gestita.');
+            throw new RuntimeException('Richiesta non trovata, già gestita oppure fuori dal tuo perimetro di approvazione.');
         }
 
+        $gestioneHr = $puoConfigurare && (int)$richiesta['id_approvatore_assegnato'] !== $idUtente;
         $codiceStato = $azione === 'approva_richiesta' ? 'APPROVATA' : 'RIFIUTATA';
         $idStato = hrIdStatoRichiesta($pdo, $codiceStato);
-        $statoApprovazione = $azione === 'approva_richiesta' ? 'APPROVATA' : 'RIFIUTATA';
         $azioneStorico = $azione === 'approva_richiesta' ? 'APPROVAZIONE' : 'RIFIUTO';
 
         $pdo->beginTransaction();
@@ -171,13 +177,15 @@ try {
              SET stato_approvazione = :stato_approvazione,
                  data_risposta = NOW(),
                  esito = :esito,
-                 note_approvatore = :note_approvatore
+                 note_approvatore = :note_approvatore,
+                 gestita_da_hr = :gestita_da_hr
              WHERE id_richiesta_approvazione = :id_richiesta_approvazione'
         );
         $stmtUpdApp->execute([
-            'stato_approvazione' => $statoApprovazione,
-            'esito' => $statoApprovazione,
+            'stato_approvazione' => $codiceStato,
+            'esito' => $codiceStato,
             'note_approvatore' => $notaApprovatore !== '' ? $notaApprovatore : null,
+            'gestita_da_hr' => $gestioneHr ? 1 : 0,
             'id_richiesta_approvazione' => (int)$richiesta['id_richiesta_approvazione'],
         ]);
 
@@ -193,6 +201,14 @@ try {
             'id_richiesta' => $idRichiesta,
         ]);
 
+        $dettagliStorico = $notaApprovatore !== ''
+            ? $notaApprovatore
+            : ($azione === 'approva_richiesta' ? 'Richiesta approvata.' : 'Richiesta rifiutata.');
+        if ($gestioneHr) {
+            $dettagliStorico = ($azione === 'approva_richiesta' ? 'Richiesta approvata da HR/configurazione.' : 'Richiesta rifiutata da HR/configurazione.')
+                . ($notaApprovatore !== '' ? ' Nota: ' . $notaApprovatore : '');
+        }
+
         $stmtStorico = $pdo->prepare(
             'INSERT INTO hr_richieste_storico (id_richiesta, azione, id_utente_azione, dettagli, origine)
              VALUES (:id_richiesta, :azione, :id_utente_azione, :dettagli, :origine)'
@@ -201,7 +217,7 @@ try {
             'id_richiesta' => $idRichiesta,
             'azione' => $azioneStorico,
             'id_utente_azione' => $idUtente,
-            'dettagli' => $notaApprovatore !== '' ? $notaApprovatore : ($azione === 'approva_richiesta' ? 'Richiesta approvata.' : 'Richiesta rifiutata.'),
+            'dettagli' => $dettagliStorico,
             'origine' => 'web',
         ]);
 
@@ -237,9 +253,9 @@ try {
             SUM(CASE WHEN a.stato_approvazione = 'RIFIUTATA' AND DATE(a.data_risposta) = CURDATE() THEN 1 ELSE 0 END) AS rifiutate_oggi,
             SUM(CASE WHEN a.stato_approvazione IN ('APPROVATA', 'RIFIUTATA') THEN 1 ELSE 0 END) AS gestite_totali
          FROM hr_richieste_approvazioni a
-         WHERE a.id_approvatore_assegnato = :id_utente"
+         WHERE {$filtroApprovatore}"
     );
-    $stmtRiepilogo->execute(['id_utente' => $idUtente]);
+    $stmtRiepilogo->execute($puoConfigurare ? [] : ['id_utente' => $idUtente]);
     $r = $stmtRiepilogo->fetch(PDO::FETCH_ASSOC);
     if ($r) {
         $riepilogo = [
@@ -256,45 +272,30 @@ try {
             r.codice_richiesta,
             r.oggetto,
             r.note_richiedente,
-            r.data_creazione,
             te.descrizione AS tipologia,
             CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, '')) AS richiedente,
-            (
-                SELECT MIN(p.data_da)
-                FROM hr_richieste_periodi p
-                WHERE p.id_richiesta = r.id_richiesta
-            ) AS data_da,
-            (
-                SELECT MAX(p.data_a)
-                FROM hr_richieste_periodi p
-                WHERE p.id_richiesta = r.id_richiesta
-            ) AS data_a,
-            (
-                SELECT MIN(p.ora_da)
-                FROM hr_richieste_periodi p
-                WHERE p.id_richiesta = r.id_richiesta
-            ) AS ora_da,
-            (
-                SELECT MAX(p.ora_a)
-                FROM hr_richieste_periodi p
-                WHERE p.id_richiesta = r.id_richiesta
-            ) AS ora_a,
-            (
-                SELECT MIN(p.tipo_periodo)
-                FROM hr_richieste_periodi p
-                WHERE p.id_richiesta = r.id_richiesta
-            ) AS tipo_periodo,
+            CONCAT(COALESCE(ua.nome, ''), ' ', COALESCE(ua.cognome, '')) AS approvatore_assegnato,
+            DATE_FORMAT(MIN(p.data_da), '%d/%m/%Y') AS data_da,
+            DATE_FORMAT(MAX(p.data_a), '%d/%m/%Y') AS data_a,
+            TIME_FORMAT(MIN(p.ora_da), '%H:%i') AS ora_da,
+            TIME_FORMAT(MAX(p.ora_a), '%H:%i') AS ora_a,
+            MIN(p.tipo_periodo) AS tipo_periodo,
             a.id_richiesta_approvazione,
-            a.data_assegnazione
+            DATE_FORMAT(a.data_assegnazione, '%d/%m/%Y %H:%i') AS data_assegnazione
          FROM hr_richieste r
+         INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
          INNER JOIN hr_richieste_approvazioni a ON a.id_richiesta = r.id_richiesta
          INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
          INNER JOIN aut_utenti u ON u.id_utente = r.id_utente_richiedente
-         WHERE a.id_approvatore_assegnato = :id_utente
+         LEFT JOIN aut_utenti ua ON ua.id_utente = a.id_approvatore_assegnato
+         LEFT JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta
+         WHERE {$filtroApprovatore}
            AND a.stato_approvazione = 'IN_ATTESA'
+           AND sr.codice = 'IN_ATTESA'
+         GROUP BY r.id_richiesta, r.codice_richiesta, r.oggetto, r.note_richiedente, te.descrizione, richiedente, approvatore_assegnato, a.id_richiesta_approvazione, a.data_assegnazione
          ORDER BY a.data_assegnazione ASC, r.id_richiesta ASC"
     );
-    $stmtPendenti->execute(['id_utente' => $idUtente]);
+    $stmtPendenti->execute($puoConfigurare ? [] : ['id_utente' => $idUtente]);
     $richiestePendenti = $stmtPendenti->fetchAll(PDO::FETCH_ASSOC);
 
     $stmtGestite = $pdo->prepare(
@@ -303,19 +304,22 @@ try {
             r.codice_richiesta,
             te.descrizione AS tipologia,
             CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, '')) AS richiedente,
+            CONCAT(COALESCE(ua.nome, ''), ' ', COALESCE(ua.cognome, '')) AS approvatore_assegnato,
             a.stato_approvazione,
-            a.data_risposta,
-            a.note_approvatore
+            DATE_FORMAT(a.data_risposta, '%d/%m/%Y %H:%i') AS data_risposta,
+            a.note_approvatore,
+            a.gestita_da_hr
          FROM hr_richieste r
          INNER JOIN hr_richieste_approvazioni a ON a.id_richiesta = r.id_richiesta
          INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
          INNER JOIN aut_utenti u ON u.id_utente = r.id_utente_richiedente
-         WHERE a.id_approvatore_assegnato = :id_utente
+         LEFT JOIN aut_utenti ua ON ua.id_utente = a.id_approvatore_assegnato
+         WHERE {$filtroApprovatore}
            AND a.stato_approvazione IN ('APPROVATA', 'RIFIUTATA')
          ORDER BY a.data_risposta DESC
          LIMIT 20"
     );
-    $stmtGestite->execute(['id_utente' => $idUtente]);
+    $stmtGestite->execute($puoConfigurare ? [] : ['id_utente' => $idUtente]);
     $richiesteGestite = $stmtGestite->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
@@ -330,7 +334,8 @@ layoutHeader('Approvazioni assenze');
 <div class="card card-compact">
     <h1>Approvazioni assenze</h1>
     <div class="meta">
-        In questa pagina il responsabile può vedere le richieste assegnate, approvarle o rifiutarle e lasciare una nota per il richiedente.
+        In questa pagina il responsabile può vedere le richieste assegnate, approvarle o rifiutarle e lasciare una nota per il richiedente.<br>
+        <strong>Ambito corrente:</strong> <?= h(hrScopeLabelApprovazioni($puoConfigurare)) ?>
     </div>
 </div>
 
@@ -343,28 +348,16 @@ layoutHeader('Approvazioni assenze');
 <?php endif; ?>
 
 <div class="dashboard-grid" style="margin-bottom: 22px;">
-    <div class="dashboard-box">
-        <h3>Pendenti</h3>
-        <div class="kpi-number"><?= (int)$riepilogo['pendenti'] ?></div>
-    </div>
-    <div class="dashboard-box">
-        <h3>Approvate oggi</h3>
-        <div class="kpi-number"><?= (int)$riepilogo['approvate_oggi'] ?></div>
-    </div>
-    <div class="dashboard-box">
-        <h3>Rifiutate oggi</h3>
-        <div class="kpi-number"><?= (int)$riepilogo['rifiutate_oggi'] ?></div>
-    </div>
-    <div class="dashboard-box">
-        <h3>Gestite totali</h3>
-        <div class="kpi-number"><?= (int)$riepilogo['gestite_totali'] ?></div>
-    </div>
+    <div class="dashboard-box"><h3>Pendenti</h3><div class="kpi-number"><?= (int)$riepilogo['pendenti'] ?></div></div>
+    <div class="dashboard-box"><h3>Approvate oggi</h3><div class="kpi-number"><?= (int)$riepilogo['approvate_oggi'] ?></div></div>
+    <div class="dashboard-box"><h3>Rifiutate oggi</h3><div class="kpi-number"><?= (int)$riepilogo['rifiutate_oggi'] ?></div></div>
+    <div class="dashboard-box"><h3>Gestite totali</h3><div class="kpi-number"><?= (int)$riepilogo['gestite_totali'] ?></div></div>
 </div>
 
 <div class="card card-wide">
     <div class="section-head">
         <h2>Richieste pendenti</h2>
-        <a class="btn btn-light" href="assenze.php"><i class="la la-calendar" aria-hidden="true"></i> Vai alle mie richieste</a>
+        <a class="btn btn-outline-primary" href="assenze.php"><i class="la la-calendar" aria-hidden="true"></i> Vai alle mie richieste</a>
     </div>
 
     <?php if (count($richiestePendenti) === 0): ?>
@@ -385,7 +378,12 @@ layoutHeader('Approvazioni assenze');
                     <div class="approval-card-head">
                         <div>
                             <div class="approval-title"><?= h((string)$r['richiedente']) ?> · <?= h((string)$r['tipologia']) ?></div>
-                            <div class="meta">Codice <?= h((string)$r['codice_richiesta']) ?> · Assegnata il <?= h((string)$r['data_assegnazione']) ?></div>
+                            <div class="meta">
+                                Codice <?= h((string)$r['codice_richiesta']) ?> · Assegnata il <?= h((string)$r['data_assegnazione']) ?>
+                                <?php if ($puoConfigurare): ?>
+                                    · Approvatore assegnato: <?= h(trim((string)$r['approvatore_assegnato']) !== '' ? (string)$r['approvatore_assegnato'] : 'Non indicato') ?>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <div><span class="status-badge status-wait">In attesa</span></div>
                     </div>
@@ -414,7 +412,7 @@ layoutHeader('Approvazioni assenze');
                                 <label for="nota_approvatore_ok_<?= (int)$r['id_richiesta'] ?>">Nota responsabile</label>
                                 <textarea name="nota_approvatore" id="nota_approvatore_ok_<?= (int)$r['id_richiesta'] ?>" placeholder="Nota facoltativa per il richiedente"></textarea>
                                 <div class="actions-inline">
-                                    <button type="submit">Approva</button>
+                                    <button type="submit" class="btn btn-primary"><i class="la la-check" aria-hidden="true"></i> Approva</button>
                                 </div>
                             </form>
 
@@ -424,7 +422,7 @@ layoutHeader('Approvazioni assenze');
                                 <label for="nota_approvatore_no_<?= (int)$r['id_richiesta'] ?>">Motivazione rifiuto</label>
                                 <textarea name="nota_approvatore" id="nota_approvatore_no_<?= (int)$r['id_richiesta'] ?>" placeholder="Motivazione consigliata"></textarea>
                                 <div class="actions-inline">
-                                    <button type="submit" class="btn-danger">Rifiuta</button>
+                                    <button type="submit" class="btn btn-outline-danger"><i class="la la-times" aria-hidden="true"></i> Rifiuta</button>
                                 </div>
                             </form>
                         </div>
@@ -448,6 +446,9 @@ layoutHeader('Approvazioni assenze');
                         <th>Codice</th>
                         <th>Richiedente</th>
                         <th>Tipologia</th>
+                        <?php if ($puoConfigurare): ?>
+                            <th>Approvatore</th>
+                        <?php endif; ?>
                         <th>Esito</th>
                         <th>Data risposta</th>
                         <th>Nota</th>
@@ -455,12 +456,19 @@ layoutHeader('Approvazioni assenze');
                 </thead>
                 <tbody>
                     <?php foreach ($richiesteGestite as $r): ?>
-                        <?php $classe = (string)$r['stato_approvazione'] === 'APPROVATA' ? 'status-ok' : 'status-ko'; ?>
                         <tr>
                             <td><strong><?= h((string)$r['codice_richiesta']) ?></strong></td>
                             <td><?= h((string)$r['richiedente']) ?></td>
                             <td><?= h((string)$r['tipologia']) ?></td>
-                            <td><span class="status-badge <?= $classe ?>"><?= h((string)$r['stato_approvazione']) ?></span></td>
+                            <?php if ($puoConfigurare): ?>
+                                <td>
+                                    <?= h(trim((string)$r['approvatore_assegnato']) !== '' ? (string)$r['approvatore_assegnato'] : 'Non indicato') ?>
+                                    <?php if ((int)($r['gestita_da_hr'] ?? 0) === 1): ?>
+                                        <br><span class="meta">gestita da HR/configurazione</span>
+                                    <?php endif; ?>
+                                </td>
+                            <?php endif; ?>
+                            <td><span class="status-badge <?= hrClasseEsito((string)$r['stato_approvazione']) ?>"><?= h((string)$r['stato_approvazione']) ?></span></td>
                             <td><?= h((string)$r['data_risposta']) ?></td>
                             <td><?= nl2br(h(trim((string)$r['note_approvatore']) !== '' ? (string)$r['note_approvatore'] : '-')) ?></td>
                         </tr>
