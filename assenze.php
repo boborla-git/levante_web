@@ -764,6 +764,11 @@ try {
         $filtri['al'] = '';
     }
 
+    $filtriAttivi = $filtri['stato'] !== ''
+        || $filtri['tipologia'] > 0
+        || $filtri['dal'] !== ''
+        || $filtri['al'] !== '';
+
     $whereRichieste = ['r.id_utente_richiedente = :id_utente'];
     $paramsRichieste = ['id_utente' => $idUtenteTarget];
 
@@ -848,24 +853,26 @@ layoutHeader('Assenze e permessi');
 .hr-request-notes textarea { min-height: 44px; height: 44px; resize: vertical; }
 .hr-request-submit { align-self: end; margin: 0; display: flex; justify-content: flex-end; }
 .hr-request-submit .btn { min-height: 38px; white-space: nowrap; }
-.hr-history-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: .85rem; }
-.hr-history-head h2 { margin-bottom: .2rem; }
-.hr-history-head .meta { margin: 0; }
-.hr-filter-panel { padding: .85rem; border: 1px solid var(--border, #d9e2ec); border-radius: 14px; background: #f8fbff; }
-.hr-filter-grid { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(190px, 1fr) minmax(135px, .65fr) minmax(135px, .65fr) auto; gap: 10px; align-items: end; }
-.hr-filter-grid .form-group { margin-bottom: 0; }
-.hr-filter-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.hr-history-card .meta { margin: 0 0 .85rem; }
+.approvals-filters { padding: .85rem 1rem; }
+.approvals-filters-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .65rem; }
+.approvals-filters-title { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; }
+.approvals-filter-grid { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(180px, 1fr) minmax(130px, .8fr) minmax(130px, .8fr) auto; gap: .65rem; align-items: end; }
+.approvals-filter-grid label { display: flex; flex-direction: column; gap: .25rem; margin: 0; font-size: .86rem; color: var(--text-muted, #64748b); }
+.approvals-filter-grid select,
+.approvals-filter-grid input { width: 100%; min-height: 36px; }
+.approvals-filter-actions { display: flex; gap: .45rem; justify-content: flex-end; align-items: center; white-space: nowrap; }
 @media (max-width: 1100px) {
     .hr-request-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .hr-request-notes { grid-template-columns: 1fr; }
     .hr-request-submit { justify-content: stretch; }
     .hr-request-submit .btn { width: 100%; justify-content: center; }
-    .hr-history-head { flex-direction: column; }
-    .hr-filter-panel { width: 100%; }
+    .approvals-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .approvals-filter-actions { justify-content: flex-start; }
 }
 @media (max-width: 760px) {
-    .hr-request-grid, .hr-filter-grid { grid-template-columns: 1fr; }
-    .hr-filter-actions { flex-direction: column; align-items: stretch; }
+    .hr-request-grid, .approvals-filter-grid { grid-template-columns: 1fr; }
+    .approvals-filter-actions { display: grid; grid-template-columns: 1fr; }
     .hr-hero-card .section-head { align-items: stretch; flex-direction: column; }
     .section-head-actions .btn { width: 100%; justify-content: center; }
     .hr-summary-line span { white-space: normal; }
@@ -1020,57 +1027,63 @@ layoutHeader('Assenze e permessi');
     <?php endif; ?>
 </div>
 
-<div class="card card-wide hr-history-card">
-    <div class="hr-history-head">
-        <div>
-            <h2>Storico richieste</h2>
-            <p class="meta">Filtra e consulta le richieste del dipendente selezionato.</p>
+<section class="card approvals-filters">
+    <div class="approvals-filters-header">
+        <div class="approvals-filters-title">
+            <i class="la la-filter" aria-hidden="true"></i>
+            <span>Filtri</span>
+            <?php if ($filtriAttivi): ?>
+                <span class="badge badge-warning">attivi</span>
+            <?php endif; ?>
         </div>
-        <form method="get" action="assenze.php" class="hr-filter-panel">
-            <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
-            <div class="hr-filter-grid">
-                <div class="form-group">
-                    <label for="filtro_stato">Stato</label>
-                    <select name="stato" id="filtro_stato">
-                        <option value="">Tutti</option>
-                        <?php foreach ($statiFiltro as $statoFiltro): ?>
-                            <option value="<?= h((string)$statoFiltro['codice']) ?>" <?= $filtri['stato'] === (string)$statoFiltro['codice'] ? 'selected' : '' ?>>
-                                <?= h((string)$statoFiltro['descrizione']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="filtro_tipologia">Tipologia</label>
-                    <select name="tipologia" id="filtro_tipologia">
-                        <option value="0">Tutte</option>
-                        <?php foreach ($tipologie as $tipologia): ?>
-                            <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= $filtri['tipologia'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
-                                <?= h((string)$tipologia['descrizione']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="filtro_dal">Dal</label>
-                    <input type="date" name="dal" id="filtro_dal" value="<?= h($filtri['dal']) ?>">
-                </div>
-
-                <div class="form-group">
-                    <label for="filtro_al">Al</label>
-                    <input type="date" name="al" id="filtro_al" value="<?= h($filtri['al']) ?>">
-                </div>
-
-                <div class="hr-filter-actions">
-                    <button type="submit" class="btn btn-primary"><i class="la la-filter" aria-hidden="true"></i> Filtra</button>
-                    <a class="btn btn-light" href="assenze.php?id_utente=<?= (int)$idUtenteTarget ?>">Pulisci</a>
-                </div>
-            </div>
-        </form>
     </div>
 
+    <form method="get" action="assenze.php" class="approvals-filter-grid">
+        <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
+        <label for="filtro_stato">
+            <span>Stato</span>
+            <select name="stato" id="filtro_stato">
+                <option value="">Tutti gli stati</option>
+                <?php foreach ($statiFiltro as $statoFiltro): ?>
+                    <option value="<?= h((string)$statoFiltro['codice']) ?>" <?= $filtri['stato'] === (string)$statoFiltro['codice'] ? 'selected' : '' ?>>
+                        <?= h((string)$statoFiltro['descrizione']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+
+        <label for="filtro_tipologia">
+            <span>Tipologia</span>
+            <select name="tipologia" id="filtro_tipologia">
+                <option value="0">Tutte</option>
+                <?php foreach ($tipologie as $tipologia): ?>
+                    <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= $filtri['tipologia'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
+                        <?= h((string)$tipologia['descrizione']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+
+        <label for="filtro_dal">
+            <span>Dal</span>
+            <input type="date" name="dal" id="filtro_dal" value="<?= h($filtri['dal']) ?>">
+        </label>
+
+        <label for="filtro_al">
+            <span>Al</span>
+            <input type="date" name="al" id="filtro_al" value="<?= h($filtri['al']) ?>">
+        </label>
+
+        <div class="approvals-filter-actions">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="la la-search" aria-hidden="true"></i> Applica</button>
+            <a class="btn btn-outline-primary btn-sm" href="assenze.php?id_utente=<?= (int)$idUtenteTarget ?>"><i class="la la-undo" aria-hidden="true"></i> Pulisci</a>
+        </div>
+    </form>
+</section>
+
+<div class="card card-wide hr-history-card">
+    <h2>Storico richieste</h2>
+    <p class="meta">Filtra e consulta le richieste del dipendente selezionato.</p>
     <?php if (count($richieste) === 0): ?>
         <div class="meta">Non ci sono ancora richieste per il dipendente selezionato.</div>
     <?php else: ?>
