@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/filtri.php';
 
 richiediPermessoLettura('assenze');
 
@@ -1027,60 +1028,61 @@ layoutHeader('Assenze e permessi');
     <?php endif; ?>
 </div>
 
-<section class="card approvals-filters">
-    <div class="approvals-filters-header">
-        <div class="approvals-filters-title">
-            <i class="la la-filter" aria-hidden="true"></i>
-            <span>Filtri</span>
-            <?php if ($filtriAttivi): ?>
-                <span class="badge badge-warning">attivi</span>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <form method="get" action="assenze.php" class="approvals-filter-grid">
-        <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
-        <label for="filtro_stato">
-            <span>Stato</span>
-            <select name="stato" id="filtro_stato">
-                <option value="">Tutti gli stati</option>
-                <?php foreach ($statiFiltro as $statoFiltro): ?>
-                    <option value="<?= h((string)$statoFiltro['codice']) ?>" <?= $filtri['stato'] === (string)$statoFiltro['codice'] ? 'selected' : '' ?>>
-                        <?= h((string)$statoFiltro['descrizione']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </label>
-
-        <label for="filtro_tipologia">
-            <span>Tipologia</span>
-            <select name="tipologia" id="filtro_tipologia">
-                <option value="0">Tutte</option>
-                <?php foreach ($tipologie as $tipologia): ?>
-                    <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= $filtri['tipologia'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
-                        <?= h((string)$tipologia['descrizione']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </label>
-
-        <label for="filtro_dal">
-            <span>Dal</span>
-            <input type="date" name="dal" id="filtro_dal" value="<?= h($filtri['dal']) ?>">
-        </label>
-
-        <label for="filtro_al">
-            <span>Al</span>
-            <input type="date" name="al" id="filtro_al" value="<?= h($filtri['al']) ?>">
-        </label>
-
-        <div class="approvals-filter-actions">
-            <button type="submit" class="btn btn-primary btn-sm"><i class="la la-search" aria-hidden="true"></i> Applica</button>
-            <a class="btn btn-outline-primary btn-sm" href="assenze.php?id_utente=<?= (int)$idUtenteTarget ?>"><i class="la la-undo" aria-hidden="true"></i> Pulisci</a>
-        </div>
-    </form>
-</section>
-
+<?php
+renderHrFiltri([
+    'action' => 'assenze.php',
+    'method' => 'get',
+    'active' => $filtriAttivi,
+    'hidden' => [
+        'id_utente' => (int)$idUtenteTarget,
+    ],
+    'fields' => [
+        [
+            'name' => 'stato',
+            'label' => 'Stato',
+            'type' => 'select',
+            'value' => $filtri['stato'],
+            'options' => array_merge(
+                [[ 'value' => '', 'label' => 'Tutti gli stati' ]],
+                array_map(static function (array $statoFiltro): array {
+                    return [
+                        'value' => (string)$statoFiltro['codice'],
+                        'label' => (string)$statoFiltro['descrizione'],
+                    ];
+                }, $statiFiltro)
+            ),
+        ],
+        [
+            'name' => 'tipologia',
+            'label' => 'Tipologia',
+            'type' => 'select',
+            'value' => (string)$filtri['tipologia'],
+            'options' => array_merge(
+                [[ 'value' => '0', 'label' => 'Tutte' ]],
+                array_map(static function (array $tipologia): array {
+                    return [
+                        'value' => (string)$tipologia['id_tipologia_evento'],
+                        'label' => (string)$tipologia['descrizione'],
+                    ];
+                }, $tipologie)
+            ),
+        ],
+        [
+            'name' => 'dal',
+            'label' => 'Dal',
+            'type' => 'date',
+            'value' => $filtri['dal'],
+        ],
+        [
+            'name' => 'al',
+            'label' => 'Al',
+            'type' => 'date',
+            'value' => $filtri['al'],
+        ],
+    ],
+    'reset_url' => 'assenze.php?id_utente=' . (int)$idUtenteTarget,
+]);
+?>
 <div class="card card-wide hr-history-card">
     <h2>Storico richieste</h2>
     <p class="meta">Filtra e consulta le richieste del dipendente selezionato.</p>

@@ -11,7 +11,7 @@ if (!function_exists('hrFiltriEscape')) {
 
 if (!function_exists('renderHrFiltri')) {
     /**
-     * Renderizza il box filtri standard del portale.
+     * Renderizza il box filtri standard condiviso del portale.
      *
      * Configurazione attesa:
      * - action: string

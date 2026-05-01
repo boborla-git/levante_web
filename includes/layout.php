@@ -17,6 +17,7 @@ function layoutLoadMenuResources(): array
             id_risorsa_padre,
             percorso,
             icona,
+            visibile_menu,
             ordinamento,
             attivo
         FROM aut_risorse
@@ -175,6 +176,11 @@ function layoutIsActiveNode(array $node, array $childrenMap, string $currentPage
     return false;
 }
 
+function layoutNodeVisibleInMenu(array $node): bool
+{
+    return (int)($node['visibile_menu'] ?? 0) === 1;
+}
+
 function layoutFilterMenuTree(array $nodes, array $childrenMap): array
 {
     $output = [];
@@ -183,6 +189,14 @@ function layoutFilterMenuTree(array $nodes, array $childrenMap): array
         $nodeId = (int)$node['id_risorsa'];
         $children = layoutFilterMenuTree($childrenMap[$nodeId] ?? [], $childrenMap);
         $canOpen = layoutNodeCanOpen($node);
+        $visibleInMenu = layoutNodeVisibleInMenu($node);
+
+        if (!$visibleInMenu) {
+            foreach ($children as $child) {
+                $output[] = $child;
+            }
+            continue;
+        }
 
         if (!$canOpen && count($children) === 0) {
             continue;

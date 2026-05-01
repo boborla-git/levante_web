@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/filtri.php';
 
 richiediPermessoLettura('approvazioni_assenze');
 
@@ -567,66 +568,62 @@ layoutHeader('Approvazioni assenze');
         <span><strong><?= (int)$riepilogo['rifiutate_oggi'] ?></strong> rifiutate oggi</span>
     </section>
 
-    <section class="card approvals-filters">
-        <div class="approvals-filters-header">
-            <div class="approvals-filters-title">
-                <i class="la la-filter"></i>
-                <span>Filtri</span>
-                <?php if ($filtriAttivi): ?>
-                    <span class="badge badge-warning">attivi</span>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <form method="get" class="approvals-filter-grid">
-            <label>
-                <span>Stato</span>
-                <select name="stato">
-                    <option value="" <?= $filtroStato === '' ? 'selected' : '' ?>>Tutti gli stati</option>
-                    <option value="IN_ATTESA" <?= $filtroStato === 'IN_ATTESA' ? 'selected' : '' ?>>Pendenti</option>
-                    <option value="APPROVATA" <?= $filtroStato === 'APPROVATA' ? 'selected' : '' ?>>Approvate</option>
-                    <option value="RIFIUTATA" <?= $filtroStato === 'RIFIUTATA' ? 'selected' : '' ?>>Rifiutate</option>
-                </select>
-            </label>
-
-            <label>
-                <span>Dal</span>
-                <input type="date" name="data_da" value="<?= h($filtroDataDa) ?>">
-            </label>
-
-            <label>
-                <span>Al</span>
-                <input type="date" name="data_a" value="<?= h($filtroDataA) ?>">
-            </label>
-
-            <label>
-                <span>Tipologia</span>
-                <select name="tipologia">
-                    <option value="">Tutte</option>
-                    <?php foreach ($tipologie as $tipologia): ?>
-                        <option value="<?= h((string)$tipologia['codice']) ?>" <?= $filtroTipologia === (string)$tipologia['codice'] ? 'selected' : '' ?>>
-                            <?= h((string)$tipologia['descrizione']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-
-            <label>
-                <span>Richiedente</span>
-                <input type="text" name="utente" value="<?= h($filtroUtente) ?>" placeholder="Nome o cognome">
-            </label>
-
-            <div class="approvals-filter-actions">
-                <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="la la-search"></i> Applica
-                </button>
-                <a href="approvazioni_assenze.php" class="btn btn-outline-primary btn-sm">
-                    <i class="la la-undo"></i> Pulisci
-                </a>
-            </div>
-        </form>
-    </section>
-
+    <?php
+    renderHrFiltri([
+        'action' => 'approvazioni_assenze.php',
+        'method' => 'get',
+        'active' => $filtriAttivi,
+        'fields' => [
+            [
+                'name' => 'stato',
+                'label' => 'Stato',
+                'type' => 'select',
+                'value' => $filtroStato,
+                'options' => [
+                    [ 'value' => '', 'label' => 'Tutti gli stati' ],
+                    [ 'value' => 'IN_ATTESA', 'label' => 'Pendenti' ],
+                    [ 'value' => 'APPROVATA', 'label' => 'Approvate' ],
+                    [ 'value' => 'RIFIUTATA', 'label' => 'Rifiutate' ],
+                ],
+            ],
+            [
+                'name' => 'data_da',
+                'label' => 'Dal',
+                'type' => 'date',
+                'value' => $filtroDataDa,
+            ],
+            [
+                'name' => 'data_a',
+                'label' => 'Al',
+                'type' => 'date',
+                'value' => $filtroDataA,
+            ],
+            [
+                'name' => 'tipologia',
+                'label' => 'Tipologia',
+                'type' => 'select',
+                'value' => $filtroTipologia,
+                'options' => array_merge(
+                    [[ 'value' => '', 'label' => 'Tutte' ]],
+                    array_map(static function (array $tipologia): array {
+                        return [
+                            'value' => (string)$tipologia['codice'],
+                            'label' => (string)$tipologia['descrizione'],
+                        ];
+                    }, $tipologie)
+                ),
+            ],
+            [
+                'name' => 'utente',
+                'label' => 'Richiedente',
+                'type' => 'text',
+                'value' => $filtroUtente,
+                'placeholder' => 'Nome o cognome',
+            ],
+        ],
+        'reset_url' => 'approvazioni_assenze.php',
+    ]);
+    ?>
     <section class="card approvals-table-card">
         <div class="approvals-table-title">
             <div>
