@@ -39,9 +39,27 @@ $form = [
     'note_richiedente' => '',
 ];
 
+$filtri = [
+    'stato' => trim((string)($_GET['stato'] ?? '')),
+    'tipologia' => (int)($_GET['tipologia'] ?? 0),
+    'dal' => trim((string)($_GET['dal'] ?? '')),
+    'al' => trim((string)($_GET['al'] ?? '')),
+];
+$statiFiltro = [];
+
 function h(?string $valore): string
 {
     return htmlspecialchars((string)$valore, ENT_QUOTES, 'UTF-8');
+}
+
+function hrDataValida(?string $valore): bool
+{
+    if ($valore === null || $valore === '') {
+        return false;
+    }
+
+    $dt = DateTime::createFromFormat('Y-m-d', $valore);
+    return $dt instanceof DateTime && $dt->format('Y-m-d') === $valore;
 }
 
 function hrGeneraCodiceRichiesta(PDO $pdo): string
@@ -318,6 +336,14 @@ try {
          ORDER BY ordinamento, descrizione"
     );
     $tipologie = $stmtTipologie->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmtStatiFiltro = $pdo->query(
+        "SELECT codice, descrizione
+         FROM hr_stati_richiesta
+         WHERE attivo = 1
+         ORDER BY ordinamento, descrizione"
+    );
+    $statiFiltro = $stmtStatiFiltro->fetchAll(PDO::FETCH_ASSOC);
 
     $utentiGestibili = hrUtentiNelPerimetro($pdo, $idUtenteLoggato, $puoConfigurare);
 
@@ -702,6 +728,62 @@ try {
         ];
     }
 
+    if ($filtri['stato'] !== '') {
+        $statoValido = false;
+        foreach ($statiFiltro as $statoFiltro) {
+            if ((string)$statoFiltro['codice'] === $filtri['stato']) {
+                $statoValido = true;
+                break;
+            }
+        }
+        if (!$statoValido) {
+            $filtri['stato'] = '';
+        }
+    }
+
+    if ($filtri['tipologia'] > 0) {
+        $tipologiaValida = false;
+        foreach ($tipologie as $tipologia) {
+            if ((int)$tipologia['id_tipologia_evento'] === $filtri['tipologia']) {
+                $tipologiaValida = true;
+                break;
+            }
+        }
+        if (!$tipologiaValida) {
+            $filtri['tipologia'] = 0;
+        }
+    }
+
+    if (!hrDataValida($filtri['dal'])) {
+        $filtri['dal'] = '';
+    }
+    if (!hrDataValida($filtri['al'])) {
+        $filtri['al'] = '';
+    }
+    if ($filtri['dal'] !== '' && $filtri['al'] !== '' && $filtri['al'] < $filtri['dal']) {
+        $filtri['al'] = '';
+    }
+
+    $whereRichieste = ['r.id_utente_richiedente = :id_utente'];
+    $paramsRichieste = ['id_utente' => $idUtenteTarget];
+
+    if ($filtri['stato'] !== '') {
+        $whereRichieste[] = 'sr.codice = :stato_filtro';
+        $paramsRichieste['stato_filtro'] = $filtri['stato'];
+    }
+    if ($filtri['tipologia'] > 0) {
+        $whereRichieste[] = 'r.id_tipologia_evento = :tipologia_filtro';
+        $paramsRichieste['tipologia_filtro'] = $filtri['tipologia'];
+    }
+    if ($filtri['dal'] !== '') {
+        $whereRichieste[] = 'p.data_a >= :dal_filtro';
+        $paramsRichieste['dal_filtro'] = $filtri['dal'];
+    }
+    if ($filtri['al'] !== '') {
+        $whereRichieste[] = 'p.data_da <= :al_filtro';
+        $paramsRichieste['al_filtro'] = $filtri['al'];
+    }
+
     $stmtRichieste = $pdo->prepare(
         "SELECT
             r.id_richiesta,
@@ -725,10 +807,10 @@ try {
          LEFT JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta AND p.ordinamento = 1
          LEFT JOIN aut_utenti ureq ON ureq.id_utente = r.id_utente_richiedente
          LEFT JOIN aut_utenti uresp ON uresp.id_utente = r.id_responsabile_corrente
-         WHERE r.id_utente_richiedente = :id_utente
+         WHERE " . implode(' AND ', $whereRichieste) . "
          ORDER BY r.data_creazione DESC, r.id_richiesta DESC"
     );
-    $stmtRichieste->execute(['id_utente' => $idUtenteTarget]);
+    $stmtRichieste->execute($paramsRichieste);
     $richieste = $stmtRichieste->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
@@ -758,7 +840,13 @@ layoutHeader('Assenze e permessi');
 .hr-form-card, .hr-history-card { padding: 1rem; }
 .hr-form-card h2, .hr-history-card h2 { margin-top: 0; margin-bottom: .85rem; }
 .hr-history-card .table-wrap { margin-top: .25rem; }
+.hr-filter-card { padding: 1rem; }
+.hr-filter-grid { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(140px, .7fr) minmax(140px, .7fr) auto; gap: 12px; align-items: end; }
+.hr-filter-grid .form-group { margin-bottom: 0; }
+.hr-filter-actions { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
 @media (max-width: 760px) {
+    .hr-filter-grid { grid-template-columns: 1fr; }
+    .hr-filter-actions { flex-direction: column; align-items: stretch; }
     .hr-hero-card .section-head { align-items: stretch; flex-direction: column; }
     .section-head-actions .btn { width: 100%; justify-content: center; }
     .hr-summary-line span { white-space: normal; }
@@ -913,6 +1001,51 @@ layoutHeader('Assenze e permessi');
             </div>
         </form>
     <?php endif; ?>
+</div>
+
+<div class="card card-compact hr-filter-card">
+    <form method="get" action="assenze.php" class="hr-filter-grid">
+        <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
+
+        <div class="form-group">
+            <label for="filtro_stato">Stato</label>
+            <select name="stato" id="filtro_stato">
+                <option value="">Tutti</option>
+                <?php foreach ($statiFiltro as $statoFiltro): ?>
+                    <option value="<?= h((string)$statoFiltro['codice']) ?>" <?= $filtri['stato'] === (string)$statoFiltro['codice'] ? 'selected' : '' ?>>
+                        <?= h((string)$statoFiltro['descrizione']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="filtro_tipologia">Tipologia</label>
+            <select name="tipologia" id="filtro_tipologia">
+                <option value="0">Tutte</option>
+                <?php foreach ($tipologie as $tipologia): ?>
+                    <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= $filtri['tipologia'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
+                        <?= h((string)$tipologia['descrizione']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="filtro_dal">Dal</label>
+            <input type="date" name="dal" id="filtro_dal" value="<?= h($filtri['dal']) ?>">
+        </div>
+
+        <div class="form-group">
+            <label for="filtro_al">Al</label>
+            <input type="date" name="al" id="filtro_al" value="<?= h($filtri['al']) ?>">
+        </div>
+
+        <div class="hr-filter-actions">
+            <button type="submit" class="btn btn-primary"><i class="la la-filter" aria-hidden="true"></i> Filtra</button>
+            <a class="btn btn-light" href="assenze.php?id_utente=<?= (int)$idUtenteTarget ?>">Pulisci</a>
+        </div>
+    </form>
 </div>
 
 <div class="card card-wide hr-history-card">
