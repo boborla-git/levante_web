@@ -343,9 +343,11 @@ layoutHeader('Calendario assenze');
 .hr-icon-btn-primary:hover, .hr-icon-btn-primary:focus { background: #0068c9; color: #ffd400; border-color: #ffd400; box-shadow: 0 0 0 2px rgba(255, 212, 0, .55); outline: none; }
 .hr-icon-btn-secondary { background: #ffd400; color: #0068c9; border-color: #ffd400; }
 .hr-icon-btn-secondary:hover, .hr-icon-btn-secondary:focus { background: #ffd400; color: #0068c9; border-color: #0068c9; box-shadow: 0 0 0 2px rgba(0, 104, 201, .28); outline: none; }
+.hr-cal-page { display: flex; flex-direction: column; gap: 16px; }
 .hr-cal-layout { display: grid; grid-template-columns: minmax(320px, .42fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 .hr-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .hr-calendar-head h1, .hr-calendar-head h2, .hr-day-panel h2 { margin: 0; }
+.hr-calendar-subtitle { margin-top: 6px; color: #64748b; font-size: 14px; }
 .hr-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
 .hr-cal-weekday { font-weight: 700; color: #475569; text-align: center; padding: 6px 4px; }
 .hr-cal-day { min-height: 116px; border: 1px solid #d7dee8; border-radius: 12px; background: #fff; padding: 10px; text-align: left; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
@@ -372,6 +374,7 @@ layoutHeader('Calendario assenze');
 @media (max-width: 520px) { .hr-cal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 
+<div class="hr-cal-page">
 <?php if ($error !== ''): ?>
     <div class="alert alert-error"><?= h($error) ?></div>
 <?php endif; ?>
@@ -391,7 +394,10 @@ layoutHeader('Calendario assenze');
 
     <div class="card">
         <div class="hr-calendar-head">
-            <h1><?= h(hrNomeMese($mese, $anno)) ?></h1>
+            <div>
+                <h1><?= h(hrNomeMese($mese, $anno)) ?></h1>
+                <div class="hr-calendar-subtitle">Clicca su un giorno per vedere il dettaglio raggruppato per tipologia.</div>
+            </div>
             <div class="hr-cal-toolbar" aria-label="Navigazione mese">
                 <a class="btn hr-icon-btn hr-icon-btn-primary" href="calendario_assenze.php?mese=<?= (int)$prev->format('n') ?>&anno=<?= (int)$prev->format('Y') ?>" title="Mese precedente" aria-label="Mese precedente"><i class="la la-angle-left" aria-hidden="true"></i></a>
                 <a class="btn hr-icon-btn hr-icon-btn-secondary" href="calendario_assenze.php" title="Oggi" aria-label="Oggi"><i class="la la-calendar" aria-hidden="true"></i></a>
@@ -424,6 +430,7 @@ layoutHeader('Calendario assenze');
         </div>
     </div>
 </section>
+</div>
 
 <script>
 (function () {

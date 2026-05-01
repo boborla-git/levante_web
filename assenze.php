@@ -743,7 +743,30 @@ $infoRecapitoMancante = (!$isDelegato && !hrHaRecapitoEmailPersonale($pdo, $idUt
 layoutHeader('Assenze e permessi');
 ?>
 
-<div class="card card-compact">
+<style>
+.hr-page-stack { display: flex; flex-direction: column; gap: 16px; }
+.hr-hero-card { padding: 18px 24px; }
+.hr-hero-card .section-head { align-items: center; }
+.hr-hero-card h1 { margin: 0 0 6px; }
+.hr-hero-card .meta { max-width: 860px; line-height: 1.45; }
+.hr-scope-card { padding: 14px 18px; }
+.hr-scope-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--muted, #64748b); }
+.hr-scope-line strong { color: var(--text, #172033); }
+.hr-summary-line { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 1rem; border: 1px solid var(--border, #d9e2ec); border-radius: 14px; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
+.hr-summary-line span { display: inline-flex; align-items: baseline; gap: .35rem; white-space: nowrap; color: var(--muted, #64748b); font-size: .92rem; }
+.hr-summary-line strong { color: var(--text, #172033); font-size: 1.08rem; }
+.hr-form-card, .hr-history-card { padding: 1rem; }
+.hr-form-card h2, .hr-history-card h2 { margin-top: 0; margin-bottom: .85rem; }
+.hr-history-card .table-wrap { margin-top: .25rem; }
+@media (max-width: 760px) {
+    .hr-hero-card .section-head { align-items: stretch; flex-direction: column; }
+    .section-head-actions .btn { width: 100%; justify-content: center; }
+    .hr-summary-line span { white-space: normal; }
+}
+</style>
+
+<div class="hr-page-stack">
+<div class="card card-compact hr-hero-card">
     <div class="section-head">
         <div>
             <h1>Assenze e permessi</h1>
@@ -773,13 +796,13 @@ layoutHeader('Assenze e permessi');
     <div class="ok"><?= h($messaggio) ?></div>
 <?php endif; ?>
 
-<div class="card card-compact">
-    <div class="meta">
-        <strong>Ambito corrente:</strong> <?= h($scopeLabel) ?>
+<div class="card card-compact hr-scope-card">
+    <div class="hr-scope-line">
+        <span><strong>Ambito corrente:</strong> <?= h($scopeLabel) ?></span>
         <?php if ($isDelegato): ?>
-            · inserimento delegato con approvazione automatica
+            <span>Inserimento delegato con approvazione automatica</span>
         <?php else: ?>
-            · richiesta personale
+            <span>Richiesta personale</span>
         <?php endif; ?>
     </div>
 
@@ -794,14 +817,14 @@ layoutHeader('Assenze e permessi');
     <?php endif; ?>
 </div>
 
-<div class="dashboard-grid" style="margin-bottom: 22px;">
-    <div class="dashboard-box"><h3>Richieste totali</h3><div class="kpi-number"><?= (int)$riepilogo['totali'] ?></div></div>
-    <div class="dashboard-box"><h3>In attesa</h3><div class="kpi-number"><?= (int)$riepilogo['in_attesa'] ?></div></div>
-    <div class="dashboard-box"><h3>Approvate</h3><div class="kpi-number"><?= (int)$riepilogo['approvate'] ?></div></div>
-    <div class="dashboard-box"><h3>Rifiutate</h3><div class="kpi-number"><?= (int)$riepilogo['rifiutate'] ?></div></div>
+<div class="hr-summary-line">
+    <span><strong><?= (int)$riepilogo['totali'] ?></strong> richieste totali</span>
+    <span><strong><?= (int)$riepilogo['in_attesa'] ?></strong> in attesa</span>
+    <span><strong><?= (int)$riepilogo['approvate'] ?></strong> approvate</span>
+    <span><strong><?= (int)$riepilogo['rifiutate'] ?></strong> rifiutate</span>
 </div>
 
-<div class="card card-form">
+<div class="card card-form hr-form-card">
     <h2>Nuova richiesta</h2>
 
     <?php if (!$puoScrivere): ?>
@@ -892,7 +915,7 @@ layoutHeader('Assenze e permessi');
     <?php endif; ?>
 </div>
 
-<div class="card card-wide">
+<div class="card card-wide hr-history-card">
     <h2>Storico richieste</h2>
 
     <?php if (count($richieste) === 0): ?>
@@ -1021,5 +1044,7 @@ layoutHeader('Assenze e permessi');
     aggiornaCampi();
 })();
 </script>
+
+</div>
 
 <?php layoutFooter(); ?>

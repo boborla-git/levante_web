@@ -259,6 +259,12 @@ layoutHeader('Configurazione assenze');
 .hr-config-header p {
     margin: 6px 0 0;
 }
+.hr-config-stack { display: flex; flex-direction: column; gap: 16px; }
+.hr-config-summary { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 1rem; border: 1px solid #d7dee8; border-radius: 14px; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
+.hr-config-summary span { display: inline-flex; align-items: baseline; gap: .35rem; white-space: nowrap; color: #64748b; font-size: .92rem; }
+.hr-config-summary strong { color: #172033; font-size: 1.08rem; }
+.hr-config-card { padding: 1rem; }
+.hr-config-card h2 { margin-top: 0; margin-bottom: .35rem; }
 .hr-muted-note {
     color: #64748b;
     font-size: 13px;
@@ -272,6 +278,7 @@ layoutHeader('Configurazione assenze');
     .hr-config-actions {
         justify-content: flex-start;
     }
+    .hr-config-summary span { white-space: normal; }
     .hr-config-table,
     .hr-config-table tbody,
     .hr-config-table tr,
@@ -294,6 +301,7 @@ layoutHeader('Configurazione assenze');
 }
 </style>
 
+<div class="hr-config-stack">
 <section class="card hr-config-header">
     <div>
         <h1>Configurazione assenze</h1>
@@ -306,6 +314,13 @@ layoutHeader('Configurazione assenze');
     </div>
 </section>
 
+<section class="hr-config-summary">
+    <span><strong><?= (int)$riepilogo['tipologie_attive'] ?></strong> tipologie attive</span>
+    <span><strong><?= (int)$riepilogo['relazioni_attive'] ?></strong> relazioni attive</span>
+    <span><strong><?= (int)$riepilogo['gruppi_attivi'] ?></strong> gruppi attivi</span>
+    <span><strong><?= (int)$riepilogo['membri_gruppi_attivi'] ?></strong> membri gruppo attivi</span>
+</section>
+
 <?php if ($messaggio !== ''): ?>
     <div class="alert alert-success"><?= h($messaggio) ?></div>
 <?php endif; ?>
@@ -314,7 +329,7 @@ layoutHeader('Configurazione assenze');
     <div class="alert alert-error"><?= h($errore) ?></div>
 <?php endif; ?>
 
-<section class="card">
+<section class="card hr-config-card">
     <h2>Tipologie evento</h2>
     <p class="muted">Il pallino selezionato viene usato nel calendario e nel dettaglio giornaliero.</p>
 
@@ -395,7 +410,7 @@ layoutHeader('Configurazione assenze');
     </div>
 </section>
 
-<section class="card">
+<section class="card hr-config-card">
     <h2>Configurazioni tecniche</h2>
     <div class="table-responsive">
         <table class="table hr-config-table">
@@ -434,5 +449,7 @@ layoutHeader('Configurazione assenze');
         </table>
     </div>
 </section>
+
+</div>
 
 <?php layoutFooter(); ?>
