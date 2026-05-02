@@ -1,0 +1,14 @@
+# File di configurazione locali / ambiente
+config_chatgpt.php
+
+# Log runtime
+logs/*.log
+*.log
+
+# File temporanei / backup
+*.bak
+*.tmp
+*.old
+
+# Cartelle tecniche hosting
+cgi-bin/
