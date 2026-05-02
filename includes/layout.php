@@ -66,6 +66,10 @@ function layoutRenderLabel(array $node): void
     ?>
     <span class="menu-text"><?= htmlspecialchars((string)($node['descrizione'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
     <?php
+    if ((string)($node['codice_risorsa'] ?? '') === 'pagina.notifiche') {
+        $numeroNotifiche = isset($GLOBALS['layout_notifiche_non_lette']) ? (int)$GLOBALS['layout_notifiche_non_lette'] : 0;
+        layoutRenderNotificationBadge($numeroNotifiche);
+    }
 }
 
 
@@ -348,6 +352,7 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
     $utenteLoggato = isset($_SESSION['utente_id']) && (int)$_SESSION['utente_id'] > 0;
     $idUtenteLoggato = $utenteLoggato ? (int)$_SESSION['utente_id'] : 0;
     $notificheNonLette = $utenteLoggato ? layoutUnreadNotificationsCount($idUtenteLoggato) : 0;
+    $GLOBALS['layout_notifiche_non_lette'] = $notificheNonLette;
     $paginaCorrente = basename($_SERVER['PHP_SELF'] ?? '');
     $menuTree = [];
     $menuChildrenMap = [];
@@ -441,16 +446,6 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
                     <nav class="topnav" aria-label="Navigazione principale">
                         <?php layoutRenderDesktopMenu($menuTree, $menuChildrenMap, $paginaCorrente); ?>
 
-                        <div class="topnav-dropdown <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>">
-                            <button type="button" class="topnav-link topnav-parent <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>" aria-haspopup="true" aria-expanded="false">
-                                <i class="la la-user menu-icon" aria-hidden="true"></i><span class="menu-text">Utente</span><?php layoutRenderNotificationBadge($notificheNonLette); ?>
-                            </button>
-                            <div class="topnav-dropdown-menu">
-                                <a href="/notifiche.php" class="<?= $paginaCorrente === 'notifiche.php' ? 'active' : '' ?>"><i class="la la-bell menu-icon" aria-hidden="true"></i><span class="menu-text">Notifiche</span><?php layoutRenderNotificationBadge($notificheNonLette); ?></a>
-                                <a href="/cambia_password.php" class="<?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>"><i class="la la-key menu-icon" aria-hidden="true"></i><span class="menu-text">Cambia password</span></a>
-                                <a href="/logout.php"><i class="la la-sign-out-alt menu-icon" aria-hidden="true"></i><span class="menu-text">Logout</span></a>
-                            </div>
-                        </div>
                     </nav>
                 <?php endif; ?>
             </div>
@@ -466,11 +461,6 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
             </div>
             <div class="nav-drawer-body">
                 <?php layoutRenderMobileTree($menuTree, $menuChildrenMap, $paginaCorrente, 0); ?>
-                <div class="nav-drawer-sep"></div>
-                <div class="drawer-section-title">Utente</div>
-                <a href="/notifiche.php" class="drawer-item <?= $paginaCorrente === 'notifiche.php' ? 'active' : '' ?>"><i class="la la-bell menu-icon" aria-hidden="true"></i><span class="menu-text">Notifiche</span><?php layoutRenderNotificationBadge($notificheNonLette); ?></a>
-                <a href="/cambia_password.php" class="drawer-item <?= $paginaCorrente === 'cambia_password.php' ? 'active' : '' ?>"><i class="la la-key menu-icon" aria-hidden="true"></i><span class="menu-text">Cambia password</span></a>
-                <a href="/logout.php" class="drawer-item"><i class="la la-sign-out-alt menu-icon" aria-hidden="true"></i><span class="menu-text">Logout</span></a>
             </div>
         </aside>
     <?php endif; ?>
