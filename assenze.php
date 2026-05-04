@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/filtri.php';
+require_once __DIR__ . '/includes/ui.php';
 
 richiediPermessoLettura('assenze');
 
@@ -881,27 +882,41 @@ layoutHeader('Assenze e permessi');
 </style>
 
 <div class="hr-page-stack">
-<div class="card card-compact hr-hero-card">
-    <div class="section-head">
-        <div>
-            <h1>Assenze e permessi</h1>
-            <div class="meta">
-                Gestisci richieste per te stesso oppure, se il tuo profilo lo consente, inseriscile direttamente per collaboratori e dipendenti del tuo perimetro.
-            </div>
-        </div>
-        <div class="section-head-actions">
-            <?php if ($puoLeggereCalendario): ?>
-                <a class="btn btn-light" href="calendario_assenze.php"><i class="la la-calendar-check" aria-hidden="true"></i> Apri calendario</a>
-            <?php endif; ?>
-            <?php if ($puoLeggereApprovazioni): ?>
-                <a class="btn btn-light" href="approvazioni_assenze.php"><i class="la la-check-circle" aria-hidden="true"></i> Apri approvazioni</a>
-            <?php endif; ?>
-            <?php if ($puoConfigurare): ?>
-                <a class="btn btn-light" href="configurazione_assenze.php"><i class="la la-cog" aria-hidden="true"></i> Configura modulo</a>
-            <?php endif; ?>
-        </div>
-    </div>
-</div>
+<?php
+$azioniHeaderAssenze = [];
+if ($puoLeggereCalendario) {
+    $azioniHeaderAssenze[] = [
+        'href' => 'calendario_assenze.php',
+        'label' => 'Apri calendario',
+        'icon' => 'la la-calendar-check',
+        'class' => 'btn btn-light',
+    ];
+}
+if ($puoLeggereApprovazioni) {
+    $azioniHeaderAssenze[] = [
+        'href' => 'approvazioni_assenze.php',
+        'label' => 'Apri approvazioni',
+        'icon' => 'la la-check-circle',
+        'class' => 'btn btn-light',
+    ];
+}
+if ($puoConfigurare) {
+    $azioniHeaderAssenze[] = [
+        'href' => 'configurazione_assenze.php',
+        'label' => 'Configura modulo',
+        'icon' => 'la la-cog',
+        'class' => 'btn btn-light',
+    ];
+}
+renderHrPageHeader([
+    'tag' => 'div',
+    'class' => 'card card-compact hr-hero-card',
+    'inner_class' => 'section-head',
+    'title' => 'Assenze e permessi',
+    'subtitle' => 'Gestisci richieste per te stesso oppure, se il tuo profilo lo consente, inseriscile direttamente per collaboratori e dipendenti del tuo perimetro.',
+    'actions' => $azioniHeaderAssenze,
+]);
+?>
 
 <?php if ($errore !== ''): ?>
     <div class="errore"><?= h($errore) ?></div>
@@ -932,12 +947,14 @@ layoutHeader('Assenze e permessi');
     <?php endif; ?>
 </div>
 
-<div class="hr-summary-line">
-    <span><strong><?= (int)$riepilogo['totali'] ?></strong> richieste totali</span>
-    <span><strong><?= (int)$riepilogo['in_attesa'] ?></strong> in attesa</span>
-    <span><strong><?= (int)$riepilogo['approvate'] ?></strong> approvate</span>
-    <span><strong><?= (int)$riepilogo['rifiutate'] ?></strong> rifiutate</span>
-</div>
+<?php
+renderHrSummaryLine([
+    ['value' => (int)$riepilogo['totali'], 'label' => 'richieste totali'],
+    ['value' => (int)$riepilogo['in_attesa'], 'label' => 'in attesa'],
+    ['value' => (int)$riepilogo['approvate'], 'label' => 'approvate'],
+    ['value' => (int)$riepilogo['rifiutate'], 'label' => 'rifiutate'],
+], 'hr-summary-line', 'Riepilogo richieste assenze');
+?>
 
 <div class="card card-form hr-form-card">
     <h2><i class="la la-plus-circle" aria-hidden="true"></i> Nuova richiesta</h2>

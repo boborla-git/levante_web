@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/filtri.php';
+require_once __DIR__ . '/includes/ui.php';
 
 richiediPermessoLettura('approvazioni_assenze');
 
@@ -536,22 +537,24 @@ layoutHeader('Approvazioni assenze');
 </style>
 
 <div class="approvals-page">
-    <section class="approvals-hero">
-        <div>
-            <h1><i class="la la-check-circle"></i> Approvazioni assenze</h1>
-            <p class="text-muted">
-                Gestisci le richieste in attesa. L'approvazione può essere confermata senza nota; il rifiuto richiede sempre una motivazione.
-            </p>
-            <div class="approvals-scope">
-                <i class="la la-user-shield"></i>
-                <span>Ambito corrente: <strong><?= h(hrScopeLabelApprovazioni($puoConfigurare)) ?></strong></span>
-            </div>
-        </div>
-
-        <a href="assenze.php" class="btn btn-outline-primary btn-sm">
-            <i class="la la-calendar"></i> Le mie richieste
-        </a>
-    </section>
+    <?php
+    renderHrPageHeader([
+        'tag' => 'section',
+        'class' => 'approvals-hero',
+        'title' => 'Approvazioni assenze',
+        'subtitle' => "Gestisci le richieste in attesa. L'approvazione può essere confermata senza nota; il rifiuto richiede sempre una motivazione.",
+        'icon' => 'la la-check-circle',
+        'extra_html' => '<div class="approvals-scope"><i class="la la-user-shield" aria-hidden="true"></i><span>Ambito corrente: <strong>' . h(hrScopeLabelApprovazioni($puoConfigurare)) . '</strong></span></div>',
+        'actions' => [
+            [
+                'href' => 'assenze.php',
+                'label' => 'Le mie richieste',
+                'icon' => 'la la-calendar',
+                'class' => 'btn btn-outline-primary btn-sm',
+            ],
+        ],
+    ]);
+    ?>
 
     <?php if ($messaggio !== ''): ?>
         <div class="alert alert-success"><?= h($messaggio) ?></div>
@@ -561,12 +564,14 @@ layoutHeader('Approvazioni assenze');
         <div class="alert alert-danger"><?= h($errore) ?></div>
     <?php endif; ?>
 
-    <section class="approvals-summary" aria-label="Riepilogo approvazioni assenze">
-        <span><strong><?= (int)$riepilogo['visualizzate'] ?></strong> richieste visualizzate</span>
-        <span><strong><?= (int)$riepilogo['pendenti'] ?></strong> da gestire</span>
-        <span><strong><?= (int)$riepilogo['approvate_oggi'] ?></strong> approvate oggi</span>
-        <span><strong><?= (int)$riepilogo['rifiutate_oggi'] ?></strong> rifiutate oggi</span>
-    </section>
+    <?php
+    renderHrSummaryLine([
+        ['value' => (int)$riepilogo['visualizzate'], 'label' => 'richieste visualizzate'],
+        ['value' => (int)$riepilogo['pendenti'], 'label' => 'da gestire'],
+        ['value' => (int)$riepilogo['approvate_oggi'], 'label' => 'approvate oggi'],
+        ['value' => (int)$riepilogo['rifiutate_oggi'], 'label' => 'rifiutate oggi'],
+    ], 'approvals-summary', 'Riepilogo approvazioni assenze');
+    ?>
 
     <?php
     renderHrFiltri([
