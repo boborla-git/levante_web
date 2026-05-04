@@ -832,54 +832,7 @@ $infoRecapitoMancante = (!$isDelegato && !hrHaRecapitoEmailPersonale($pdo, $idUt
 layoutHeader('Assenze e permessi');
 ?>
 
-<style>
-.hr-page-stack { display: flex; flex-direction: column; gap: 16px; }
-.hr-hero-card { padding: 18px 24px; }
-.hr-hero-card .section-head { align-items: center; }
-.hr-hero-card h1 { margin: 0 0 6px; }
-.hr-hero-card .meta { max-width: 860px; line-height: 1.45; }
-.hr-scope-card { padding: 14px 18px; }
-.hr-scope-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--muted, #64748b); }
-.hr-scope-line strong { color: var(--text, #172033); }
-.hr-summary-line { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 1rem; border: 1px solid var(--border, #d9e2ec); border-radius: 14px; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
-.hr-summary-line span { display: inline-flex; align-items: baseline; gap: .35rem; white-space: nowrap; color: var(--muted, #64748b); font-size: .92rem; }
-.hr-summary-line strong { color: var(--text, #172033); font-size: 1.08rem; }
-.hr-form-card, .hr-history-card { padding: 1rem; }
-.hr-form-card h2, .hr-history-card h2 { margin-top: 0; margin-bottom: .75rem; }
-.hr-form-card h2 { display: flex; align-items: center; gap: .45rem; }
-.hr-history-card .table-wrap { margin-top: .85rem; }
-.hr-request-grid { display: grid; grid-template-columns: minmax(220px, 1.25fr) minmax(190px, 1fr) minmax(120px, .55fr) minmax(145px, .7fr) minmax(145px, .7fr) minmax(145px, .7fr); gap: 12px; align-items: end; }
-.hr-request-grid .form-group { margin-bottom: 0; }
-.hr-request-notes { display: grid; grid-template-columns: minmax(260px, .85fr) minmax(360px, 1.35fr) auto; gap: 12px; align-items: end; margin-top: 12px; }
-.hr-request-notes .form-group { margin-bottom: 0; }
-.hr-request-notes textarea { min-height: 44px; height: 44px; resize: vertical; }
-.hr-request-submit { align-self: end; margin: 0; display: flex; justify-content: flex-end; }
-.hr-request-submit .btn { min-height: 38px; white-space: nowrap; }
-.hr-history-card .meta { margin: 0 0 .85rem; }
-.approvals-filters { padding: .85rem 1rem; }
-.approvals-filters-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .65rem; }
-.approvals-filters-title { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; }
-.approvals-filter-grid { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(180px, 1fr) minmax(130px, .8fr) minmax(130px, .8fr) auto; gap: .65rem; align-items: end; }
-.approvals-filter-grid label { display: flex; flex-direction: column; gap: .25rem; margin: 0; font-size: .86rem; color: var(--text-muted, #64748b); }
-.approvals-filter-grid select,
-.approvals-filter-grid input { width: 100%; min-height: 36px; }
-.approvals-filter-actions { display: flex; gap: .45rem; justify-content: flex-end; align-items: center; white-space: nowrap; }
-@media (max-width: 1100px) {
-    .hr-request-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .hr-request-notes { grid-template-columns: 1fr; }
-    .hr-request-submit { justify-content: stretch; }
-    .hr-request-submit .btn { width: 100%; justify-content: center; }
-    .approvals-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .approvals-filter-actions { justify-content: flex-start; }
-}
-@media (max-width: 760px) {
-    .hr-request-grid, .approvals-filter-grid { grid-template-columns: 1fr; }
-    .approvals-filter-actions { display: grid; grid-template-columns: 1fr; }
-    .hr-hero-card .section-head { align-items: stretch; flex-direction: column; }
-    .section-head-actions .btn { width: 100%; justify-content: center; }
-    .hr-summary-line span { white-space: normal; }
-}
-</style>
+
 
 <div class="hr-page-stack">
 <?php
