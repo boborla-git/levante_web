@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/filtri.php';
 require_once __DIR__ . '/includes/ui.php';
+require_once __DIR__ . '/includes/table.php';
 
 richiediPermessoLettura('approvazioni_assenze');
 
@@ -450,106 +451,99 @@ layoutHeader('Approvazioni assenze');
         'reset_url' => 'approvazioni_assenze.php',
     ]);
     ?>
-    <section class="card approvals-table-card">
-        <div class="approvals-table-title">
-            <div>
-                <h2>Richieste</h2>
-                <p class="text-muted">Sono mostrate solo le informazioni utili alla decisione.</p>
-            </div>
-        </div>
+    <?php
+    renderHrTableSection([
+        'title' => 'Richieste',
+        'subtitle' => 'Sono mostrate solo le informazioni utili alla decisione.',
+        'rows' => $richieste,
+        'columns' => [
+            ['label' => 'Richiedente'],
+            ['label' => 'Richiesta'],
+            ['label' => 'Periodo'],
+            ['label' => 'Stato'],
+            ['label' => 'Note'],
+            ['label' => 'Decisione', 'style' => 'width: 320px;'],
+        ],
+        'empty_message' => 'Nessuna richiesta trovata con i filtri impostati.',
+        'section_class' => 'card approvals-table-card',
+        'title_class' => 'approvals-table-title',
+        'responsive_class' => 'table-responsive',
+        'table_class' => 'table',
+        'row_renderer' => static function (array $richiesta) use ($puoConfigurare, $puoScrivere): void {
+            $stato = (string)$richiesta['stato_approvazione'];
+            ?>
+            <tr>
+                <td>
+                    <strong><?= h(trim((string)$richiesta['richiedente'])) ?></strong>
+                    <?php if ($puoConfigurare && trim((string)$richiesta['approvatore_assegnato']) !== ''): ?>
+                        <br><span class="text-muted">Assegnata a <?= h(trim((string)$richiesta['approvatore_assegnato'])) ?></span>
+                    <?php endif; ?>
+                    <?php if ($stato === 'IN_ATTESA'): ?>
+                        <br><span class="text-muted">Dal <?= h((string)$richiesta['data_assegnazione']) ?></span>
+                    <?php elseif (trim((string)$richiesta['data_risposta']) !== ''): ?>
+                        <br><span class="text-muted">Risposta: <?= h((string)$richiesta['data_risposta']) ?></span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <strong><?= h((string)$richiesta['tipologia']) ?></strong>
+                    <?php if (trim((string)$richiesta['oggetto']) !== ''): ?>
+                        <br><?= h((string)$richiesta['oggetto']) ?>
+                    <?php endif; ?>
+                </td>
+                <td><?= h(hrPeriodoRichiesta($richiesta)) ?></td>
+                <td>
+                    <span class="badge <?= h(hrClasseEsito($stato)) ?>">
+                        <?= h(hrDescrizioneStato($stato)) ?>
+                    </span>
+                    <?php if ((int)$richiesta['gestita_da_hr'] === 1): ?>
+                        <br><span class="badge badge-warning" style="margin-top: 0.35rem;">gestita da HR</span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($stato === 'IN_ATTESA'): ?>
+                        <?php if (trim((string)$richiesta['note_richiedente']) !== ''): ?>
+                            <?= nl2br(h((string)$richiesta['note_richiedente'])) ?>
+                        <?php else: ?>
+                            <span class="text-muted">Nessuna nota</span>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <?php if (trim((string)$richiesta['note_approvatore']) !== ''): ?>
+                            <?= nl2br(h((string)$richiesta['note_approvatore'])) ?>
+                        <?php else: ?>
+                            <span class="text-muted">Nessuna nota</span>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($stato === 'IN_ATTESA'): ?>
+                        <div class="approvals-actions">
+                            <form method="post" class="approvals-action-form">
+                                <input type="hidden" name="azione" value="approva_richiesta">
+                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
+                                <input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione">
+                                <button type="submit" class="btn btn-sm btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>
+                                    <i class="la la-check"></i> Approva
+                                </button>
+                            </form>
 
-        <?php if (count($richieste) === 0): ?>
-            <p class="text-muted">Nessuna richiesta trovata con i filtri impostati.</p>
-        <?php else: ?>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Richiedente</th>
-                            <th>Richiesta</th>
-                            <th>Periodo</th>
-                            <th>Stato</th>
-                            <th>Note</th>
-                            <th style="width: 320px;">Decisione</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($richieste as $richiesta): ?>
-                            <?php $stato = (string)$richiesta['stato_approvazione']; ?>
-                            <tr>
-                                <td>
-                                    <strong><?= h(trim((string)$richiesta['richiedente'])) ?></strong>
-                                    <?php if ($puoConfigurare && trim((string)$richiesta['approvatore_assegnato']) !== ''): ?>
-                                        <br><span class="text-muted">Assegnata a <?= h(trim((string)$richiesta['approvatore_assegnato'])) ?></span>
-                                    <?php endif; ?>
-                                    <?php if ($stato === 'IN_ATTESA'): ?>
-                                        <br><span class="text-muted">Dal <?= h((string)$richiesta['data_assegnazione']) ?></span>
-                                    <?php elseif (trim((string)$richiesta['data_risposta']) !== ''): ?>
-                                        <br><span class="text-muted">Risposta: <?= h((string)$richiesta['data_risposta']) ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <strong><?= h((string)$richiesta['tipologia']) ?></strong>
-                                    <?php if (trim((string)$richiesta['oggetto']) !== ''): ?>
-                                        <br><?= h((string)$richiesta['oggetto']) ?>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= h(hrPeriodoRichiesta($richiesta)) ?></td>
-                                <td>
-                                    <span class="badge <?= h(hrClasseEsito($stato)) ?>">
-                                        <?= h(hrDescrizioneStato($stato)) ?>
-                                    </span>
-                                    <?php if ((int)$richiesta['gestita_da_hr'] === 1): ?>
-                                        <br><span class="badge badge-warning" style="margin-top: 0.35rem;">gestita da HR</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($stato === 'IN_ATTESA'): ?>
-                                        <?php if (trim((string)$richiesta['note_richiedente']) !== ''): ?>
-                                            <?= nl2br(h((string)$richiesta['note_richiedente'])) ?>
-                                        <?php else: ?>
-                                            <span class="text-muted">Nessuna nota</span>
-                                        <?php endif; ?>
-                                    <?php else: ?>
-                                        <?php if (trim((string)$richiesta['note_approvatore']) !== ''): ?>
-                                            <?= nl2br(h((string)$richiesta['note_approvatore'])) ?>
-                                        <?php else: ?>
-                                            <span class="text-muted">Nessuna nota</span>
-                                        <?php endif; ?>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($stato === 'IN_ATTESA'): ?>
-                                        <div class="approvals-actions">
-                                            <form method="post" class="approvals-action-form">
-                                                <input type="hidden" name="azione" value="approva_richiesta">
-                                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
-                                                <input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione">
-                                                <button type="submit" class="btn btn-sm btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>
-                                                    <i class="la la-check"></i> Approva
-                                                </button>
-                                            </form>
-
-                                            <form method="post" class="approvals-action-form">
-                                                <input type="hidden" name="azione" value="rifiuta_richiesta">
-                                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
-                                                <input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required>
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" <?= $puoScrivere ? '' : 'disabled' ?>>
-                                                    <i class="la la-times"></i> Rifiuta
-                                                </button>
-                                            </form>
-                                        </div>
-                                    <?php else: ?>
-                                        <span class="text-muted">Già gestita</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    </section>
+                            <form method="post" class="approvals-action-form">
+                                <input type="hidden" name="azione" value="rifiuta_richiesta">
+                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
+                                <input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required>
+                                <button type="submit" class="btn btn-sm btn-outline-danger" <?= $puoScrivere ? '' : 'disabled' ?>>
+                                    <i class="la la-times"></i> Rifiuta
+                                </button>
+                            </form>
+                        </div>
+                    <?php else: ?>
+                        <span class="text-muted">Già gestita</span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php
+        },
+    ]);
+    ?>
 </div>
 
 <?php layoutFooter(); ?>

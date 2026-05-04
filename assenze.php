@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/filtri.php';
 require_once __DIR__ . '/includes/ui.php';
+require_once __DIR__ . '/includes/table.php';
 
 richiediPermessoLettura('assenze');
 
@@ -1053,77 +1054,71 @@ renderHrFiltri([
     'reset_url' => 'assenze.php?id_utente=' . (int)$idUtenteTarget,
 ]);
 ?>
-<div class="card card-wide hr-history-card">
-    <h2>Storico richieste</h2>
-    <p class="meta">Filtra e consulta le richieste del dipendente selezionato.</p>
-    <?php if (count($richieste) === 0): ?>
-        <div class="meta">Non ci sono ancora richieste per il dipendente selezionato.</div>
-    <?php else: ?>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Codice</th>
-                        <th>Utente</th>
-                        <th>Tipologia</th>
-                        <th>Periodo</th>
-                        <th>Stato</th>
-                        <th>Responsabile</th>
-                        <th>Creata il</th>
-                        <th>Oggetto / note</th>
-                        <th>Azioni</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($richieste as $r): ?>
-                        <?php
-                        $periodo = (string)$r['data_da'];
-                        if ((string)$r['data_a'] !== '' && (string)$r['data_a'] !== (string)$r['data_da']) {
-                            $periodo .= ' → ' . (string)$r['data_a'];
-                        }
-                        if ((string)$r['tipo_periodo'] === 'ORE' && (string)$r['ora_da'] !== '' && (string)$r['ora_a'] !== '') {
-                            $periodo .= '<br><span class="meta">' . h((string)$r['ora_da']) . ' - ' . h((string)$r['ora_a']) . '</span>';
-                        }
-                        $annullabile = in_array((string)$r['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true);
-                        ?>
-                        <tr>
-                            <td><strong><?= h((string)$r['codice_richiesta']) ?></strong></td>
-                            <td><?= h((string)$r['richiedente']) ?></td>
-                            <td><?= h((string)$r['tipologia']) ?></td>
-                            <td><?= $periodo ?></td>
-                            <td><span class="status-badge <?= hrClasseStato((string)$r['stato_codice']) ?>"><?= h((string)$r['stato']) ?></span></td>
-                            <td><?= h(trim((string)$r['responsabile']) !== '' ? (string)$r['responsabile'] : 'Nessun responsabile') ?></td>
-                            <td><?= h((string)$r['data_creazione_fmt']) ?></td>
-                            <td>
-                                <?php if (trim((string)$r['oggetto']) !== ''): ?>
-                                    <strong><?= h((string)$r['oggetto']) ?></strong><br>
-                                <?php endif; ?>
-                                <?php if (trim((string)$r['note_richiedente']) !== ''): ?>
-                                    <?= nl2br(h((string)$r['note_richiedente'])) ?>
-                                <?php else: ?>
-                                    <span class="meta">Nessuna nota</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php if ($puoScrivere && $annullabile): ?>
-                                    <form method="post" action="assenze.php" onsubmit="return confirm('Confermi l\'annullamento della richiesta?');">
-                                        <input type="hidden" name="azione" value="annulla_richiesta">
-                                        <input type="hidden" name="id_richiesta" value="<?= (int)$r['id_richiesta'] ?>">
-                                        <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="la la-times" aria-hidden="true"></i> Annulla</button>
-                                    </form>
-                                <?php else: ?>
-                                    <span class="meta">-</span>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-</div>
-
+<?php
+renderHrTableSection([
+    'title' => 'Storico richieste',
+    'subtitle' => 'Filtra e consulta le richieste del dipendente selezionato.',
+    'rows' => $richieste,
+    'columns' => [
+        ['label' => 'Codice'],
+        ['label' => 'Utente'],
+        ['label' => 'Tipologia'],
+        ['label' => 'Periodo'],
+        ['label' => 'Stato'],
+        ['label' => 'Responsabile'],
+        ['label' => 'Creata il'],
+        ['label' => 'Oggetto / note'],
+        ['label' => 'Azioni'],
+    ],
+    'empty_message' => 'Non ci sono ancora richieste per il dipendente selezionato.',
+    'section_class' => 'card card-wide hr-history-card',
+    'responsive_class' => 'table-wrap',
+    'table_class' => '',
+    'row_renderer' => static function (array $r) use ($puoScrivere, $idUtenteTarget): void {
+        $periodo = (string)$r['data_da'];
+        if ((string)$r['data_a'] !== '' && (string)$r['data_a'] !== (string)$r['data_da']) {
+            $periodo .= ' → ' . (string)$r['data_a'];
+        }
+        if ((string)$r['tipo_periodo'] === 'ORE' && (string)$r['ora_da'] !== '' && (string)$r['ora_a'] !== '') {
+            $periodo .= '<br><span class="meta">' . h((string)$r['ora_da']) . ' - ' . h((string)$r['ora_a']) . '</span>';
+        }
+        $annullabile = in_array((string)$r['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true);
+        ?>
+        <tr>
+            <td><strong><?= h((string)$r['codice_richiesta']) ?></strong></td>
+            <td><?= h((string)$r['richiedente']) ?></td>
+            <td><?= h((string)$r['tipologia']) ?></td>
+            <td><?= $periodo ?></td>
+            <td><span class="status-badge <?= hrClasseStato((string)$r['stato_codice']) ?>"><?= h((string)$r['stato']) ?></span></td>
+            <td><?= h(trim((string)$r['responsabile']) !== '' ? (string)$r['responsabile'] : 'Nessun responsabile') ?></td>
+            <td><?= h((string)$r['data_creazione_fmt']) ?></td>
+            <td>
+                <?php if (trim((string)$r['oggetto']) !== ''): ?>
+                    <strong><?= h((string)$r['oggetto']) ?></strong><br>
+                <?php endif; ?>
+                <?php if (trim((string)$r['note_richiedente']) !== ''): ?>
+                    <?= nl2br(h((string)$r['note_richiedente'])) ?>
+                <?php else: ?>
+                    <span class="meta">Nessuna nota</span>
+                <?php endif; ?>
+            </td>
+            <td>
+                <?php if ($puoScrivere && $annullabile): ?>
+                    <form method="post" action="assenze.php" onsubmit="return confirm('Confermi l\'annullamento della richiesta?');">
+                        <input type="hidden" name="azione" value="annulla_richiesta">
+                        <input type="hidden" name="id_richiesta" value="<?= (int)$r['id_richiesta'] ?>">
+                        <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="la la-times" aria-hidden="true"></i> Annulla</button>
+                    </form>
+                <?php else: ?>
+                    <span class="meta">-</span>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <?php
+    },
+]);
+?>
 <script>
 (function () {
     const modalita = document.getElementById('modalita');
