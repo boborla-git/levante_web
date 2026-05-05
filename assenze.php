@@ -860,13 +860,8 @@ renderHrPageHeader([
 ]);
 ?>
 
-<?php if ($errore !== ''): ?>
-    <div class="errore"><?= h($errore) ?></div>
-<?php endif; ?>
-
-<?php if ($messaggio !== ''): ?>
-    <div class="ok"><?= h($messaggio) ?></div>
-<?php endif; ?>
+<?php renderHrAlert($errore, 'danger'); ?>
+<?php renderHrAlert($messaggio, 'success'); ?>
 
 <div class="card card-compact hr-scope-card">
     <div class="hr-scope-line">

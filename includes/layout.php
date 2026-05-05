@@ -66,7 +66,7 @@ function layoutRenderLabel(array $node): void
     ?>
     <span class="menu-text"><?= htmlspecialchars((string)($node['descrizione'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
     <?php
-    if ((string)($node['codice_risorsa'] ?? '') === 'pagina.notifiche') {
+    if (in_array((string)($node['codice_risorsa'] ?? ''), ['pagina.notifiche', 'menu.profilo'], true)) {
         $numeroNotifiche = isset($GLOBALS['layout_notifiche_non_lette']) ? (int)$GLOBALS['layout_notifiche_non_lette'] : 0;
         layoutRenderNotificationBadge($numeroNotifiche);
     }
@@ -194,15 +194,22 @@ function layoutFilterMenuTree(array $nodes, array $childrenMap): array
         $children = layoutFilterMenuTree($childrenMap[$nodeId] ?? [], $childrenMap);
         $canOpen = layoutNodeCanOpen($node);
         $visibleInMenu = layoutNodeVisibleInMenu($node);
+        $type = (string)($node['tipo_risorsa'] ?? '');
 
         if (!$visibleInMenu) {
-            foreach ($children as $child) {
-                $output[] = $child;
+            if ($type === 'menu') {
+                foreach ($children as $child) {
+                    $output[] = $child;
+                }
             }
             continue;
         }
 
-        if (!$canOpen && count($children) === 0) {
+        if ($type === 'pagina' && !$canOpen) {
+            continue;
+        }
+
+        if ($type === 'menu' && count($children) === 0 && !$canOpen) {
             continue;
         }
 

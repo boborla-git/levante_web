@@ -87,3 +87,26 @@ if (!function_exists('renderHrSummaryLine')) {
         <?php
     }
 }
+
+if (!function_exists('renderHrAlert')) {
+    /**
+     * Renderizza un messaggio operativo standard.
+     * Tipi supportati: success, danger, warning, info.
+     */
+    function renderHrAlert(string $message, string $type = 'info'): void
+    {
+        $message = trim($message);
+        if ($message === '') {
+            return;
+        }
+
+        $allowed = ['success', 'danger', 'warning', 'info'];
+        if (!in_array($type, $allowed, true)) {
+            $type = 'info';
+        }
+        ?>
+        <div class="alert alert-<?= hrUiEscape($type) ?>" role="status"><?= hrUiEscape($message) ?></div>
+        <?php
+    }
+}
+

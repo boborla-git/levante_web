@@ -357,13 +357,8 @@ layoutHeader('Approvazioni assenze');
     ]);
     ?>
 
-    <?php if ($messaggio !== ''): ?>
-        <div class="alert alert-success"><?= h($messaggio) ?></div>
-    <?php endif; ?>
-
-    <?php if ($errore !== ''): ?>
-        <div class="alert alert-danger"><?= h($errore) ?></div>
-    <?php endif; ?>
+    <?php renderHrAlert($messaggio, 'success'); ?>
+    <?php renderHrAlert($errore, 'danger'); ?>
 
     <?php
     renderHrSummaryLine([

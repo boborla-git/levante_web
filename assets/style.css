@@ -1171,3 +1171,53 @@ table td a:not(.btn):hover {
         min-width: 0;
     }
 }
+
+/* Alert operativi standard */
+.alert {
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 0 0 16px 0;
+    border: 1px solid var(--border);
+    font-weight: 500;
+}
+.alert-success,
+.ok {
+    background: #e9f7ee;
+    color: #087a2f;
+    border-color: #bfe3ca;
+}
+.alert-danger,
+.errore {
+    background: #fdeaea;
+    color: var(--danger);
+    border-color: #f2c5c5;
+}
+.alert-warning {
+    background: #fff8df;
+    color: #8a5d00;
+    border-color: #f3d27d;
+}
+.alert-info {
+    background: #eaf3ff;
+    color: #0b4f91;
+    border-color: #bcd7f4;
+}
+
+/* Badge notifiche nel menu alto */
+.notification-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: 6px;
+    border-radius: 999px;
+    background: var(--ravioli-yellow, #ffd400);
+    color: var(--ravioli-blue, #0068c9);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    border: 1px solid rgba(0, 104, 201, 0.25);
+}
+
