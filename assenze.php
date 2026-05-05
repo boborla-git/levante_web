@@ -44,6 +44,9 @@ $form = [
     'note_richiedente' => '',
 ];
 
+$oggiIso = (new DateTimeImmutable('today'))->format('Y-m-d');
+$bloccaDateRetroattive = !$puoConfigurare;
+
 $filtri = [
     'stato' => trim((string)($_GET['stato'] ?? '')),
     'tipologia' => (int)($_GET['tipologia'] ?? 0),
@@ -392,6 +395,12 @@ try {
             }
             if ($dataA === '') {
                 throw new RuntimeException('Inserisci il giorno finale.');
+            }
+            if ($bloccaDateRetroattive && $dataDa < $oggiIso) {
+                throw new RuntimeException('Non puoi inserire richieste con data precedente a oggi.');
+            }
+            if ($bloccaDateRetroattive && $dataA < $oggiIso) {
+                throw new RuntimeException('Non puoi inserire richieste con data precedente a oggi.');
             }
             if ($dataA < $dataDa) {
                 throw new RuntimeException('Il giorno finale non può essere precedente al giorno iniziale.');
@@ -944,22 +953,22 @@ renderHrSummaryLine([
 
                     <div class="form-group hr-field-data" id="gruppo_data_da">
                         <label for="data_da" id="label_data_da">Dal giorno</label>
-                        <input class="control-standard" type="date" name="data_da" id="data_da" value="<?= h($form['data_da']) ?>" required>
+                        <input class="control-standard" type="date" name="data_da" id="data_da" value="<?= h($form['data_da']) ?>" <?= $bloccaDateRetroattive ? 'min="' . h($oggiIso) . '"' : '' ?> required>
                     </div>
 
                     <div class="form-group hr-field-data" id="gruppo_data_a">
                         <label for="data_a" id="label_data_a">Al giorno</label>
-                        <input class="control-standard" type="date" name="data_a" id="data_a" value="<?= h($form['data_a']) ?>">
+                        <input class="control-standard" type="date" name="data_a" id="data_a" value="<?= h($form['data_a']) ?>" <?= $bloccaDateRetroattive ? 'min="' . h($oggiIso) . '"' : '' ?>>
                     </div>
 
                     <div class="form-group hr-field-time" id="gruppo_ora_da">
                         <label for="ora_da" id="label_ora_da">Dalle ore</label>
-                        <input class="control-standard" type="time" name="ora_da" id="ora_da" value="<?= h($form['ora_da']) ?>">
+                        <input class="control-standard" type="time" name="ora_da" id="ora_da" value="<?= h($form['ora_da']) ?>" step="300">
                     </div>
 
                     <div class="form-group hr-field-time" id="gruppo_ora_a">
                         <label for="ora_a" id="label_ora_a">Alle ore</label>
-                        <input class="control-standard" type="time" name="ora_a" id="ora_a" value="<?= h($form['ora_a']) ?>">
+                        <input class="control-standard" type="time" name="ora_a" id="ora_a" value="<?= h($form['ora_a']) ?>" step="300">
                     </div>
             </div>
 
@@ -1124,6 +1133,33 @@ renderHrTableSection([
         element.classList.toggle('is-hidden', !show);
     }
 
+    function normalizzaOraA5Minuti(valore) {
+        if (!valore) return '';
+        const parti = valore.split(':');
+        if (parti.length < 2) return valore;
+        const ore = parseInt(parti[0], 10);
+        const minuti = parseInt(parti[1], 10);
+        if (Number.isNaN(ore) || Number.isNaN(minuti)) return valore;
+        const minutiArrotondati = Math.round(minuti / 5) * 5;
+        const totale = (ore * 60 + minutiArrotondati) % (24 * 60);
+        const hh = String(Math.floor(totale / 60)).padStart(2, '0');
+        const mm = String(totale % 60).padStart(2, '0');
+        return `${hh}:${mm}`;
+    }
+
+    function aggiungiUnOra(valore) {
+        if (!valore) return '';
+        const parti = valore.split(':');
+        if (parti.length < 2) return '';
+        const ore = parseInt(parti[0], 10);
+        const minuti = parseInt(parti[1], 10);
+        if (Number.isNaN(ore) || Number.isNaN(minuti)) return '';
+        const totale = (ore * 60 + minuti + 60) % (24 * 60);
+        const hh = String(Math.floor(totale / 60)).padStart(2, '0');
+        const mm = String(totale % 60).padStart(2, '0');
+        return `${hh}:${mm}`;
+    }
+
     function aggiornaCampi() {
         const isOre = modalita.value === 'ore';
 
@@ -1152,10 +1188,28 @@ renderHrTableSection([
 
     modalita.addEventListener('change', aggiornaCampi);
     dataDa.addEventListener('change', function () {
-        if (modalita.value === 'ore') {
+        if (!dataA.value || modalita.value === 'ore') {
             dataA.value = dataDa.value;
         }
     });
+    if (dataA) {
+        dataA.addEventListener('focus', function () {
+            if (!dataA.value && dataDa.value) {
+                dataA.value = dataDa.value;
+            }
+        });
+    }
+    if (oraDa && oraA) {
+        oraDa.addEventListener('change', function () {
+            oraDa.value = normalizzaOraA5Minuti(oraDa.value);
+            if (!oraA.value && oraDa.value) {
+                oraA.value = aggiungiUnOra(oraDa.value);
+            }
+        });
+        oraA.addEventListener('change', function () {
+            oraA.value = normalizzaOraA5Minuti(oraA.value);
+        });
+    }
 
     aggiornaCampi();
 })();

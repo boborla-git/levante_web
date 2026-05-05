@@ -178,11 +178,55 @@ h2 { font-size: 22px; margin-bottom: 18px; }
 .form-group { margin-bottom: 16px; min-width: 0; }
 label { display: block; font-weight: 700; margin-bottom: 8px; }
 input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
-    width: 100%; min-height: 42px; padding: 8px 12px; border: 1px solid #cfd3d8; border-radius: 8px; background: #fff; font-size: 14px; min-width: 0;
+    width: 100%;
+    min-height: 42px;
+    padding: 8px 12px;
+    border: 1px solid #cfd3d8;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+    min-width: 0;
 }
 input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
     outline: none; border-color: #8aaed0; box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.12);
 }
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="time"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field,
+input[type="time"]::-webkit-datetime-edit-hour-field,
+input[type="time"]::-webkit-datetime-edit-minute-field {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+.hr-request-grid-form input,
+.hr-request-grid-form select,
+.hr-request-grid-form textarea,
+.hr-request-notes input,
+.hr-request-notes textarea,
+.hr-filters input,
+.hr-filters select,
+.approvals-filter-grid input,
+.approvals-filter-grid select,
+.approvals-action-form input {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+}
+
 textarea { min-height: 110px; resize: vertical; }
 .checkbox-row { margin-top: 10px; }
 .checkbox-inline { font-weight: 400; display: inline-flex; gap: 8px; align-items: center; }
