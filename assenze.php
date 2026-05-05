@@ -7,6 +7,7 @@ require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/filtri.php';
 require_once __DIR__ . '/includes/ui.php';
 require_once __DIR__ . '/includes/table.php';
+require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('assenze');
 
@@ -308,20 +309,6 @@ function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigura
 
     uasort($utenti, static fn(array $a, array $b): int => strcmp((string)$a['nominativo'], (string)$b['nominativo']));
     return $utenti;
-}
-
-function hrClasseStato(string $codice): string
-{
-    if ($codice === 'APPROVATA') {
-        return 'status-ok';
-    }
-    if ($codice === 'IN_ATTESA') {
-        return 'status-wait';
-    }
-    if ($codice === 'RIFIUTATA') {
-        return 'status-ko';
-    }
-    return 'status-neutral';
 }
 
 try {
@@ -1089,7 +1076,7 @@ renderHrTableSection([
             <td><?= h((string)$r['richiedente']) ?></td>
             <td><?= h((string)$r['tipologia']) ?></td>
             <td><?= $periodo ?></td>
-            <td><span class="status-badge <?= hrClasseStato((string)$r['stato_codice']) ?>"><?= h((string)$r['stato']) ?></span></td>
+            <td><?= renderHrStatusBadge((string)$r['stato_codice'], (string)$r['stato']) ?></td>
             <td><?= h(trim((string)$r['responsabile']) !== '' ? (string)$r['responsabile'] : 'Nessun responsabile') ?></td>
             <td><?= h((string)$r['data_creazione_fmt']) ?></td>
             <td>
