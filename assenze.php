@@ -8,6 +8,7 @@ require_once __DIR__ . '/includes/filtri.php';
 require_once __DIR__ . '/includes/ui.php';
 require_once __DIR__ . '/includes/table.php';
 require_once __DIR__ . '/includes/badge.php';
+require_once __DIR__ . '/includes/actions.php';
 
 richiediPermessoLettura('assenze');
 
@@ -979,7 +980,7 @@ renderHrSummaryLine([
                     </div>
 
                     <div class="actions hr-request-submit">
-                        <button type="submit" class="btn btn-primary" <?= $infoRecapitoMancante ? 'disabled' : '' ?>><i class="la la-save" aria-hidden="true"></i> Registra richiesta</button>
+                        <?= renderHrPrimaryActionButton('Registra richiesta', 'la la-save', $infoRecapitoMancante, '') ?>
                     </div>
             </div>
         </form>
@@ -1095,7 +1096,7 @@ renderHrTableSection([
                         <input type="hidden" name="azione" value="annulla_richiesta">
                         <input type="hidden" name="id_richiesta" value="<?= (int)$r['id_richiesta'] ?>">
                         <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
-                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="la la-times" aria-hidden="true"></i> Annulla</button>
+                        <?= renderHrDangerOutlineActionButton('Annulla') ?>
                     </form>
                 <?php else: ?>
                     <span class="meta">-</span>

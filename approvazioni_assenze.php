@@ -8,6 +8,7 @@ require_once __DIR__ . '/includes/filtri.php';
 require_once __DIR__ . '/includes/ui.php';
 require_once __DIR__ . '/includes/table.php';
 require_once __DIR__ . '/includes/badge.php';
+require_once __DIR__ . '/includes/actions.php';
 
 richiediPermessoLettura('approvazioni_assenze');
 
@@ -497,18 +498,14 @@ layoutHeader('Approvazioni assenze');
                                 <input type="hidden" name="azione" value="approva_richiesta">
                                 <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
                                 <input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione">
-                                <button type="submit" class="btn btn-sm btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>
-                                    <i class="la la-check"></i> Approva
-                                </button>
+                                <?= renderHrPrimaryActionButton('Approva', 'la la-check', !$puoScrivere) ?>
                             </form>
 
                             <form method="post" class="approvals-action-form">
                                 <input type="hidden" name="azione" value="rifiuta_richiesta">
                                 <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
                                 <input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required>
-                                <button type="submit" class="btn btn-sm btn-outline-danger" <?= $puoScrivere ? '' : 'disabled' ?>>
-                                    <i class="la la-times"></i> Rifiuta
-                                </button>
+                                <?= renderHrDangerOutlineActionButton('Rifiuta', 'la la-times', !$puoScrivere) ?>
                             </form>
                         </div>
                     <?php else: ?>
