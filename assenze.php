@@ -262,8 +262,28 @@ function hrHaRecapitoEmailPersonale(PDO $pdo, int $idUtente): bool
     return (bool)$stmt->fetchColumn();
 }
 
-function hrEsisteSovrapposizioneRichiesta(PDO $pdo, int $idUtente, string $dataDa, string $dataA, ?int $idRichiestaDaEscludere = null): ?array
-{
+function hrEsisteSovrapposizioneRichiesta(
+    PDO $pdo,
+    int $idUtente,
+    string $dataDa,
+    string $dataA,
+    string $modalita,
+    ?string $oraDa = null,
+    ?string $oraA = null,
+    ?int $idRichiestaDaEscludere = null
+): ?array {
+    $modalita = strtolower($modalita) === 'ore' ? 'ore' : 'giorni';
+    $nuovaOraDaMinuti = null;
+    $nuovaOraAMinuti = null;
+
+    if ($modalita === 'ore') {
+        if ($oraDa === null || $oraA === null || $oraDa === '' || $oraA === '') {
+            throw new RuntimeException('Per controllare le sovrapposizioni delle richieste a ore servono ora iniziale e ora finale.');
+        }
+        $nuovaOraDaMinuti = hrMinutiDaOra($oraDa);
+        $nuovaOraAMinuti = hrMinutiDaOra($oraA);
+    }
+
     $sql = "
         SELECT
             r.id_richiesta,
@@ -271,6 +291,11 @@ function hrEsisteSovrapposizioneRichiesta(PDO $pdo, int $idUtente, string $dataD
             te.descrizione AS tipologia,
             DATE_FORMAT(p.data_da, '%d/%m/%Y') AS data_da_fmt,
             DATE_FORMAT(p.data_a, '%d/%m/%Y') AS data_a_fmt,
+            p.data_da,
+            p.data_a,
+            UPPER(COALESCE(p.tipo_periodo, 'GIORNI')) AS tipo_periodo,
+            TIME_FORMAT(p.ora_da, '%H:%i') AS ora_da_fmt,
+            TIME_FORMAT(p.ora_a, '%H:%i') AS ora_a_fmt,
             sr.descrizione AS stato
         FROM hr_richieste r
         INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
@@ -293,13 +318,38 @@ function hrEsisteSovrapposizioneRichiesta(PDO $pdo, int $idUtente, string $dataD
         $params['id_richiesta_da_escludere'] = $idRichiestaDaEscludere;
     }
 
-    $sql .= ' ORDER BY p.data_da ASC, r.id_richiesta ASC LIMIT 1';
+    $sql .= ' ORDER BY p.data_da ASC, r.id_richiesta ASC';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    return $row ?: null;
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $tipoPeriodoEsistente = strtoupper((string)($row['tipo_periodo'] ?? 'GIORNI'));
+
+        // Se la nuova richiesta e/o quella esistente sono a giorni, la sovrapposizione per data basta.
+        // Una giornata intera blocca anche eventuali permessi a ore nello stesso giorno.
+        if ($modalita === 'giorni' || $tipoPeriodoEsistente !== 'ORE') {
+            return $row;
+        }
+
+        // Da qui in poi confronto puntuale tra richieste a ore nello stesso giorno.
+        // Se per qualche motivo mancano le ore nella richiesta esistente, blocco in modo prudente.
+        $oraEsistenteDa = (string)($row['ora_da_fmt'] ?? '');
+        $oraEsistenteA = (string)($row['ora_a_fmt'] ?? '');
+        if (!hrOraValida($oraEsistenteDa) || !hrOraValida($oraEsistenteA)) {
+            return $row;
+        }
+
+        $esistenteDaMinuti = hrMinutiDaOra($oraEsistenteDa);
+        $esistenteAMinuti = hrMinutiDaOra($oraEsistenteA);
+
+        // Intervalli semi-aperti: 10:00-11:00 e 11:00-12:00 sono consentiti.
+        if ($esistenteDaMinuti < $nuovaOraAMinuti && $esistenteAMinuti > $nuovaOraDaMinuti) {
+            return $row;
+        }
+    }
+
+    return null;
 }
 function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigurare): array
 {
@@ -478,11 +528,14 @@ try {
                 throw new RuntimeException('Questa tipologia non consente richieste a ore.');
             }
 
-            $sovrapposizione = hrEsisteSovrapposizioneRichiesta($pdo, $idUtenteTarget, $dataDa, $dataA);
+            $sovrapposizione = hrEsisteSovrapposizioneRichiesta($pdo, $idUtenteTarget, $dataDa, $dataA, $modalita, $oraDa !== '' ? $oraDa : null, $oraA !== '' ? $oraA : null);
             if ($sovrapposizione !== null) {
                 $periodoSovrapposto = (string)$sovrapposizione['data_da_fmt'];
                 if ((string)$sovrapposizione['data_a_fmt'] !== '' && (string)$sovrapposizione['data_a_fmt'] !== (string)$sovrapposizione['data_da_fmt']) {
                     $periodoSovrapposto .= ' - ' . (string)$sovrapposizione['data_a_fmt'];
+                }
+                if ((string)($sovrapposizione['ora_da_fmt'] ?? '') !== '' && (string)($sovrapposizione['ora_a_fmt'] ?? '') !== '') {
+                    $periodoSovrapposto .= ' ' . (string)$sovrapposizione['ora_da_fmt'] . '-' . (string)$sovrapposizione['ora_a_fmt'];
                 }
 
                 throw new RuntimeException(
