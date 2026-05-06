@@ -70,6 +70,46 @@ function hrDataValida(?string $valore): bool
     return $dt instanceof DateTime && $dt->format('Y-m-d') === $valore;
 }
 
+
+function hrOraValida(?string $valore): bool
+{
+    if ($valore === null || $valore === '') {
+        return false;
+    }
+
+    return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $valore) === 1;
+}
+
+function hrNormalizzaOraCinqueMinuti(string $valore): string
+{
+    if (!hrOraValida($valore)) {
+        throw new RuntimeException('Formato ora non valido. Usa il formato HH:MM.');
+    }
+
+    [$ore, $minuti] = array_map('intval', explode(':', $valore));
+    $minutiArrotondati = (int)(round($minuti / 5) * 5);
+    $totaleMinuti = ($ore * 60) + $minutiArrotondati;
+
+    if ($totaleMinuti >= 24 * 60) {
+        $totaleMinuti -= 24 * 60;
+    }
+
+    $oreFinali = intdiv($totaleMinuti, 60);
+    $minutiFinali = $totaleMinuti % 60;
+
+    return sprintf('%02d:%02d', $oreFinali, $minutiFinali);
+}
+
+function hrMinutiDaOra(string $valore): int
+{
+    if (!hrOraValida($valore)) {
+        throw new RuntimeException('Formato ora non valido. Usa il formato HH:MM.');
+    }
+
+    [$ore, $minuti] = array_map('intval', explode(':', $valore));
+    return ($ore * 60) + $minuti;
+}
+
 function hrGeneraCodiceRichiesta(PDO $pdo): string
 {
     $prefisso = 'HR';
@@ -390,16 +430,13 @@ try {
             if ($idTipologia <= 0) {
                 throw new RuntimeException('Seleziona una tipologia valida.');
             }
-            if ($dataDa === '') {
-                throw new RuntimeException('Inserisci il giorno iniziale.');
+            if (!hrDataValida($dataDa)) {
+                throw new RuntimeException('Inserisci un giorno iniziale valido.');
             }
-            if ($dataA === '') {
-                throw new RuntimeException('Inserisci il giorno finale.');
+            if (!hrDataValida($dataA)) {
+                throw new RuntimeException('Inserisci un giorno finale valido.');
             }
-            if ($bloccaDateRetroattive && $dataDa < $oggiIso) {
-                throw new RuntimeException('Non puoi inserire richieste con data precedente a oggi.');
-            }
-            if ($bloccaDateRetroattive && $dataA < $oggiIso) {
+            if ($bloccaDateRetroattive && ($dataDa < $oggiIso || $dataA < $oggiIso)) {
                 throw new RuntimeException('Non puoi inserire richieste con data precedente a oggi.');
             }
             if ($dataA < $dataDa) {
@@ -409,7 +446,11 @@ try {
                 if ($oraDa === '' || $oraA === '') {
                     throw new RuntimeException('Per le richieste a ore devi indicare dalle ore e alle ore.');
                 }
-                if ($oraA <= $oraDa) {
+
+                $oraDa = hrNormalizzaOraCinqueMinuti($oraDa);
+                $oraA = hrNormalizzaOraCinqueMinuti($oraA);
+
+                if (hrMinutiDaOra($oraA) <= hrMinutiDaOra($oraDa)) {
                     throw new RuntimeException("L'orario finale deve essere successivo all'orario iniziale.");
                 }
                 if ($dataDa !== $dataA) {
