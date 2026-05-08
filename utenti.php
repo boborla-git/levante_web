@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/db.php';
@@ -21,18 +22,18 @@ $stmt = $pdo->query("
     FROM aut_utenti u
     LEFT JOIN aut_utenti_ruoli aur
         ON aur.id_utente = u.id_utente
-       AND aur.attivo = 1
-       AND (aur.data_fine IS NULL OR aur.data_fine >= NOW())
+        AND aur.attivo = 1
+        AND (aur.data_fine IS NULL OR aur.data_fine >= NOW())
     LEFT JOIN aut_ruoli ar
         ON ar.id_ruolo = aur.id_ruolo
-       AND ar.attivo = 1
+        AND ar.attivo = 1
     ORDER BY u.username
 ");
+
 $utenti = $stmt->fetchAll();
 
 layoutHeader('Gestione utenti');
 ?>
-
 <div class="card card-wide">
     <h1>Admin</h1>
 
@@ -43,13 +44,29 @@ layoutHeader('Gestione utenti');
         <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <h2>Gestione utenti</h2>
+    <div class="page-section-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
+        <div>
+            <h2 style="margin-bottom:.35rem;">Gestione utenti</h2>
+            <p class="muted" style="margin:0;">Elenco degli utenti censiti nel portale.</p>
+        </div>
+        <div class="quick-filter" style="min-width:260px; max-width:360px; flex:0 1 360px;">
+            <label for="filtroRapidoUtenti">Filtro rapido</label>
+            <input
+                type="search"
+                id="filtroRapidoUtenti"
+                class="form-control"
+                placeholder="Cerca in tutte le colonne..."
+                autocomplete="off"
+                data-table-filter="tabellaUtenti"
+            >
+        </div>
+    </div>
 
-    <div class="actions">
+    <div class="actions" style="margin-top:1rem;">
         <a class="btn" href="utente_nuovo.php"><i class="la la-user-plus" aria-hidden="true"></i> Nuovo utente</a>
     </div>
 
-    <table>
+    <table id="tabellaUtenti">
         <thead>
             <tr>
                 <th>ID</th>
@@ -111,5 +128,33 @@ layoutHeader('Gestione utenti');
         <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla dashboard</a>
     </div>
 </div>
+
+<script>
+(function () {
+    function normalizzaTesto(valore) {
+        return (valore || '')
+            .toString()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    document.querySelectorAll('[data-table-filter]').forEach(function (input) {
+        var tableId = input.getAttribute('data-table-filter');
+        var table = document.getElementById(tableId);
+        if (!table) {
+            return;
+        }
+
+        input.addEventListener('input', function () {
+            var filtro = normalizzaTesto(input.value);
+            table.querySelectorAll('tbody tr').forEach(function (row) {
+                var testo = normalizzaTesto(row.textContent);
+                row.style.display = testo.indexOf(filtro) !== -1 ? '' : 'none';
+            });
+        });
+    });
+})();
+</script>
 
 <?php layoutFooter(); ?>
