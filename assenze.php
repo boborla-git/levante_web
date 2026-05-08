@@ -4,12 +4,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
-require_once __DIR__ . '/includes/filtri.php';
-require_once __DIR__ . '/includes/ui.php';
-require_once __DIR__ . '/includes/table.php';
-require_once __DIR__ . '/includes/badge.php';
-require_once __DIR__ . '/includes/actions.php';
-require_once __DIR__ . '/includes/mail.php';
 
 richiediPermessoLettura('assenze');
 
@@ -45,70 +39,9 @@ $form = [
     'note_richiedente' => '',
 ];
 
-$oggiIso = (new DateTimeImmutable('today'))->format('Y-m-d');
-$bloccaDateRetroattive = !$puoConfigurare;
-
-$filtri = [
-    'stato' => trim((string)($_GET['stato'] ?? '')),
-    'tipologia' => (int)($_GET['tipologia'] ?? 0),
-    'dal' => trim((string)($_GET['dal'] ?? '')),
-    'al' => trim((string)($_GET['al'] ?? '')),
-];
-$statiFiltro = [];
-
 function h(?string $valore): string
 {
     return htmlspecialchars((string)$valore, ENT_QUOTES, 'UTF-8');
-}
-
-function hrDataValida(?string $valore): bool
-{
-    if ($valore === null || $valore === '') {
-        return false;
-    }
-
-    $dt = DateTime::createFromFormat('Y-m-d', $valore);
-    return $dt instanceof DateTime && $dt->format('Y-m-d') === $valore;
-}
-
-
-function hrOraValida(?string $valore): bool
-{
-    if ($valore === null || $valore === '') {
-        return false;
-    }
-
-    return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $valore) === 1;
-}
-
-function hrNormalizzaOraCinqueMinuti(string $valore): string
-{
-    if (!hrOraValida($valore)) {
-        throw new RuntimeException('Formato ora non valido. Usa il formato HH:MM.');
-    }
-
-    [$ore, $minuti] = array_map('intval', explode(':', $valore));
-    $minutiArrotondati = (int)(round($minuti / 5) * 5);
-    $totaleMinuti = ($ore * 60) + $minutiArrotondati;
-
-    if ($totaleMinuti >= 24 * 60) {
-        $totaleMinuti -= 24 * 60;
-    }
-
-    $oreFinali = intdiv($totaleMinuti, 60);
-    $minutiFinali = $totaleMinuti % 60;
-
-    return sprintf('%02d:%02d', $oreFinali, $minutiFinali);
-}
-
-function hrMinutiDaOra(string $valore): int
-{
-    if (!hrOraValida($valore)) {
-        throw new RuntimeException('Formato ora non valido. Usa il formato HH:MM.');
-    }
-
-    [$ore, $minuti] = array_map('intval', explode(':', $valore));
-    return ($ore * 60) + $minuti;
 }
 
 function hrGeneraCodiceRichiesta(PDO $pdo): string
@@ -263,28 +196,8 @@ function hrHaRecapitoEmailPersonale(PDO $pdo, int $idUtente): bool
     return (bool)$stmt->fetchColumn();
 }
 
-function hrEsisteSovrapposizioneRichiesta(
-    PDO $pdo,
-    int $idUtente,
-    string $dataDa,
-    string $dataA,
-    string $modalita,
-    ?string $oraDa = null,
-    ?string $oraA = null,
-    ?int $idRichiestaDaEscludere = null
-): ?array {
-    $modalita = strtolower($modalita) === 'ore' ? 'ore' : 'giorni';
-    $nuovaOraDaMinuti = null;
-    $nuovaOraAMinuti = null;
-
-    if ($modalita === 'ore') {
-        if ($oraDa === null || $oraA === null || $oraDa === '' || $oraA === '') {
-            throw new RuntimeException('Per controllare le sovrapposizioni delle richieste a ore servono ora iniziale e ora finale.');
-        }
-        $nuovaOraDaMinuti = hrMinutiDaOra($oraDa);
-        $nuovaOraAMinuti = hrMinutiDaOra($oraA);
-    }
-
+function hrEsisteSovrapposizioneRichiesta(PDO $pdo, int $idUtente, string $dataDa, string $dataA, ?int $idRichiestaDaEscludere = null): ?array
+{
     $sql = "
         SELECT
             r.id_richiesta,
@@ -292,11 +205,6 @@ function hrEsisteSovrapposizioneRichiesta(
             te.descrizione AS tipologia,
             DATE_FORMAT(p.data_da, '%d/%m/%Y') AS data_da_fmt,
             DATE_FORMAT(p.data_a, '%d/%m/%Y') AS data_a_fmt,
-            p.data_da,
-            p.data_a,
-            UPPER(COALESCE(p.tipo_periodo, 'GIORNI')) AS tipo_periodo,
-            TIME_FORMAT(p.ora_da, '%H:%i') AS ora_da_fmt,
-            TIME_FORMAT(p.ora_a, '%H:%i') AS ora_a_fmt,
             sr.descrizione AS stato
         FROM hr_richieste r
         INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
@@ -319,38 +227,13 @@ function hrEsisteSovrapposizioneRichiesta(
         $params['id_richiesta_da_escludere'] = $idRichiestaDaEscludere;
     }
 
-    $sql .= ' ORDER BY p.data_da ASC, r.id_richiesta ASC';
+    $sql .= ' ORDER BY p.data_da ASC, r.id_richiesta ASC LIMIT 1';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $tipoPeriodoEsistente = strtoupper((string)($row['tipo_periodo'] ?? 'GIORNI'));
-
-        // Se la nuova richiesta e/o quella esistente sono a giorni, la sovrapposizione per data basta.
-        // Una giornata intera blocca anche eventuali permessi a ore nello stesso giorno.
-        if ($modalita === 'giorni' || $tipoPeriodoEsistente !== 'ORE') {
-            return $row;
-        }
-
-        // Da qui in poi confronto puntuale tra richieste a ore nello stesso giorno.
-        // Se per qualche motivo mancano le ore nella richiesta esistente, blocco in modo prudente.
-        $oraEsistenteDa = (string)($row['ora_da_fmt'] ?? '');
-        $oraEsistenteA = (string)($row['ora_a_fmt'] ?? '');
-        if (!hrOraValida($oraEsistenteDa) || !hrOraValida($oraEsistenteA)) {
-            return $row;
-        }
-
-        $esistenteDaMinuti = hrMinutiDaOra($oraEsistenteDa);
-        $esistenteAMinuti = hrMinutiDaOra($oraEsistenteA);
-
-        // Intervalli semi-aperti: 10:00-11:00 e 11:00-12:00 sono consentiti.
-        if ($esistenteDaMinuti < $nuovaOraAMinuti && $esistenteAMinuti > $nuovaOraDaMinuti) {
-            return $row;
-        }
-    }
-
-    return null;
+    return $row ?: null;
 }
 function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigurare): array
 {
@@ -406,6 +289,20 @@ function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigura
     return $utenti;
 }
 
+function hrClasseStato(string $codice): string
+{
+    if ($codice === 'APPROVATA') {
+        return 'status-ok';
+    }
+    if ($codice === 'IN_ATTESA') {
+        return 'status-wait';
+    }
+    if ($codice === 'RIFIUTATA') {
+        return 'status-ko';
+    }
+    return 'status-neutral';
+}
+
 try {
     $stmtTipologie = $pdo->query(
         "SELECT
@@ -421,14 +318,6 @@ try {
          ORDER BY ordinamento, descrizione"
     );
     $tipologie = $stmtTipologie->fetchAll(PDO::FETCH_ASSOC);
-
-    $stmtStatiFiltro = $pdo->query(
-        "SELECT codice, descrizione
-         FROM hr_stati_richiesta
-         WHERE attivo = 1
-         ORDER BY ordinamento, descrizione"
-    );
-    $statiFiltro = $stmtStatiFiltro->fetchAll(PDO::FETCH_ASSOC);
 
     $utentiGestibili = hrUtentiNelPerimetro($pdo, $idUtenteLoggato, $puoConfigurare);
 
@@ -481,14 +370,11 @@ try {
             if ($idTipologia <= 0) {
                 throw new RuntimeException('Seleziona una tipologia valida.');
             }
-            if (!hrDataValida($dataDa)) {
-                throw new RuntimeException('Inserisci un giorno iniziale valido.');
+            if ($dataDa === '') {
+                throw new RuntimeException('Inserisci il giorno iniziale.');
             }
-            if (!hrDataValida($dataA)) {
-                throw new RuntimeException('Inserisci un giorno finale valido.');
-            }
-            if ($bloccaDateRetroattive && ($dataDa < $oggiIso || $dataA < $oggiIso)) {
-                throw new RuntimeException('Non puoi inserire richieste con data precedente a oggi.');
+            if ($dataA === '') {
+                throw new RuntimeException('Inserisci il giorno finale.');
             }
             if ($dataA < $dataDa) {
                 throw new RuntimeException('Il giorno finale non può essere precedente al giorno iniziale.');
@@ -497,11 +383,7 @@ try {
                 if ($oraDa === '' || $oraA === '') {
                     throw new RuntimeException('Per le richieste a ore devi indicare dalle ore e alle ore.');
                 }
-
-                $oraDa = hrNormalizzaOraCinqueMinuti($oraDa);
-                $oraA = hrNormalizzaOraCinqueMinuti($oraA);
-
-                if (hrMinutiDaOra($oraA) <= hrMinutiDaOra($oraDa)) {
+                if ($oraA <= $oraDa) {
                     throw new RuntimeException("L'orario finale deve essere successivo all'orario iniziale.");
                 }
                 if ($dataDa !== $dataA) {
@@ -529,14 +411,11 @@ try {
                 throw new RuntimeException('Questa tipologia non consente richieste a ore.');
             }
 
-            $sovrapposizione = hrEsisteSovrapposizioneRichiesta($pdo, $idUtenteTarget, $dataDa, $dataA, $modalita, $oraDa !== '' ? $oraDa : null, $oraA !== '' ? $oraA : null);
+            $sovrapposizione = hrEsisteSovrapposizioneRichiesta($pdo, $idUtenteTarget, $dataDa, $dataA);
             if ($sovrapposizione !== null) {
                 $periodoSovrapposto = (string)$sovrapposizione['data_da_fmt'];
                 if ((string)$sovrapposizione['data_a_fmt'] !== '' && (string)$sovrapposizione['data_a_fmt'] !== (string)$sovrapposizione['data_da_fmt']) {
                     $periodoSovrapposto .= ' - ' . (string)$sovrapposizione['data_a_fmt'];
-                }
-                if ((string)($sovrapposizione['ora_da_fmt'] ?? '') !== '' && (string)($sovrapposizione['ora_a_fmt'] ?? '') !== '') {
-                    $periodoSovrapposto .= ' ' . (string)$sovrapposizione['ora_da_fmt'] . '-' . (string)$sovrapposizione['ora_a_fmt'];
                 }
 
                 throw new RuntimeException(
@@ -560,8 +439,6 @@ try {
 
             $idStato = hrIdStatoRichiesta($pdo, $codiceStato);
             $codiceRichiesta = hrGeneraCodiceRichiesta($pdo);
-            $preferenzaEmailConfermaRichiedente = (!$isDelegato && count($utentiGestibili) > 1) ? 'lavoro' : 'personale';
-
             $minutiTotali = null;
 
             if ($modalita === 'ore') {
@@ -675,18 +552,6 @@ try {
                     [$idResponsabile]
                 );
 
-                hrEmailInviaNotifica(
-                    $pdo,
-                    'RICHIESTA_ASSENZA_DA_APPROVARE_EMAIL',
-                    (string)$utenteSelezionato['nominativo'] . ' - Nuova richiesta assenza',
-                    'Hai una nuova richiesta di assenza o permesso da valutare.',
-                    '/approvazioni_assenze.php',
-                    $idRichiesta,
-                    $idUtenteLoggato,
-                    [$idResponsabile],
-                    'lavoro'
-                );
-
                 hrCreaNotificaWeb(
                     $pdo,
                     'RICHIESTA_ASSENZA_REGISTRATA',
@@ -696,18 +561,6 @@ try {
                     $idRichiesta,
                     $idUtenteLoggato,
                     [$idUtenteTarget]
-                );
-
-                hrEmailInviaNotifica(
-                    $pdo,
-                    'RICHIESTA_ASSENZA_REGISTRATA_EMAIL',
-                    'Richiesta registrata',
-                    'La tua richiesta è stata registrata correttamente ed è in attesa di approvazione.',
-                    '/assenze.php',
-                    $idRichiesta,
-                    $idUtenteLoggato,
-                    [$idUtenteTarget],
-                    $preferenzaEmailConfermaRichiedente
                 );
 
                 $pdo->commit();
@@ -736,20 +589,6 @@ try {
                 $idRichiesta,
                 $idUtenteLoggato,
                 [$idUtenteTarget]
-            );
-
-            hrEmailInviaNotifica(
-                $pdo,
-                'RICHIESTA_ASSENZA_REGISTRATA_EMAIL',
-                $isDelegato ? 'Richiesta registrata e approvata' : 'Richiesta registrata',
-                $isDelegato
-                    ? 'È stata registrata per te una richiesta già approvata.'
-                    : 'La tua richiesta è stata registrata correttamente.',
-                '/assenze.php',
-                $idRichiesta,
-                $idUtenteLoggato,
-                [$idUtenteTarget],
-                $preferenzaEmailConfermaRichiedente
             );
 
             $pdo->commit();
@@ -828,18 +667,6 @@ try {
                 $destinatariAnnullamento
             );
 
-            hrEmailInviaNotifica(
-                $pdo,
-                'RICHIESTA_ASSENZA_ANNULLATA_EMAIL',
-                'Richiesta annullata',
-                'Una richiesta di assenza o permesso è stata annullata.',
-                '/assenze.php?id_utente=' . $idUtenteTarget,
-                $idRichiesta,
-                $idUtenteLoggato,
-                $destinatariAnnullamento,
-                'lavoro'
-            );
-
             $pdo->commit();
             header('Location: assenze.php?annullata=1&id_utente=' . $idUtenteTarget);
             exit;
@@ -875,67 +702,6 @@ try {
         ];
     }
 
-    if ($filtri['stato'] !== '') {
-        $statoValido = false;
-        foreach ($statiFiltro as $statoFiltro) {
-            if ((string)$statoFiltro['codice'] === $filtri['stato']) {
-                $statoValido = true;
-                break;
-            }
-        }
-        if (!$statoValido) {
-            $filtri['stato'] = '';
-        }
-    }
-
-    if ($filtri['tipologia'] > 0) {
-        $tipologiaValida = false;
-        foreach ($tipologie as $tipologia) {
-            if ((int)$tipologia['id_tipologia_evento'] === $filtri['tipologia']) {
-                $tipologiaValida = true;
-                break;
-            }
-        }
-        if (!$tipologiaValida) {
-            $filtri['tipologia'] = 0;
-        }
-    }
-
-    if (!hrDataValida($filtri['dal'])) {
-        $filtri['dal'] = '';
-    }
-    if (!hrDataValida($filtri['al'])) {
-        $filtri['al'] = '';
-    }
-    if ($filtri['dal'] !== '' && $filtri['al'] !== '' && $filtri['al'] < $filtri['dal']) {
-        $filtri['al'] = '';
-    }
-
-    $filtriAttivi = $filtri['stato'] !== ''
-        || $filtri['tipologia'] > 0
-        || $filtri['dal'] !== ''
-        || $filtri['al'] !== '';
-
-    $whereRichieste = ['r.id_utente_richiedente = :id_utente'];
-    $paramsRichieste = ['id_utente' => $idUtenteTarget];
-
-    if ($filtri['stato'] !== '') {
-        $whereRichieste[] = 'sr.codice = :stato_filtro';
-        $paramsRichieste['stato_filtro'] = $filtri['stato'];
-    }
-    if ($filtri['tipologia'] > 0) {
-        $whereRichieste[] = 'r.id_tipologia_evento = :tipologia_filtro';
-        $paramsRichieste['tipologia_filtro'] = $filtri['tipologia'];
-    }
-    if ($filtri['dal'] !== '') {
-        $whereRichieste[] = 'p.data_a >= :dal_filtro';
-        $paramsRichieste['dal_filtro'] = $filtri['dal'];
-    }
-    if ($filtri['al'] !== '') {
-        $whereRichieste[] = 'p.data_da <= :al_filtro';
-        $paramsRichieste['al_filtro'] = $filtri['al'];
-    }
-
     $stmtRichieste = $pdo->prepare(
         "SELECT
             r.id_richiesta,
@@ -959,10 +725,10 @@ try {
          LEFT JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta AND p.ordinamento = 1
          LEFT JOIN aut_utenti ureq ON ureq.id_utente = r.id_utente_richiedente
          LEFT JOIN aut_utenti uresp ON uresp.id_utente = r.id_responsabile_corrente
-         WHERE " . implode(' AND ', $whereRichieste) . "
+         WHERE r.id_utente_richiedente = :id_utente
          ORDER BY r.data_creazione DESC, r.id_richiesta DESC"
     );
-    $stmtRichieste->execute($paramsRichieste);
+    $stmtRichieste->execute(['id_utente' => $idUtenteTarget]);
     $richieste = $stmtRichieste->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
@@ -977,47 +743,96 @@ $infoRecapitoMancante = (!$isDelegato && !hrHaRecapitoEmailPersonale($pdo, $idUt
 layoutHeader('Assenze e permessi');
 ?>
 
+<style>
+.hr-page-stack { display: flex; flex-direction: column; gap: 16px; }
+.hr-hero-card { padding: 18px 24px; }
+.hr-hero-card .section-head { align-items: center; }
+.hr-hero-card h1 { margin: 0 0 6px; }
+.hr-hero-card .meta { max-width: 860px; line-height: 1.45; }
+.hr-scope-card { padding: 14px 18px; }
+.hr-scope-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--muted, #64748b); }
+.hr-scope-line strong { color: var(--text, #172033); }
+.hr-summary-line { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 1rem; border: 1px solid var(--border, #d9e2ec); border-radius: 14px; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
+.hr-summary-line span { display: inline-flex; align-items: baseline; gap: .35rem; white-space: nowrap; color: var(--muted, #64748b); font-size: .92rem; }
+.hr-summary-line strong { color: var(--text, #172033); font-size: 1.08rem; }
+.hr-form-card, .hr-history-card { padding: 1rem; }
+.hr-form-card h2, .hr-history-card h2 { margin-top: 0; margin-bottom: .85rem; }
+.hr-history-card .table-wrap { margin-top: .25rem; }
+@media (max-width: 760px) {
+    .hr-hero-card .section-head { align-items: stretch; flex-direction: column; }
+    .section-head-actions .btn { width: 100%; justify-content: center; }
+    .hr-summary-line span { white-space: normal; }
+}
 
+.hr-filter-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin: 0 0 0.75rem;
+}
+.hr-filter-search-group {
+    width: min(380px, 100%);
+}
+.hr-filter-search-group input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    font: inherit;
+    background: #fff;
+}
+.hr-filter-search-group input:focus {
+    outline: none;
+    border-color: var(--primary, #005bd4);
+    box-shadow: 0 0 0 2px rgba(0, 91, 212, 0.16);
+}
+.quick-filter-empty {
+    display: none;
+    margin-top: 0.75rem;
+}
+@media (max-width: 760px) {
+    .hr-filter-toolbar {
+        justify-content: stretch;
+    }
+    .hr-filter-search-group {
+        width: 100%;
+    }
+}
+
+</style>
 
 <div class="hr-page-stack">
-<?php
-$azioniHeaderAssenze = [];
-if ($puoLeggereCalendario) {
-    $azioniHeaderAssenze[] = [
-        'href' => 'calendario_assenze.php',
-        'label' => 'Apri calendario',
-        'icon' => 'la la-calendar-check',
-        'class' => 'btn btn-light',
-    ];
-}
-if ($puoLeggereApprovazioni) {
-    $azioniHeaderAssenze[] = [
-        'href' => 'approvazioni_assenze.php',
-        'label' => 'Apri approvazioni',
-        'icon' => 'la la-check-circle',
-        'class' => 'btn btn-light',
-    ];
-}
-if ($puoConfigurare) {
-    $azioniHeaderAssenze[] = [
-        'href' => 'configurazione_assenze.php',
-        'label' => 'Configura modulo',
-        'icon' => 'la la-cog',
-        'class' => 'btn btn-light',
-    ];
-}
-renderHrPageHeader([
-    'tag' => 'div',
-    'class' => 'card card-compact hr-hero-card',
-    'inner_class' => 'section-head',
-    'title' => 'Assenze e permessi',
-    'subtitle' => 'Gestisci richieste per te stesso oppure, se il tuo profilo lo consente, inseriscile direttamente per collaboratori e dipendenti del tuo perimetro.',
-    'actions' => $azioniHeaderAssenze,
-]);
-?>
+<div class="card card-compact hr-hero-card">
+    <div class="section-head">
+        <div>
+            <h1>Assenze e permessi</h1>
+            <div class="meta">
+                Gestisci richieste per te stesso oppure, se il tuo profilo lo consente, inseriscile direttamente per collaboratori e dipendenti del tuo perimetro.
+            </div>
+        </div>
+        <div class="section-head-actions">
+            <?php if ($puoLeggereCalendario): ?>
+                <a class="btn btn-light" href="calendario_assenze.php"><i class="la la-calendar-check" aria-hidden="true"></i> Apri calendario</a>
+            <?php endif; ?>
+            <?php if ($puoLeggereApprovazioni): ?>
+                <a class="btn btn-light" href="approvazioni_assenze.php"><i class="la la-check-circle" aria-hidden="true"></i> Apri approvazioni</a>
+            <?php endif; ?>
+            <?php if ($puoConfigurare): ?>
+                <a class="btn btn-light" href="configurazione_assenze.php"><i class="la la-cog" aria-hidden="true"></i> Configura modulo</a>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
 
-<?php renderHrAlert($errore, 'danger'); ?>
-<?php renderHrAlert($messaggio, 'success'); ?>
+<?php if ($errore !== ''): ?>
+    <div class="errore"><?= h($errore) ?></div>
+<?php endif; ?>
+
+<?php if ($messaggio !== ''): ?>
+    <div class="ok"><?= h($messaggio) ?></div>
+<?php endif; ?>
 
 <div class="card card-compact hr-scope-card">
     <div class="hr-scope-line">
@@ -1040,17 +855,15 @@ renderHrPageHeader([
     <?php endif; ?>
 </div>
 
-<?php
-renderHrSummaryLine([
-    ['value' => (int)$riepilogo['totali'], 'label' => 'richieste totali'],
-    ['value' => (int)$riepilogo['in_attesa'], 'label' => 'in attesa'],
-    ['value' => (int)$riepilogo['approvate'], 'label' => 'approvate'],
-    ['value' => (int)$riepilogo['rifiutate'], 'label' => 'rifiutate'],
-], 'hr-summary-line', 'Riepilogo richieste assenze');
-?>
+<div class="hr-summary-line">
+    <span><strong><?= (int)$riepilogo['totali'] ?></strong> richieste totali</span>
+    <span><strong><?= (int)$riepilogo['in_attesa'] ?></strong> in attesa</span>
+    <span><strong><?= (int)$riepilogo['approvate'] ?></strong> approvate</span>
+    <span><strong><?= (int)$riepilogo['rifiutate'] ?></strong> rifiutate</span>
+</div>
 
 <div class="card card-form hr-form-card">
-    <h2><i class="la la-plus-circle" aria-hidden="true"></i> Nuova richiesta</h2>
+    <h2>Nuova richiesta</h2>
 
     <?php if (!$puoScrivere): ?>
         <div class="info-box">Il tuo profilo può consultare la pagina ma non inserire richieste.</div>
@@ -1058,7 +871,8 @@ renderHrSummaryLine([
         <form method="post" action="assenze.php" id="form-richiesta-assenza">
             <input type="hidden" name="azione" value="nuova_richiesta">
 
-            <div class="hr-request-grid">
+            <div class="hr-request-layout">
+                <div class="hr-request-row hr-request-row-primary">
                     <?php if (count($utentiGestibili) > 1): ?>
                     <div class="form-group hr-field-dipendente">
                         <label for="id_utente"><strong>Dipendente</strong></label>
@@ -1100,26 +914,26 @@ renderHrSummaryLine([
 
                     <div class="form-group hr-field-data" id="gruppo_data_da">
                         <label for="data_da" id="label_data_da">Dal giorno</label>
-                        <input class="control-standard" type="date" name="data_da" id="data_da" value="<?= h($form['data_da']) ?>" <?= $bloccaDateRetroattive ? 'min="' . h($oggiIso) . '"' : '' ?> required>
+                        <input class="control-standard" type="date" name="data_da" id="data_da" value="<?= h($form['data_da']) ?>" required>
                     </div>
 
                     <div class="form-group hr-field-data" id="gruppo_data_a">
                         <label for="data_a" id="label_data_a">Al giorno</label>
-                        <input class="control-standard" type="date" name="data_a" id="data_a" value="<?= h($form['data_a']) ?>" <?= $bloccaDateRetroattive ? 'min="' . h($oggiIso) . '"' : '' ?>>
+                        <input class="control-standard" type="date" name="data_a" id="data_a" value="<?= h($form['data_a']) ?>">
                     </div>
 
                     <div class="form-group hr-field-time" id="gruppo_ora_da">
                         <label for="ora_da" id="label_ora_da">Dalle ore</label>
-                        <input class="control-standard" type="time" name="ora_da" id="ora_da" value="<?= h($form['ora_da']) ?>" step="300">
+                        <input class="control-standard" type="time" name="ora_da" id="ora_da" value="<?= h($form['ora_da']) ?>">
                     </div>
 
                     <div class="form-group hr-field-time" id="gruppo_ora_a">
                         <label for="ora_a" id="label_ora_a">Alle ore</label>
-                        <input class="control-standard" type="time" name="ora_a" id="ora_a" value="<?= h($form['ora_a']) ?>" step="300">
+                        <input class="control-standard" type="time" name="ora_a" id="ora_a" value="<?= h($form['ora_a']) ?>">
                     </div>
-            </div>
+                </div>
 
-            <div class="hr-request-notes">
+                <div class="hr-request-row hr-request-row-secondary">
                     <div class="form-group hr-field-oggetto">
                         <label for="oggetto">Oggetto breve</label>
                         <input type="text" name="oggetto" id="oggetto" maxlength="150" value="<?= h($form['oggetto']) ?>">
@@ -1131,133 +945,97 @@ renderHrSummaryLine([
                     </div>
 
                     <div class="actions hr-request-submit">
-                        <?= renderHrPrimaryActionButton('Registra richiesta', 'la la-save', $infoRecapitoMancante, '') ?>
+                        <button type="submit" class="btn btn-primary" <?= $infoRecapitoMancante ? 'disabled' : '' ?>><i class="la la-save" aria-hidden="true"></i> Registra richiesta</button>
                     </div>
+                </div>
             </div>
         </form>
     <?php endif; ?>
 </div>
 
-<?php
-renderHrFiltri([
-    'action' => 'assenze.php',
-    'method' => 'get',
-    'active' => $filtriAttivi,
-    'hidden' => [
-        'id_utente' => (int)$idUtenteTarget,
-    ],
-    'fields' => [
-        [
-            'name' => 'stato',
-            'label' => 'Stato',
-            'type' => 'select',
-            'value' => $filtri['stato'],
-            'options' => array_merge(
-                [[ 'value' => '', 'label' => 'Tutti gli stati' ]],
-                array_map(static function (array $statoFiltro): array {
-                    return [
-                        'value' => (string)$statoFiltro['codice'],
-                        'label' => (string)$statoFiltro['descrizione'],
-                    ];
-                }, $statiFiltro)
-            ),
-        ],
-        [
-            'name' => 'tipologia',
-            'label' => 'Tipologia',
-            'type' => 'select',
-            'value' => (string)$filtri['tipologia'],
-            'options' => array_merge(
-                [[ 'value' => '0', 'label' => 'Tutte' ]],
-                array_map(static function (array $tipologia): array {
-                    return [
-                        'value' => (string)$tipologia['id_tipologia_evento'],
-                        'label' => (string)$tipologia['descrizione'],
-                    ];
-                }, $tipologie)
-            ),
-        ],
-        [
-            'name' => 'dal',
-            'label' => 'Dal',
-            'type' => 'date',
-            'value' => $filtri['dal'],
-        ],
-        [
-            'name' => 'al',
-            'label' => 'Al',
-            'type' => 'date',
-            'value' => $filtri['al'],
-        ],
-    ],
-    'reset_url' => 'assenze.php?id_utente=' . (int)$idUtenteTarget,
-]);
-?>
-<?php
-renderHrTableSection([
-    'title' => 'Storico richieste',
-    'subtitle' => 'Filtra e consulta le richieste del dipendente selezionato.',
-    'rows' => $richieste,
-    'columns' => [
-        ['label' => 'Codice'],
-        ['label' => 'Utente'],
-        ['label' => 'Tipologia'],
-        ['label' => 'Periodo'],
-        ['label' => 'Stato'],
-        ['label' => 'Responsabile'],
-        ['label' => 'Creata il'],
-        ['label' => 'Oggetto / note'],
-        ['label' => 'Azioni'],
-    ],
-    'empty_message' => 'Non ci sono ancora richieste per il dipendente selezionato.',
-    'section_class' => 'card card-wide hr-history-card',
-    'responsive_class' => 'table-wrap',
-    'table_class' => '',
-    'row_renderer' => static function (array $r) use ($puoScrivere, $idUtenteTarget): void {
-        $periodo = (string)$r['data_da'];
-        if ((string)$r['data_a'] !== '' && (string)$r['data_a'] !== (string)$r['data_da']) {
-            $periodo .= ' → ' . (string)$r['data_a'];
-        }
-        if ((string)$r['tipo_periodo'] === 'ORE' && (string)$r['ora_da'] !== '' && (string)$r['ora_a'] !== '') {
-            $periodo .= '<br><span class="meta">' . h((string)$r['ora_da']) . ' - ' . h((string)$r['ora_a']) . '</span>';
-        }
-        $annullabile = in_array((string)$r['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true);
-        ?>
-        <tr>
-            <td><strong><?= h((string)$r['codice_richiesta']) ?></strong></td>
-            <td><?= h((string)$r['richiedente']) ?></td>
-            <td><?= h((string)$r['tipologia']) ?></td>
-            <td><?= $periodo ?></td>
-            <td><?= renderHrStatusBadge((string)$r['stato_codice'], (string)$r['stato']) ?></td>
-            <td><?= h(trim((string)$r['responsabile']) !== '' ? (string)$r['responsabile'] : 'Nessun responsabile') ?></td>
-            <td><?= h((string)$r['data_creazione_fmt']) ?></td>
-            <td>
-                <?php if (trim((string)$r['oggetto']) !== ''): ?>
-                    <strong><?= h((string)$r['oggetto']) ?></strong><br>
-                <?php endif; ?>
-                <?php if (trim((string)$r['note_richiedente']) !== ''): ?>
-                    <?= nl2br(h((string)$r['note_richiedente'])) ?>
-                <?php else: ?>
-                    <span class="meta">Nessuna nota</span>
-                <?php endif; ?>
-            </td>
-            <td>
-                <?php if ($puoScrivere && $annullabile): ?>
-                    <form method="post" action="assenze.php" onsubmit="return confirm('Confermi l\'annullamento della richiesta?');">
-                        <input type="hidden" name="azione" value="annulla_richiesta">
-                        <input type="hidden" name="id_richiesta" value="<?= (int)$r['id_richiesta'] ?>">
-                        <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
-                        <?= renderHrDangerOutlineActionButton('Annulla') ?>
-                    </form>
-                <?php else: ?>
-                    <span class="meta">-</span>
-                <?php endif; ?>
-            </td>
-        </tr>
-        <?php
-    },
-]);
-?>
+<div class="card card-wide hr-history-card">
+    <div class="hr-history-head">
+        <div>
+            <h2>Storico richieste</h2>
+            <p class="meta">Filtra e consulta le richieste del dipendente selezionato.</p>
+        </div>
+        <div class="hr-filter-toolbar">
+            <div class="form-group hr-filter-search-group">
+                <label for="richiesteSearch">Filtro rapido</label>
+                <input type="search" id="richiesteSearch" data-quick-filter="richiesteTable" placeholder="Cerca in tutte le colonne..." autocomplete="off">
+            </div>
+        </div>
+    </div>
+
+    <?php if (count($richieste) === 0): ?>
+        <div class="meta">Non ci sono ancora richieste per il dipendente selezionato.</div>
+    <?php else: ?>
+        <div class="table-wrap">
+            <table id="richiesteTable" data-quick-filter-table>
+                <thead>
+                    <tr>
+                        <th>Codice</th>
+                        <th>Utente</th>
+                        <th>Tipologia</th>
+                        <th>Periodo</th>
+                        <th>Stato</th>
+                        <th>Responsabile</th>
+                        <th>Creata il</th>
+                        <th>Oggetto / note</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($richieste as $r): ?>
+                        <?php
+                        $periodo = (string)$r['data_da'];
+                        if ((string)$r['data_a'] !== '' && (string)$r['data_a'] !== (string)$r['data_da']) {
+                            $periodo .= ' → ' . (string)$r['data_a'];
+                        }
+                        if ((string)$r['tipo_periodo'] === 'ORE' && (string)$r['ora_da'] !== '' && (string)$r['ora_a'] !== '') {
+                            $periodo .= '<br><span class="meta">' . h((string)$r['ora_da']) . ' - ' . h((string)$r['ora_a']) . '</span>';
+                        }
+                        $annullabile = in_array((string)$r['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true);
+                        ?>
+                        <tr>
+                            <td><strong><?= h((string)$r['codice_richiesta']) ?></strong></td>
+                            <td><?= h((string)$r['richiedente']) ?></td>
+                            <td><?= h((string)$r['tipologia']) ?></td>
+                            <td><?= $periodo ?></td>
+                            <td><span class="status-badge <?= hrClasseStato((string)$r['stato_codice']) ?>"><?= h((string)$r['stato']) ?></span></td>
+                            <td><?= h(trim((string)$r['responsabile']) !== '' ? (string)$r['responsabile'] : 'Nessun responsabile') ?></td>
+                            <td><?= h((string)$r['data_creazione_fmt']) ?></td>
+                            <td>
+                                <?php if (trim((string)$r['oggetto']) !== ''): ?>
+                                    <strong><?= h((string)$r['oggetto']) ?></strong><br>
+                                <?php endif; ?>
+                                <?php if (trim((string)$r['note_richiedente']) !== ''): ?>
+                                    <?= nl2br(h((string)$r['note_richiedente'])) ?>
+                                <?php else: ?>
+                                    <span class="meta">Nessuna nota</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($puoScrivere && $annullabile): ?>
+                                    <form method="post" action="assenze.php" onsubmit="return confirm('Confermi l\'annullamento della richiesta?');">
+                                        <input type="hidden" name="azione" value="annulla_richiesta">
+                                        <input type="hidden" name="id_richiesta" value="<?= (int)$r['id_richiesta'] ?>">
+                                        <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="la la-times" aria-hidden="true"></i> Annulla</button>
+                                    </form>
+                                <?php else: ?>
+                                    <span class="meta">-</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <div class="meta quick-filter-empty" data-quick-filter-empty="richiesteTable">Nessuna richiesta corrisponde al filtro rapido.</div>
+        </div>
+    <?php endif; ?>
+</div>
+
 <script>
 (function () {
     const modalita = document.getElementById('modalita');
@@ -1280,67 +1058,6 @@ renderHrTableSection([
         element.classList.toggle('is-hidden', !show);
     }
 
-    function normalizzaOraA5Minuti(valore) {
-        if (!valore) return '';
-        const parti = valore.split(':');
-        if (parti.length < 2) return valore;
-        const ore = parseInt(parti[0], 10);
-        const minuti = parseInt(parti[1], 10);
-        if (Number.isNaN(ore) || Number.isNaN(minuti)) return valore;
-        const minutiArrotondati = Math.round(minuti / 5) * 5;
-        const totale = (ore * 60 + minutiArrotondati) % (24 * 60);
-        const hh = String(Math.floor(totale / 60)).padStart(2, '0');
-        const mm = String(totale % 60).padStart(2, '0');
-        return `${hh}:${mm}`;
-    }
-
-    function aggiungiUnOra(valore) {
-        if (!valore) return '';
-        const parti = valore.split(':');
-        if (parti.length < 2) return '';
-        const ore = parseInt(parti[0], 10);
-        const minuti = parseInt(parti[1], 10);
-        if (Number.isNaN(ore) || Number.isNaN(minuti)) return '';
-        const totale = (ore * 60 + minuti + 60) % (24 * 60);
-        const hh = String(Math.floor(totale / 60)).padStart(2, '0');
-        const mm = String(totale % 60).padStart(2, '0');
-        return `${hh}:${mm}`;
-    }
-
-    let ultimoDalGiorno = dataDa ? dataDa.value : '';
-    let ultimoAlGiornoAutomatico = dataA ? dataA.value : '';
-    let ultimoDalleOre = oraDa ? oraDa.value : '';
-    let ultimoAlleOreAutomatico = oraA ? oraA.value : '';
-
-    function alGiornoSegueDalGiorno() {
-        if (!dataA) return false;
-        return !dataA.value || dataA.value === ultimoDalGiorno || dataA.value === ultimoAlGiornoAutomatico;
-    }
-
-    function alleOreSegueDalleOre() {
-        if (!oraA) return false;
-        return !oraA.value || oraA.value === ultimoAlleOreAutomatico;
-    }
-
-    function sincronizzaAlGiorno(forza) {
-        if (!dataDa || !dataA || !dataDa.value) return;
-        if (forza || alGiornoSegueDalGiorno()) {
-            dataA.value = dataDa.value;
-            ultimoAlGiornoAutomatico = dataA.value;
-        }
-        ultimoDalGiorno = dataDa.value;
-    }
-
-    function sincronizzaAlleOre(forza) {
-        if (!oraDa || !oraA || !oraDa.value) return;
-        const valoreAutomatico = aggiungiUnOra(oraDa.value);
-        if (forza || alleOreSegueDalleOre()) {
-            oraA.value = valoreAutomatico;
-            ultimoAlleOreAutomatico = oraA.value;
-        }
-        ultimoDalleOre = oraDa.value;
-    }
-
     function aggiornaCampi() {
         const isOre = modalita.value === 'ore';
 
@@ -1357,44 +1074,57 @@ renderHrTableSection([
         oraA.required = isOre;
 
         if (isOre) {
-            sincronizzaAlGiorno(true);
-            sincronizzaAlleOre(false);
+            dataA.value = dataDa.value;
         } else {
-            sincronizzaAlGiorno(false);
+            if (!dataA.value) {
+                dataA.value = dataDa.value;
+            }
             oraDa.value = '';
             oraA.value = '';
-            ultimoDalleOre = '';
-            ultimoAlleOreAutomatico = '';
         }
     }
 
     modalita.addEventListener('change', aggiornaCampi);
     dataDa.addEventListener('change', function () {
-        sincronizzaAlGiorno(modalita.value === 'ore');
+        if (modalita.value === 'ore') {
+            dataA.value = dataDa.value;
+        }
     });
-    if (dataA) {
-        dataA.addEventListener('focus', function () {
-            sincronizzaAlGiorno(false);
-        });
-        dataA.addEventListener('change', function () {
-            ultimoAlGiornoAutomatico = dataA.value === dataDa.value ? dataA.value : ultimoAlGiornoAutomatico;
-        });
-    }
-    if (oraDa && oraA) {
-        oraDa.addEventListener('change', function () {
-            oraDa.value = normalizzaOraA5Minuti(oraDa.value);
-            sincronizzaAlleOre(false);
-        });
-        oraA.addEventListener('change', function () {
-            oraA.value = normalizzaOraA5Minuti(oraA.value);
-            ultimoAlleOreAutomatico = oraA.value === aggiungiUnOra(oraDa.value) ? oraA.value : ultimoAlleOreAutomatico;
-        });
-    }
 
     aggiornaCampi();
 })();
 </script>
 
 </div>
+
+
+<script>
+(function () {
+    function normalizzaTesto(valore) {
+        return (valore || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    document.querySelectorAll('[data-quick-filter]').forEach(function (input) {
+        var tableId = input.getAttribute('data-quick-filter');
+        var table = document.getElementById(tableId);
+        if (!table) { return; }
+        var empty = document.querySelector('[data-quick-filter-empty="' + tableId + '"]');
+        var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+
+        input.addEventListener('input', function () {
+            var query = normalizzaTesto(input.value.trim());
+            var visible = 0;
+            rows.forEach(function (row) {
+                var match = query === '' || normalizzaTesto(row.textContent).indexOf(query) !== -1;
+                row.style.display = match ? '' : 'none';
+                if (match) { visible += 1; }
+            });
+            if (empty) {
+                empty.style.display = visible === 0 ? 'block' : 'none';
+            }
+        });
+    });
+})();
+</script>
 
 <?php layoutFooter(); ?>

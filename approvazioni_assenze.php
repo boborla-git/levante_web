@@ -4,12 +4,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
-require_once __DIR__ . '/includes/filtri.php';
-require_once __DIR__ . '/includes/ui.php';
-require_once __DIR__ . '/includes/table.php';
-require_once __DIR__ . '/includes/badge.php';
-require_once __DIR__ . '/includes/actions.php';
-require_once __DIR__ . '/includes/mail.php';
 
 richiediPermessoLettura('approvazioni_assenze');
 
@@ -20,7 +14,7 @@ $puoConfigurare = haPermessoLettura('configurazione_assenze');
 $errore = '';
 $messaggio = '';
 
-$filtroStato = trim((string)($_GET['stato'] ?? 'IN_ATTESA'));
+$filtroStato = trim((string)($_GET['stato'] ?? ''));
 $filtroDataDa = trim((string)($_GET['data_da'] ?? ''));
 $filtroDataA = trim((string)($_GET['data_a'] ?? ''));
 $filtroTipologia = trim((string)($_GET['tipologia'] ?? ''));
@@ -161,6 +155,29 @@ function hrPeriodoRichiesta(array $r): string
     return $periodo;
 }
 
+function hrClasseEsito(string $stato): string
+{
+    if ($stato === 'APPROVATA') {
+        return 'badge-success';
+    }
+
+    if ($stato === 'RIFIUTATA') {
+        return 'badge-danger';
+    }
+
+    return 'badge-warning';
+}
+
+function hrDescrizioneStato(string $stato): string
+{
+    return match ($stato) {
+        'IN_ATTESA' => 'In attesa',
+        'APPROVATA' => 'Approvata',
+        'RIFIUTATA' => 'Rifiutata',
+        default => $stato,
+    };
+}
+
 try {
     $filtroApprovatore = $puoConfigurare
         ? '1 = 1'
@@ -258,18 +275,6 @@ try {
             [(int)$richiesta['id_utente_richiedente']]
         );
 
-        hrEmailInviaNotifica(
-            $pdo,
-            $azione === 'approva_richiesta' ? 'RICHIESTA_ASSENZA_APPROVATA_EMAIL' : 'RICHIESTA_ASSENZA_RIFIUTATA_EMAIL',
-            $azione === 'approva_richiesta' ? 'Richiesta approvata' : 'Richiesta rifiutata',
-            $testoNotifica,
-            '/assenze.php',
-            $idRichiesta,
-            $idUtente,
-            [(int)$richiesta['id_utente_richiedente']],
-            'personale'
-        );
-
         $pdo->commit();
 
         header('Location: approvazioni_assenze.php?' . ($azione === 'approva_richiesta' ? 'approvata=1' : 'rifiutata=1'));
@@ -348,183 +353,404 @@ try {
 layoutHeader('Approvazioni assenze');
 ?>
 
+<style>
+.approvals-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
 
+.approvals-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.15rem;
+}
+
+.approvals-hero h1 {
+    margin-bottom: 0.35rem;
+}
+
+.approvals-scope {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.55rem;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--border-color, #d9e2ec);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--text-muted, #64748b);
+    font-size: 0.9rem;
+}
+
+.approvals-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border-color, #d9e2ec);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.approvals-summary span {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    white-space: nowrap;
+    color: var(--text-muted, #64748b);
+    font-size: 0.92rem;
+}
+
+.approvals-summary strong {
+    color: var(--text-color, #172033);
+    font-size: 1.08rem;
+}
+
+.approvals-filters {
+    padding: 0.95rem 1rem;
+}
+
+.approvals-filters-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.approvals-filters-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 700;
+}
+
+.approvals-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(130px, 0.8fr) minmax(130px, 0.8fr) minmax(160px, 1fr) minmax(180px, 1.1fr) auto;
+    gap: 0.65rem;
+    align-items: end;
+}
+
+.approvals-filter-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--text-muted, #64748b);
+}
+
+.approvals-filter-grid select,
+.approvals-filter-grid input {
+    width: 100%;
+    min-height: 36px;
+}
+
+.approvals-filter-actions {
+    display: flex;
+    gap: 0.45rem;
+    justify-content: flex-end;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.approvals-table-card {
+    padding: 1rem;
+}
+
+.approvals-table-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.approvals-table-title h2 {
+    margin-bottom: 0.2rem;
+}
+
+.approvals-actions {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 290px;
+}
+
+.approvals-action-form {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) auto;
+    gap: 0.45rem;
+    margin: 0;
+    align-items: center;
+}
+
+.approvals-action-form input {
+    min-width: 0;
+    width: 100%;
+}
+
+@media (max-width: 1100px) {
+    .approvals-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .approvals-filter-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 760px) {
+    .approvals-hero {
+        flex-direction: column;
+    }
+
+    .approvals-summary {
+        gap: 0.45rem 0.75rem;
+    }
+
+    .approvals-summary span {
+        white-space: normal;
+    }
+
+    .approvals-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .approvals-filter-actions,
+    .approvals-action-form {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .approvals-actions {
+        min-width: 0;
+    }
+}
+
+.hr-filter-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin: 0 0 0.75rem;
+}
+.hr-filter-search-group {
+    width: min(380px, 100%);
+}
+.hr-filter-search-group input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    font: inherit;
+    background: #fff;
+}
+.hr-filter-search-group input:focus {
+    outline: none;
+    border-color: var(--primary, #005bd4);
+    box-shadow: 0 0 0 2px rgba(0, 91, 212, 0.16);
+}
+.quick-filter-empty {
+    display: none;
+    margin-top: 0.75rem;
+}
+@media (max-width: 760px) {
+    .hr-filter-toolbar {
+        justify-content: stretch;
+    }
+    .hr-filter-search-group {
+        width: 100%;
+    }
+}
+
+</style>
 
 <div class="approvals-page">
-    <?php
-    renderHrPageHeader([
-        'tag' => 'section',
-        'class' => 'approvals-hero',
-        'title' => 'Approvazioni assenze',
-        'subtitle' => "Gestisci le richieste in attesa. L'approvazione può essere confermata senza nota; il rifiuto richiede sempre una motivazione.",
-        'icon' => 'la la-check-circle',
-        'extra_html' => '<div class="approvals-scope"><i class="la la-user-shield" aria-hidden="true"></i><span>Ambito corrente: <strong>' . h(hrScopeLabelApprovazioni($puoConfigurare)) . '</strong></span></div>',
-        'actions' => [
-            [
-                'href' => 'assenze.php',
-                'label' => 'Le mie richieste',
-                'icon' => 'la la-calendar',
-                'class' => 'btn btn-outline-primary btn-sm',
-            ],
-        ],
-    ]);
-    ?>
+    <section class="approvals-hero">
+        <div>
+            <h1><i class="la la-check-circle"></i> Approvazioni assenze</h1>
+            <p class="text-muted">
+                Gestisci le richieste in attesa. L'approvazione può essere confermata senza nota; il rifiuto richiede sempre una motivazione.
+            </p>
+            <div class="approvals-scope">
+                <i class="la la-user-shield"></i>
+                <span>Ambito corrente: <strong><?= h(hrScopeLabelApprovazioni($puoConfigurare)) ?></strong></span>
+            </div>
+        </div>
 
-    <?php renderHrAlert($messaggio, 'success'); ?>
-    <?php renderHrAlert($errore, 'danger'); ?>
+        <a href="assenze.php" class="btn btn-outline-primary btn-sm">
+            <i class="la la-calendar"></i> Le mie richieste
+        </a>
+    </section>
 
-    <?php
-    renderHrSummaryLine([
-        ['value' => (int)$riepilogo['visualizzate'], 'label' => 'richieste visualizzate'],
-        ['value' => (int)$riepilogo['pendenti'], 'label' => 'da gestire'],
-        ['value' => (int)$riepilogo['approvate_oggi'], 'label' => 'approvate oggi'],
-        ['value' => (int)$riepilogo['rifiutate_oggi'], 'label' => 'rifiutate oggi'],
-    ], 'approvals-summary', 'Riepilogo approvazioni assenze');
-    ?>
+    <?php if ($messaggio !== ''): ?>
+        <div class="alert alert-success"><?= h($messaggio) ?></div>
+    <?php endif; ?>
 
-    <?php
-    renderHrFiltri([
-        'action' => 'approvazioni_assenze.php',
-        'method' => 'get',
-        'active' => $filtriAttivi,
-        'fields' => [
-            [
-                'name' => 'stato',
-                'label' => 'Stato',
-                'type' => 'select',
-                'value' => $filtroStato,
-                'options' => [
-                    [ 'value' => '', 'label' => 'Tutti gli stati' ],
-                    [ 'value' => 'IN_ATTESA', 'label' => 'Pendenti' ],
-                    [ 'value' => 'APPROVATA', 'label' => 'Approvate' ],
-                    [ 'value' => 'RIFIUTATA', 'label' => 'Rifiutate' ],
-                ],
-            ],
-            [
-                'name' => 'data_da',
-                'label' => 'Dal',
-                'type' => 'date',
-                'value' => $filtroDataDa,
-            ],
-            [
-                'name' => 'data_a',
-                'label' => 'Al',
-                'type' => 'date',
-                'value' => $filtroDataA,
-            ],
-            [
-                'name' => 'tipologia',
-                'label' => 'Tipologia',
-                'type' => 'select',
-                'value' => $filtroTipologia,
-                'options' => array_merge(
-                    [[ 'value' => '', 'label' => 'Tutte' ]],
-                    array_map(static function (array $tipologia): array {
-                        return [
-                            'value' => (string)$tipologia['codice'],
-                            'label' => (string)$tipologia['descrizione'],
-                        ];
-                    }, $tipologie)
-                ),
-            ],
-            [
-                'name' => 'utente',
-                'label' => 'Richiedente',
-                'type' => 'text',
-                'value' => $filtroUtente,
-                'placeholder' => 'Nome o cognome',
-            ],
-        ],
-        'reset_url' => 'approvazioni_assenze.php',
-    ]);
-    ?>
-    <?php
-    renderHrTableSection([
-        'title' => 'Richieste',
-        'subtitle' => 'Sono mostrate solo le informazioni utili alla decisione.',
-        'rows' => $richieste,
-        'columns' => [
-            ['label' => 'Richiedente'],
-            ['label' => 'Richiesta'],
-            ['label' => 'Periodo'],
-            ['label' => 'Stato'],
-            ['label' => 'Note'],
-            ['label' => 'Decisione', 'style' => 'width: 320px;'],
-        ],
-        'empty_message' => 'Nessuna richiesta trovata con i filtri impostati.',
-        'section_class' => 'card approvals-table-card',
-        'title_class' => 'approvals-table-title',
-        'responsive_class' => 'table-responsive',
-        'table_class' => 'table',
-        'row_renderer' => static function (array $richiesta) use ($puoConfigurare, $puoScrivere): void {
-            $stato = (string)$richiesta['stato_approvazione'];
-            ?>
-            <tr>
-                <td>
-                    <strong><?= h(trim((string)$richiesta['richiedente'])) ?></strong>
-                    <?php if ($puoConfigurare && trim((string)$richiesta['approvatore_assegnato']) !== ''): ?>
-                        <br><span class="text-muted">Assegnata a <?= h(trim((string)$richiesta['approvatore_assegnato'])) ?></span>
-                    <?php endif; ?>
-                    <?php if ($stato === 'IN_ATTESA'): ?>
-                        <br><span class="text-muted">Dal <?= h((string)$richiesta['data_assegnazione']) ?></span>
-                    <?php elseif (trim((string)$richiesta['data_risposta']) !== ''): ?>
-                        <br><span class="text-muted">Risposta: <?= h((string)$richiesta['data_risposta']) ?></span>
-                    <?php endif; ?>
-                </td>
-                <td>
-                    <strong><?= h((string)$richiesta['tipologia']) ?></strong>
-                    <?php if (trim((string)$richiesta['oggetto']) !== ''): ?>
-                        <br><?= h((string)$richiesta['oggetto']) ?>
-                    <?php endif; ?>
-                </td>
-                <td><?= h(hrPeriodoRichiesta($richiesta)) ?></td>
-                <td>
-                    <?= renderHrStatusBadge($stato) ?>
-                    <?php if ((int)$richiesta['gestita_da_hr'] === 1): ?>
-                        <br><?= renderHrStatusBadge('IN_ATTESA', 'gestita da HR', ['style' => 'margin-top: 0.35rem;']) ?>
-                    <?php endif; ?>
-                </td>
-                <td>
-                    <?php if ($stato === 'IN_ATTESA'): ?>
-                        <?php if (trim((string)$richiesta['note_richiedente']) !== ''): ?>
-                            <?= nl2br(h((string)$richiesta['note_richiedente'])) ?>
-                        <?php else: ?>
-                            <span class="text-muted">Nessuna nota</span>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <?php if (trim((string)$richiesta['note_approvatore']) !== ''): ?>
-                            <?= nl2br(h((string)$richiesta['note_approvatore'])) ?>
-                        <?php else: ?>
-                            <span class="text-muted">Nessuna nota</span>
-                        <?php endif; ?>
-                    <?php endif; ?>
-                </td>
-                <td>
-                    <?php if ($stato === 'IN_ATTESA'): ?>
-                        <div class="approvals-actions">
-                            <form method="post" class="approvals-action-form">
-                                <input type="hidden" name="azione" value="approva_richiesta">
-                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
-                                <input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione">
-                                <?= renderHrPrimaryActionButton('Approva', 'la la-check', !$puoScrivere) ?>
-                            </form>
+    <?php if ($errore !== ''): ?>
+        <div class="alert alert-danger"><?= h($errore) ?></div>
+    <?php endif; ?>
 
-                            <form method="post" class="approvals-action-form">
-                                <input type="hidden" name="azione" value="rifiuta_richiesta">
-                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
-                                <input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required>
-                                <?= renderHrDangerOutlineActionButton('Rifiuta', 'la la-times', !$puoScrivere) ?>
-                            </form>
-                        </div>
-                    <?php else: ?>
-                        <span class="text-muted">Già gestita</span>
-                    <?php endif; ?>
-                </td>
-            </tr>
-            <?php
-        },
-    ]);
-    ?>
+    <section class="approvals-summary" aria-label="Riepilogo approvazioni assenze">
+        <span><strong><?= (int)$riepilogo['visualizzate'] ?></strong> richieste visualizzate</span>
+        <span><strong><?= (int)$riepilogo['pendenti'] ?></strong> da gestire</span>
+        <span><strong><?= (int)$riepilogo['approvate_oggi'] ?></strong> approvate oggi</span>
+        <span><strong><?= (int)$riepilogo['rifiutate_oggi'] ?></strong> rifiutate oggi</span>
+    </section>
+
+    <section class="card approvals-filters">
+        <div class="approvals-filters-header">
+            <div class="approvals-filters-title">
+                <i class="la la-filter"></i>
+                <span>Filtri</span>
+            </div>
+            <div class="hr-filter-toolbar">
+                <div class="form-group hr-filter-search-group">
+                    <label for="approvazioniSearch">Filtro rapido</label>
+                    <input type="search" id="approvazioniSearch" data-quick-filter="approvazioniTable" placeholder="Cerca in tutte le colonne..." autocomplete="off">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card approvals-table-card">
+        <div class="approvals-table-title">
+            <div>
+                <h2>Richieste</h2>
+                <p class="text-muted">Sono mostrate solo le informazioni utili alla decisione.</p>
+            </div>
+        </div>
+
+        <?php if (count($richieste) === 0): ?>
+            <p class="text-muted">Nessuna richiesta trovata con i filtri impostati.</p>
+        <?php else: ?>
+            <div class="table-responsive">
+                <table class="table" id="approvazioniTable" data-quick-filter-table>
+                    <thead>
+                        <tr>
+                            <th>Richiedente</th>
+                            <th>Richiesta</th>
+                            <th>Periodo</th>
+                            <th>Stato</th>
+                            <th>Note</th>
+                            <th style="width: 320px;">Decisione</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($richieste as $richiesta): ?>
+                            <?php $stato = (string)$richiesta['stato_approvazione']; ?>
+                            <tr>
+                                <td>
+                                    <strong><?= h(trim((string)$richiesta['richiedente'])) ?></strong>
+                                    <?php if ($puoConfigurare && trim((string)$richiesta['approvatore_assegnato']) !== ''): ?>
+                                        <br><span class="text-muted">Assegnata a <?= h(trim((string)$richiesta['approvatore_assegnato'])) ?></span>
+                                    <?php endif; ?>
+                                    <?php if ($stato === 'IN_ATTESA'): ?>
+                                        <br><span class="text-muted">Dal <?= h((string)$richiesta['data_assegnazione']) ?></span>
+                                    <?php elseif (trim((string)$richiesta['data_risposta']) !== ''): ?>
+                                        <br><span class="text-muted">Risposta: <?= h((string)$richiesta['data_risposta']) ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <strong><?= h((string)$richiesta['tipologia']) ?></strong>
+                                    <?php if (trim((string)$richiesta['oggetto']) !== ''): ?>
+                                        <br><?= h((string)$richiesta['oggetto']) ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= h(hrPeriodoRichiesta($richiesta)) ?></td>
+                                <td>
+                                    <span class="badge <?= h(hrClasseEsito($stato)) ?>">
+                                        <?= h(hrDescrizioneStato($stato)) ?>
+                                    </span>
+                                    <?php if ((int)$richiesta['gestita_da_hr'] === 1): ?>
+                                        <br><span class="badge badge-warning" style="margin-top: 0.35rem;">gestita da HR</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($stato === 'IN_ATTESA'): ?>
+                                        <?php if (trim((string)$richiesta['note_richiedente']) !== ''): ?>
+                                            <?= nl2br(h((string)$richiesta['note_richiedente'])) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">Nessuna nota</span>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <?php if (trim((string)$richiesta['note_approvatore']) !== ''): ?>
+                                            <?= nl2br(h((string)$richiesta['note_approvatore'])) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">Nessuna nota</span>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($stato === 'IN_ATTESA'): ?>
+                                        <div class="approvals-actions">
+                                            <form method="post" class="approvals-action-form">
+                                                <input type="hidden" name="azione" value="approva_richiesta">
+                                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
+                                                <input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione">
+                                                <button type="submit" class="btn btn-sm btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>
+                                                    <i class="la la-check"></i> Approva
+                                                </button>
+                                            </form>
+
+                                            <form method="post" class="approvals-action-form">
+                                                <input type="hidden" name="azione" value="rifiuta_richiesta">
+                                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
+                                                <input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" <?= $puoScrivere ? '' : 'disabled' ?>>
+                                                    <i class="la la-times"></i> Rifiuta
+                                                </button>
+                                            </form>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="text-muted">Già gestita</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <div class="text-muted quick-filter-empty" data-quick-filter-empty="approvazioniTable">Nessuna richiesta corrisponde al filtro rapido.</div>
+            </div>
+        <?php endif; ?>
+    </section>
 </div>
+
+
+<script>
+(function () {
+    function normalizzaTesto(valore) {
+        return (valore || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    document.querySelectorAll('[data-quick-filter]').forEach(function (input) {
+        var tableId = input.getAttribute('data-quick-filter');
+        var table = document.getElementById(tableId);
+        if (!table) { return; }
+        var empty = document.querySelector('[data-quick-filter-empty="' + tableId + '"]');
+        var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+
+        input.addEventListener('input', function () {
+            var query = normalizzaTesto(input.value.trim());
+            var visible = 0;
+            rows.forEach(function (row) {
+                var match = query === '' || normalizzaTesto(row.textContent).indexOf(query) !== -1;
+                row.style.display = match ? '' : 'none';
+                if (match) { visible += 1; }
+            });
+            if (empty) {
+                empty.style.display = visible === 0 ? 'block' : 'none';
+            }
+        });
+    });
+})();
+</script>
 
 <?php layoutFooter(); ?>
