@@ -225,6 +225,19 @@ layoutHeader('Recapiti utenti');
 }
 .hr-recapiti-search-group input {
     width: 100%;
+    min-height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font: inherit;
+    color: #0f172a;
+    background: #fff;
+    box-sizing: border-box;
+}
+.hr-recapiti-search-group input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
 }
 .hr-recapito-new-grid {
     display: grid;
@@ -266,14 +279,11 @@ layoutHeader('Recapiti utenti');
 }
 @media (max-width: 900px) {
     .hr-recapiti-toolbar,
-    .hr-recapito-new-grid,
-    .hr-recapito-note-row {
+    .hr-recapito-form-row {
         grid-template-columns: 1fr;
     }
-    .hr-recapito-options {
-        min-width: 0;
-    }
     .hr-recapito-options-list {
+        flex-wrap: wrap;
         align-items: flex-start;
     }
     .hr-recapito-actions {
@@ -314,7 +324,7 @@ layoutHeader('Recapiti utenti');
             <input type="hidden" name="azione" value="salva_recapito">
             <input type="hidden" name="id_recapito_utente" value="0">
 
-            <div class="hr-recapito-new-grid">
+            <div class="hr-recapito-form-row">
                 <div class="form-group">
                     <label for="id_utente">Utente</label>
                     <select name="id_utente" id="id_utente" required>
@@ -343,9 +353,7 @@ layoutHeader('Recapiti utenti');
                     <label for="valore">Valore</label>
                     <input type="text" name="valore" id="valore" maxlength="255" required>
                 </div>
-            </div>
 
-            <div class="hr-recapito-note-row">
                 <div class="form-group">
                     <label for="note">Note</label>
                     <input type="text" name="note" id="note" maxlength="255">
