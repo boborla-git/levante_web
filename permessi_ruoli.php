@@ -245,6 +245,78 @@ $ruoloSelezionato = $ruoliPerId[$idRuoloSelezionato];
 layoutHeader('Permessi ruoli');
 ?>
 
+<style>
+.hr-filter-toolbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(280px, 420px);
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 16px;
+}
+.hr-filter-toolbar-main {
+    min-width: 0;
+}
+.hr-filter-search-group {
+    margin-bottom: 0;
+}
+.hr-filter-search-group input[type="search"] {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font: inherit;
+    color: #0f172a;
+    background: #fff;
+    box-sizing: border-box;
+}
+.hr-filter-search-group input[type="search"]:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+}
+.permissions-role-form {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.permissions-role-form label {
+    margin: 0;
+}
+.permissions-role-form select {
+    width: 100%;
+    min-height: 40px;
+}
+.permissions-table td,
+.permissions-table th {
+    vertical-align: middle;
+}
+.permissions-radio-cell {
+    text-align: center;
+    white-space: nowrap;
+}
+.permissions-auto-cell {
+    text-align: center;
+    color: #64748b;
+}
+.admin-save-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+@media (max-width: 900px) {
+    .hr-filter-toolbar {
+        grid-template-columns: 1fr;
+    }
+    .admin-save-actions .btn,
+    .admin-save-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
 <div class="card card-wide">
     <h1>Admin</h1>
 
@@ -255,11 +327,23 @@ layoutHeader('Permessi ruoli');
         <a class="active" href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <h2>Permessi ruoli</h2>
-
-    <div class="meta" style="margin-bottom:18px;">
-        Gestione permessi su risorse gerarchiche del portale.
-        Le righe rappresentano l'albero di <code>aut_risorse</code>.
+    <div class="hr-filter-toolbar">
+        <div class="hr-filter-toolbar-main">
+            <h2 style="margin-bottom:.35rem;">Permessi ruoli</h2>
+            <p class="muted" style="margin:0;">
+                Gestione permessi su risorse gerarchiche del portale. Le righe rappresentano l'albero di <code>aut_risorse</code>.
+            </p>
+        </div>
+        <div class="form-group hr-filter-search-group">
+            <label for="filtroRapidoPermessiRuoli">Filtro rapido</label>
+            <input
+                type="search"
+                id="filtroRapidoPermessiRuoli"
+                placeholder="Cerca in tutte le colonne..."
+                autocomplete="off"
+                data-table-filter="tabellaPermessiRuoli"
+            >
+        </div>
     </div>
 
     <?php if ($errore !== ''): ?>
@@ -270,7 +354,7 @@ layoutHeader('Permessi ruoli');
         <div class="ok"><?= htmlspecialchars($messaggio) ?></div>
     <?php endif; ?>
 
-    <form method="get" id="formRuolo" style="margin-bottom:20px;">
+    <form method="get" id="formRuolo" class="permissions-role-form">
         <label for="id_ruolo"><strong>Ruolo da gestire:</strong></label>
         <select name="id_ruolo" id="id_ruolo" onchange="this.form.submit()">
             <?php foreach ($ruoli as $ruolo): ?>
@@ -291,14 +375,14 @@ layoutHeader('Permessi ruoli');
         <input type="hidden" name="id_ruolo" value="<?= (int)$idRuoloSelezionato ?>">
         <input type="hidden" name="salva_permessi" value="1">
 
-        <div class="table-responsive">
-            <table>
+        <div class="table-responsive table-wrap">
+            <table id="tabellaPermessiRuoli" class="permissions-table">
                 <thead>
                     <tr>
                         <th>Risorsa</th>
-                        <th style="text-align:center;">None</th>
-                        <th style="text-align:center;">Read</th>
-                        <th style="text-align:center;">Write</th>
+                        <th class="permissions-radio-cell">None</th>
+                        <th class="permissions-radio-cell">Read</th>
+                        <th class="permissions-radio-cell">Write</th>
                         <th>Tipo</th>
                         <th>Percorso</th>
                         <th>Codice</th>
@@ -324,15 +408,15 @@ layoutHeader('Permessi ruoli');
                             </td>
 
                             <?php if ($contenitorePuro): ?>
-                                <td colspan="3" style="text-align:center; color:#64748b;">automatico</td>
+                                <td colspan="3" class="permissions-auto-cell">automatico</td>
                             <?php else: ?>
-                                <td style="text-align:center;">
+                                <td class="permissions-radio-cell">
                                     <input type="radio" name="<?= htmlspecialchars($chiave) ?>" value="none" <?= $livelloCorrente === 'none' ? 'checked' : '' ?>>
                                 </td>
-                                <td style="text-align:center;">
+                                <td class="permissions-radio-cell">
                                     <input type="radio" name="<?= htmlspecialchars($chiave) ?>" value="read" <?= $livelloCorrente === 'read' ? 'checked' : '' ?>>
                                 </td>
-                                <td style="text-align:center;">
+                                <td class="permissions-radio-cell">
                                     <input type="radio" name="<?= htmlspecialchars($chiave) ?>" value="write" <?= $livelloCorrente === 'write' ? 'checked' : '' ?>>
                                 </td>
                             <?php endif; ?>
@@ -346,10 +430,38 @@ layoutHeader('Permessi ruoli');
             </table>
         </div>
 
-        <div class="actions">
-            <button type="submit">Salva permessi ruolo</button>
+        <div class="admin-save-actions">
+            <button class="btn btn-primary" type="submit"><i class="la la-save" aria-hidden="true"></i> Salva permessi ruolo</button>
         </div>
     </form>
 </div>
+
+<script>
+(function () {
+    function normalizzaTesto(valore) {
+        return (valore || '')
+            .toString()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, '');
+    }
+
+    document.querySelectorAll('[data-table-filter]').forEach(function (input) {
+        var tableId = input.getAttribute('data-table-filter');
+        var table = document.getElementById(tableId);
+        if (!table) {
+            return;
+        }
+
+        input.addEventListener('input', function () {
+            var filtro = normalizzaTesto(input.value);
+            table.querySelectorAll('tbody tr').forEach(function (row) {
+                var testo = normalizzaTesto(row.textContent);
+                row.style.display = testo.indexOf(filtro) !== -1 ? '' : 'none';
+            });
+        });
+    });
+})();
+</script>
 
 <?php layoutFooter(); ?>
