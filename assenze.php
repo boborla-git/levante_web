@@ -1254,6 +1254,40 @@ renderHrTableSection([
         return `${hh}:${mm}`;
     }
 
+    let ultimoDalGiorno = dataDa ? dataDa.value : '';
+    let ultimoAlGiornoAutomatico = dataA ? dataA.value : '';
+    let ultimoDalleOre = oraDa ? oraDa.value : '';
+    let ultimoAlleOreAutomatico = oraA ? oraA.value : '';
+
+    function alGiornoSegueDalGiorno() {
+        if (!dataA) return false;
+        return !dataA.value || dataA.value === ultimoDalGiorno || dataA.value === ultimoAlGiornoAutomatico;
+    }
+
+    function alleOreSegueDalleOre() {
+        if (!oraA) return false;
+        return !oraA.value || oraA.value === ultimoAlleOreAutomatico;
+    }
+
+    function sincronizzaAlGiorno(forza) {
+        if (!dataDa || !dataA || !dataDa.value) return;
+        if (forza || alGiornoSegueDalGiorno()) {
+            dataA.value = dataDa.value;
+            ultimoAlGiornoAutomatico = dataA.value;
+        }
+        ultimoDalGiorno = dataDa.value;
+    }
+
+    function sincronizzaAlleOre(forza) {
+        if (!oraDa || !oraA || !oraDa.value) return;
+        const valoreAutomatico = aggiungiUnOra(oraDa.value);
+        if (forza || alleOreSegueDalleOre()) {
+            oraA.value = valoreAutomatico;
+            ultimoAlleOreAutomatico = oraA.value;
+        }
+        ultimoDalleOre = oraDa.value;
+    }
+
     function aggiornaCampi() {
         const isOre = modalita.value === 'ore';
 
@@ -1270,38 +1304,37 @@ renderHrTableSection([
         oraA.required = isOre;
 
         if (isOre) {
-            dataA.value = dataDa.value;
+            sincronizzaAlGiorno(true);
+            sincronizzaAlleOre(false);
         } else {
-            if (!dataA.value) {
-                dataA.value = dataDa.value;
-            }
+            sincronizzaAlGiorno(false);
             oraDa.value = '';
             oraA.value = '';
+            ultimoDalleOre = '';
+            ultimoAlleOreAutomatico = '';
         }
     }
 
     modalita.addEventListener('change', aggiornaCampi);
     dataDa.addEventListener('change', function () {
-        if (!dataA.value || modalita.value === 'ore') {
-            dataA.value = dataDa.value;
-        }
+        sincronizzaAlGiorno(modalita.value === 'ore');
     });
     if (dataA) {
         dataA.addEventListener('focus', function () {
-            if (!dataA.value && dataDa.value) {
-                dataA.value = dataDa.value;
-            }
+            sincronizzaAlGiorno(false);
+        });
+        dataA.addEventListener('change', function () {
+            ultimoAlGiornoAutomatico = dataA.value === dataDa.value ? dataA.value : ultimoAlGiornoAutomatico;
         });
     }
     if (oraDa && oraA) {
         oraDa.addEventListener('change', function () {
             oraDa.value = normalizzaOraA5Minuti(oraDa.value);
-            if (!oraA.value && oraDa.value) {
-                oraA.value = aggiungiUnOra(oraDa.value);
-            }
+            sincronizzaAlleOre(false);
         });
         oraA.addEventListener('change', function () {
             oraA.value = normalizzaOraA5Minuti(oraA.value);
+            ultimoAlleOreAutomatico = oraA.value === aggiungiUnOra(oraDa.value) ? oraA.value : ultimoAlleOreAutomatico;
         });
     }
 
