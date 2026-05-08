@@ -476,6 +476,14 @@ layoutHeader('Approvazioni assenze');
     margin-bottom: 0.2rem;
 }
 
+
+@media (max-width: 760px) {
+    .approvals-table-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
 .approvals-actions {
     display: grid;
     gap: 0.45rem;
@@ -528,7 +536,15 @@ layoutHeader('Approvazioni assenze');
         grid-template-columns: 1fr;
     }
 
-    .approvals-actions {
+    
+@media (max-width: 760px) {
+    .approvals-table-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+.approvals-actions {
         min-width: 0;
     }
 }
@@ -605,26 +621,17 @@ layoutHeader('Approvazioni assenze');
         <span><strong><?= (int)$riepilogo['rifiutate_oggi'] ?></strong> rifiutate oggi</span>
     </section>
 
-    <section class="card approvals-filters">
-        <div class="approvals-filters-header">
-            <div class="approvals-filters-title">
-                <i class="la la-filter"></i>
-                <span>Filtri</span>
+    <section class="card approvals-table-card">
+        <div class="approvals-table-title">
+            <div>
+                <h2>Richieste</h2>
+                <p class="text-muted">Sono mostrate solo le informazioni utili alla decisione.</p>
             </div>
             <div class="hr-filter-toolbar">
                 <div class="form-group hr-filter-search-group">
                     <label for="approvazioniSearch">Filtro rapido</label>
                     <input type="search" id="approvazioniSearch" data-quick-filter="approvazioniTable" placeholder="Cerca in tutte le colonne..." autocomplete="off">
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="card approvals-table-card">
-        <div class="approvals-table-title">
-            <div>
-                <h2>Richieste</h2>
-                <p class="text-muted">Sono mostrate solo le informazioni utili alla decisione.</p>
             </div>
         </div>
 

@@ -764,6 +764,76 @@ layoutHeader('Assenze e permessi');
     .hr-summary-line span { white-space: normal; }
 }
 
+
+.hr-request-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+.hr-request-row {
+    display: grid;
+    gap: 0.8rem;
+    align-items: end;
+}
+.hr-request-row-primary {
+    grid-template-columns: minmax(220px, 1.35fr) minmax(190px, 1.05fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(125px, 0.7fr) minmax(125px, 0.7fr);
+}
+.hr-request-row-secondary {
+    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr) auto;
+}
+.hr-request-layout .form-group,
+.hr-request-layout .actions {
+    margin: 0;
+}
+.hr-request-layout label {
+    display: block;
+    margin: 0 0 0.35rem;
+    min-height: 1.1rem;
+}
+.hr-request-layout input,
+.hr-request-layout select,
+.hr-request-layout textarea {
+    width: 100%;
+    min-height: 38px;
+    font: inherit;
+}
+.hr-request-layout textarea {
+    height: 38px;
+    min-height: 38px;
+    resize: vertical;
+}
+.hr-request-submit {
+    display: flex;
+    justify-content: flex-end;
+    align-self: end;
+}
+.hr-request-submit .btn {
+    min-height: 38px;
+    white-space: nowrap;
+}
+.hr-request-layout .is-hidden {
+    display: none !important;
+}
+@media (max-width: 1100px) {
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        grid-template-columns: 1fr 1fr;
+    }
+    .hr-request-submit {
+        justify-content: flex-start;
+    }
+}
+@media (max-width: 760px) {
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        grid-template-columns: 1fr;
+    }
+    .hr-request-submit .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 .hr-filter-toolbar {
     display: flex;
     align-items: flex-end;
@@ -793,7 +863,77 @@ layoutHeader('Assenze e permessi');
     margin-top: 0.75rem;
 }
 @media (max-width: 760px) {
-    .hr-filter-toolbar {
+    
+.hr-request-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+.hr-request-row {
+    display: grid;
+    gap: 0.8rem;
+    align-items: end;
+}
+.hr-request-row-primary {
+    grid-template-columns: minmax(220px, 1.35fr) minmax(190px, 1.05fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(125px, 0.7fr) minmax(125px, 0.7fr);
+}
+.hr-request-row-secondary {
+    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr) auto;
+}
+.hr-request-layout .form-group,
+.hr-request-layout .actions {
+    margin: 0;
+}
+.hr-request-layout label {
+    display: block;
+    margin: 0 0 0.35rem;
+    min-height: 1.1rem;
+}
+.hr-request-layout input,
+.hr-request-layout select,
+.hr-request-layout textarea {
+    width: 100%;
+    min-height: 38px;
+    font: inherit;
+}
+.hr-request-layout textarea {
+    height: 38px;
+    min-height: 38px;
+    resize: vertical;
+}
+.hr-request-submit {
+    display: flex;
+    justify-content: flex-end;
+    align-self: end;
+}
+.hr-request-submit .btn {
+    min-height: 38px;
+    white-space: nowrap;
+}
+.hr-request-layout .is-hidden {
+    display: none !important;
+}
+@media (max-width: 1100px) {
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        grid-template-columns: 1fr 1fr;
+    }
+    .hr-request-submit {
+        justify-content: flex-start;
+    }
+}
+@media (max-width: 760px) {
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        grid-template-columns: 1fr;
+    }
+    .hr-request-submit .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.hr-filter-toolbar {
         justify-content: stretch;
     }
     .hr-filter-search-group {
