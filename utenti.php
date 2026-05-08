@@ -50,40 +50,48 @@ layoutHeader('Gestione utenti');
 ?>
 
 <style>
-.admin-page-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-top: 1rem;
+.hr-filter-toolbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(280px, 420px);
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 16px;
 }
-.admin-page-head-main {
-    min-width: 260px;
+.hr-filter-toolbar-main {
+    min-width: 0;
+}
+.hr-filter-search-group {
+    margin-bottom: 0;
+}
+.hr-filter-search-group input[type="search"] {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font: inherit;
+    color: #0f172a;
+    background: #fff;
+    box-sizing: border-box;
+}
+.hr-filter-search-group input[type="search"]:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
 }
 .admin-page-actions {
     display: flex;
     align-items: center;
     gap: .75rem;
-    margin-top: 1rem;
+    margin-top: .9rem;
     flex-wrap: wrap;
-}
-.admin-page-filter {
-    width: min(360px, 100%);
-}
-.admin-page-filter input[type="search"] {
-    width: 100%;
 }
 .user-badge {
     white-space: nowrap;
 }
-@media (max-width: 760px) {
-    .admin-page-head {
-        display: block;
-    }
-    .admin-page-filter {
-        width: 100%;
-        margin-top: 1rem;
+@media (max-width: 900px) {
+    .hr-filter-toolbar {
+        grid-template-columns: 1fr;
     }
     .admin-page-actions .btn {
         width: 100%;
@@ -102,15 +110,15 @@ layoutHeader('Gestione utenti');
         <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <div class="admin-page-head">
-        <div class="admin-page-head-main">
+    <div class="hr-filter-toolbar">
+        <div class="hr-filter-toolbar-main">
             <h2 style="margin-bottom:.35rem;">Gestione utenti</h2>
             <p class="muted" style="margin:0;">Elenco degli utenti censiti nel portale.</p>
             <div class="admin-page-actions">
                 <a class="btn btn-primary" href="utente_nuovo.php"><i class="la la-user-plus" aria-hidden="true"></i> Nuovo utente</a>
             </div>
         </div>
-        <div class="form-group hr-filter-search-group admin-page-filter">
+        <div class="form-group hr-filter-search-group">
             <label for="filtroRapidoUtenti">Filtro rapido</label>
             <input
                 type="search"
@@ -122,6 +130,7 @@ layoutHeader('Gestione utenti');
         </div>
     </div>
 
+    <div class="table-wrap">
     <table id="tabellaUtenti">
         <thead>
             <tr>
@@ -179,6 +188,7 @@ layoutHeader('Gestione utenti');
             <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
 
     <div class="links">
         <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla dashboard</a>
