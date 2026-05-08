@@ -1,8 +1,9 @@
 <?php
+
 declare(strict_types=1);
 
 if (!function_exists('hrEmailConfigValore')) {
-    function hrEmailConfigValore(PDO $pdo, string $codice, ?string $default = null): ?string
+    function hrEmailConfigValore(PDO $pdo, string $codice, string $default = ''): string
     {
         try {
             $stmt = $pdo->prepare("SELECT valore FROM hr_configurazioni WHERE codice = :codice AND attivo = 1 LIMIT 1");
@@ -11,7 +12,6 @@ if (!function_exists('hrEmailConfigValore')) {
             if ($valore === false) {
                 return $default;
             }
-
             $valore = trim((string)$valore);
             return $valore !== '' ? $valore : $default;
         } catch (Throwable $e) {
@@ -62,29 +62,30 @@ if (!function_exists('hrEmailUtente')) {
             ? "FIELD(tr.codice, 'EMAIL_PERSONALE', 'EMAIL_LAVORO')"
             : "FIELD(tr.codice, 'EMAIL_LAVORO', 'EMAIL_PERSONALE')";
 
-        $sql = "
-            SELECT TRIM(ru.valore) AS email
-            FROM hr_recapiti_utenti ru
-            INNER JOIN hr_tipi_recapito tr ON tr.id_tipo_recapito = ru.id_tipo_recapito
-            WHERE ru.id_utente = :id_utente
-              AND ru.attivo = 1
-              AND tr.attivo = 1
-              AND tr.codice IN ('EMAIL_LAVORO', 'EMAIL_PERSONALE')
-              AND TRIM(COALESCE(ru.valore, '')) <> ''
-            ORDER BY ru.principale DESC, {$ordine}, ru.id_recapito_utente ASC
-            LIMIT 1
-        ";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(['id_utente' => $idUtente]);
-        $email = $stmt->fetchColumn();
-
-        if ($email === false) {
+        try {
+            $sql = "
+                SELECT TRIM(ru.valore) AS email
+                FROM hr_recapiti_utenti ru
+                INNER JOIN hr_tipi_recapito tr ON tr.id_tipo_recapito = ru.id_tipo_recapito
+                WHERE ru.id_utente = :id_utente
+                  AND ru.attivo = 1
+                  AND tr.attivo = 1
+                  AND tr.codice IN ('EMAIL_LAVORO', 'EMAIL_PERSONALE')
+                  AND TRIM(COALESCE(ru.valore, '')) <> ''
+                ORDER BY ru.principale DESC, {$ordine}, ru.id_recapito_utente ASC
+                LIMIT 1
+            ";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['id_utente' => $idUtente]);
+            $email = $stmt->fetchColumn();
+            if ($email === false) {
+                return null;
+            }
+            $email = trim((string)$email);
+            return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
+        } catch (Throwable $e) {
             return null;
         }
-
-        $email = trim((string)$email);
-        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
     }
 }
 
@@ -109,15 +110,12 @@ if (!function_exists('hrEmailNomeUtente')) {
 if (!function_exists('hrEmailInviaRaw')) {
     function hrEmailInviaRaw(PDO $pdo, string $destinatario, string $oggetto, string $corpo): bool
     {
-        $mittente = hrEmailConfigValore($pdo, 'HR_EMAIL_MITTENTE', 'no-reply@raviolispa.org');
-        $nomeMittente = hrEmailConfigValore($pdo, 'HR_EMAIL_NOME_MITTENTE', 'Ravioli S.p.A. - Portale HR');
+        $mittente = trim((string)hrEmailConfigValore($pdo, 'HR_EMAIL_MITTENTE', 'no-reply@raviolispa.org'));
+        $nomeMittente = trim((string)hrEmailConfigValore($pdo, 'HR_EMAIL_NOME_MITTENTE', 'Ravioli S.p.A. - Portale HR'));
 
-        $mittente = trim((string)$mittente);
         if (!filter_var($mittente, FILTER_VALIDATE_EMAIL)) {
             $mittente = 'no-reply@raviolispa.org';
         }
-
-        $nomeMittente = trim((string)$nomeMittente);
         if ($nomeMittente === '') {
             $nomeMittente = 'Ravioli S.p.A. - Portale HR';
         }
@@ -144,48 +142,65 @@ if (!function_exists('hrEmailRegistraEsito')) {
             return;
         }
 
-        $stmt = $pdo->prepare("INSERT INTO hr_notifiche (tipo_evento, titolo, messaggio, link, id_richiesta, creato_da) VALUES (:tipo_evento, :titolo, :messaggio, :link, :id_richiesta, :creato_da)");
-        $stmt->execute([
-            'tipo_evento' => $tipoEvento,
-            'titolo' => $titolo,
-            'messaggio' => $messaggio,
-            'link' => $link,
-            'id_richiesta' => $idRichiesta,
-            'creato_da' => $creatoDa,
-        ]);
+        try {
+            $stmt = $pdo->prepare("INSERT INTO hr_notifiche (tipo_evento, titolo, messaggio, link, id_richiesta, creato_da) VALUES (:tipo_evento, :titolo, :messaggio, :link, :id_richiesta, :creato_da)");
+            $stmt->execute([
+                'tipo_evento' => $tipoEvento,
+                'titolo' => $titolo,
+                'messaggio' => $messaggio,
+                'link' => $link,
+                'id_richiesta' => $idRichiesta,
+                'creato_da' => $creatoDa,
+            ]);
 
-        $idNotifica = (int)$pdo->lastInsertId();
-        $stmtDest = $pdo->prepare("INSERT INTO hr_notifiche_destinatari (id_notifica, id_utente, id_canale_notifica, inviata, letta, data_invio, errore_invio) VALUES (:id_notifica, :id_utente, :id_canale_notifica, :inviata, 1, NOW(), :errore_invio)");
-        $stmtDest->execute([
-            'id_notifica' => $idNotifica,
-            'id_utente' => $idUtente,
-            'id_canale_notifica' => $idCanaleEmail,
-            'inviata' => $inviata ? 1 : 0,
-            'errore_invio' => $errore,
-        ]);
+            $idNotifica = (int)$pdo->lastInsertId();
+            $stmtDest = $pdo->prepare("INSERT INTO hr_notifiche_destinatari (id_notifica, id_utente, id_canale_notifica, inviata, letta, data_invio, errore_invio) VALUES (:id_notifica, :id_utente, :id_canale_notifica, :inviata, 1, NOW(), :errore_invio)");
+            $stmtDest->execute([
+                'id_notifica' => $idNotifica,
+                'id_utente' => $idUtente,
+                'id_canale_notifica' => $idCanaleEmail,
+                'inviata' => $inviata ? 1 : 0,
+                'errore_invio' => $errore,
+            ]);
+        } catch (Throwable $e) {
+            // La registrazione dell'esito email non deve bloccare il flusso HR.
+        }
     }
 }
 
-
+if (!function_exists('hrEmailValoreTesto')) {
+    function hrEmailValoreTesto(?string $valore, string $fallback = '-'): string
+    {
+        $valore = trim((string)$valore);
+        return $valore !== '' ? $valore : $fallback;
+    }
+}
 
 if (!function_exists('hrEmailFormatoPeriodoRichiesta')) {
     function hrEmailFormatoPeriodoRichiesta(array $dettaglio): string
     {
-        $dataDa = trim((string)($dettaglio['data_da_fmt'] ?? ''));
-        $dataA = trim((string)($dettaglio['data_a_fmt'] ?? ''));
-        $tipoPeriodo = strtoupper(trim((string)($dettaglio['tipo_periodo'] ?? 'GIORNI')));
-        $oraDa = trim((string)($dettaglio['ora_da_fmt'] ?? ''));
-        $oraA = trim((string)($dettaglio['ora_a_fmt'] ?? ''));
+        $dataDa = hrEmailValoreTesto($dettaglio['data_da_fmt'] ?? null, '');
+        $dataA = hrEmailValoreTesto($dettaglio['data_a_fmt'] ?? null, '');
+        $tipoPeriodo = strtoupper(hrEmailValoreTesto($dettaglio['tipo_periodo'] ?? null, 'GIORNI'));
+        $oraDa = hrEmailValoreTesto($dettaglio['ora_da_fmt'] ?? null, '');
+        $oraA = hrEmailValoreTesto($dettaglio['ora_a_fmt'] ?? null, '');
+
+        if ($dataDa === '') {
+            return '-';
+        }
+
         $periodo = $dataDa;
         if ($dataA !== '' && $dataA !== $dataDa) {
             $periodo .= ' - ' . $dataA;
         }
+
         if ($tipoPeriodo === 'ORE' && $oraDa !== '' && $oraA !== '') {
-            $periodo .= ' ' . $oraDa . '-' . $oraA;
+            $periodo .= ' dalle ' . $oraDa . ' alle ' . $oraA;
         } elseif ($tipoPeriodo !== 'ORE') {
-            $periodo .= ' giornata intera';
+            $periodo .= ' - giornata intera';
         }
-        return trim($periodo);
+
+        return $periodo;
     }
 }
 
@@ -195,36 +210,59 @@ if (!function_exists('hrEmailDettaglioRichiesta')) {
         if ($idRichiesta <= 0) {
             return null;
         }
+
         try {
-            $sql = "
-                SELECT r.id_richiesta, r.codice_richiesta, r.oggetto, r.note_richiedente,
-                       r.id_utente_richiedente, r.id_responsabile_corrente,
-                       TRIM(CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, ''))) AS richiedente,
-                       te.descrizione AS tipologia, sr.descrizione AS stato,
-                       UPPER(COALESCE(p.tipo_periodo, 'GIORNI')) AS tipo_periodo,
-                       DATE_FORMAT(p.data_da, '%d/%m/%Y') AS data_da_fmt,
-                       DATE_FORMAT(p.data_a, '%d/%m/%Y') AS data_a_fmt,
-                       p.data_da, p.data_a,
-                       TIME_FORMAT(p.ora_da, '%H:%i') AS ora_da_fmt,
-                       TIME_FORMAT(p.ora_a, '%H:%i') AS ora_a_fmt
+            $sqlRichiesta = "
+                SELECT
+                    r.id_richiesta,
+                    r.codice_richiesta,
+                    r.oggetto,
+                    r.note_richiedente,
+                    r.id_utente_richiedente,
+                    r.id_responsabile_corrente,
+                    TRIM(CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, ''))) AS richiedente,
+                    te.descrizione AS tipologia,
+                    sr.descrizione AS stato
                 FROM hr_richieste r
                 INNER JOIN aut_utenti u ON u.id_utente = r.id_utente_richiedente
                 INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
                 INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
-                INNER JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta
                 WHERE r.id_richiesta = :id_richiesta
-                ORDER BY p.ordinamento, p.id_periodo
                 LIMIT 1
             ";
-            $stmt = $pdo->prepare($sql);
+            $stmt = $pdo->prepare($sqlRichiesta);
             $stmt->execute(['id_richiesta' => $idRichiesta]);
             $dettaglio = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$dettaglio) {
                 return null;
             }
-            $dettaglio['richiedente'] = trim((string)$dettaglio['richiedente']) !== ''
-                ? trim((string)$dettaglio['richiedente'])
-                : 'Utente #' . (int)$dettaglio['id_utente_richiedente'];
+
+            $sqlPeriodo = "
+                SELECT
+                    UPPER(COALESCE(tipo_periodo, 'GIORNI')) AS tipo_periodo,
+                    DATE_FORMAT(data_da, '%d/%m/%Y') AS data_da_fmt,
+                    DATE_FORMAT(data_a, '%d/%m/%Y') AS data_a_fmt,
+                    data_da,
+                    data_a,
+                    TIME_FORMAT(ora_da, '%H:%i') AS ora_da_fmt,
+                    TIME_FORMAT(ora_a, '%H:%i') AS ora_a_fmt
+                FROM hr_richieste_periodi
+                WHERE id_richiesta = :id_richiesta
+                ORDER BY id_periodo ASC
+                LIMIT 1
+            ";
+            $stmtPeriodo = $pdo->prepare($sqlPeriodo);
+            $stmtPeriodo->execute(['id_richiesta' => $idRichiesta]);
+            $periodo = $stmtPeriodo->fetch(PDO::FETCH_ASSOC);
+            if (is_array($periodo)) {
+                $dettaglio = array_merge($dettaglio, $periodo);
+            }
+
+            $dettaglio['richiedente'] = hrEmailValoreTesto(
+                $dettaglio['richiedente'] ?? null,
+                'Utente #' . (int)($dettaglio['id_utente_richiedente'] ?? 0)
+            );
+
             return $dettaglio;
         } catch (Throwable $e) {
             return null;
@@ -237,18 +275,22 @@ if (!function_exists('hrEmailTestoDettaglioRichiesta')) {
     {
         $righe = [];
         $righe[] = 'Dettaglio richiesta:';
-        $righe[] = '- Codice: ' . trim((string)($dettaglio['codice_richiesta'] ?? ''));
-        $righe[] = '- Richiedente: ' . trim((string)($dettaglio['richiedente'] ?? ''));
-        $righe[] = '- Tipologia: ' . trim((string)($dettaglio['tipologia'] ?? ''));
+        $righe[] = '- Codice: ' . hrEmailValoreTesto($dettaglio['codice_richiesta'] ?? null);
+        $righe[] = '- Richiedente: ' . hrEmailValoreTesto($dettaglio['richiedente'] ?? null);
+        $righe[] = '- Tipologia: ' . hrEmailValoreTesto($dettaglio['tipologia'] ?? null);
         $righe[] = '- Periodo: ' . hrEmailFormatoPeriodoRichiesta($dettaglio);
+        $righe[] = '- Stato attuale: ' . hrEmailValoreTesto($dettaglio['stato'] ?? null);
+
         $oggetto = trim((string)($dettaglio['oggetto'] ?? ''));
         if ($oggetto !== '') {
             $righe[] = '- Oggetto: ' . $oggetto;
         }
+
         $note = trim((string)($dettaglio['note_richiedente'] ?? ''));
         if ($note !== '') {
-            $righe[] = '- Note: ' . $note;
+            $righe[] = '- Note richiedente: ' . $note;
         }
+
         return implode("\n", $righe);
     }
 }
@@ -260,20 +302,26 @@ if (!function_exists('hrEmailRichiestePresentiPeriodo')) {
         $idResponsabile = (int)($dettaglio['id_responsabile_corrente'] ?? 0);
         $dataDa = trim((string)($dettaglio['data_da'] ?? ''));
         $dataA = trim((string)($dettaglio['data_a'] ?? ''));
+
         if ($idRichiesta <= 0 || $idResponsabile <= 0 || $dataDa === '' || $dataA === '') {
             return [];
         }
+
         try {
             $limite = max(1, min(20, $limite));
             $sql = "
-                SELECT r.id_richiesta, r.codice_richiesta, r.id_utente_richiedente,
-                       TRIM(CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, ''))) AS richiedente,
-                       te.descrizione AS tipologia, sr.descrizione AS stato,
-                       UPPER(COALESCE(p.tipo_periodo, 'GIORNI')) AS tipo_periodo,
-                       DATE_FORMAT(p.data_da, '%d/%m/%Y') AS data_da_fmt,
-                       DATE_FORMAT(p.data_a, '%d/%m/%Y') AS data_a_fmt,
-                       TIME_FORMAT(p.ora_da, '%H:%i') AS ora_da_fmt,
-                       TIME_FORMAT(p.ora_a, '%H:%i') AS ora_a_fmt
+                SELECT
+                    r.id_richiesta,
+                    r.codice_richiesta,
+                    r.id_utente_richiedente,
+                    TRIM(CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, ''))) AS richiedente,
+                    te.descrizione AS tipologia,
+                    sr.descrizione AS stato,
+                    UPPER(COALESCE(p.tipo_periodo, 'GIORNI')) AS tipo_periodo,
+                    DATE_FORMAT(p.data_da, '%d/%m/%Y') AS data_da_fmt,
+                    DATE_FORMAT(p.data_a, '%d/%m/%Y') AS data_a_fmt,
+                    TIME_FORMAT(p.ora_da, '%H:%i') AS ora_da_fmt,
+                    TIME_FORMAT(p.ora_a, '%H:%i') AS ora_a_fmt
                 FROM hr_richieste r
                 INNER JOIN aut_utenti u ON u.id_utente = r.id_utente_richiedente
                 INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
@@ -307,18 +355,46 @@ if (!function_exists('hrEmailTestoRichiestePresenti')) {
         if (count($richiestePresenti) === 0) {
             return "Assenze/richieste gia presenti nel periodo:\n- Nessuna altra richiesta approvata o in attesa trovata nel periodo.";
         }
+
         $righe = ['Assenze/richieste gia presenti nel periodo:'];
         foreach ($richiestePresenti as $riga) {
-            $richiedente = trim((string)($riga['richiedente'] ?? ''));
-            if ($richiedente === '') {
-                $richiedente = 'Utente #' . (int)($riga['id_utente_richiedente'] ?? 0);
-            }
+            $richiedente = hrEmailValoreTesto($riga['richiedente'] ?? null, 'Utente #' . (int)($riga['id_utente_richiedente'] ?? 0));
             $righe[] = '- ' . $richiedente
-                . ': ' . trim((string)($riga['tipologia'] ?? ''))
+                . ': ' . hrEmailValoreTesto($riga['tipologia'] ?? null)
                 . ', ' . hrEmailFormatoPeriodoRichiesta($riga)
-                . ', stato: ' . trim((string)($riga['stato'] ?? ''));
+                . ', stato: ' . hrEmailValoreTesto($riga['stato'] ?? null);
         }
+
         return implode("\n", $righe);
+    }
+}
+
+if (!function_exists('hrEmailCorpoNotifica')) {
+    function hrEmailCorpoNotifica(PDO $pdo, int $idUtenteDestinatario, string $tipoEvento, string $messaggio, ?string $linkCompleto, ?int $idRichiesta): string
+    {
+        $nome = hrEmailNomeUtente($pdo, $idUtenteDestinatario);
+        $corpo = "Buongiorno " . $nome . ",\n\n";
+        $corpo .= trim($messaggio) . "\n\n";
+
+        $dettaglioRichiesta = $idRichiesta !== null ? hrEmailDettaglioRichiesta($pdo, $idRichiesta) : null;
+        if (is_array($dettaglioRichiesta)) {
+            $corpo .= hrEmailTestoDettaglioRichiesta($dettaglioRichiesta) . "\n\n";
+
+            if (in_array($tipoEvento, ['RICHIESTA_ASSENZA_DA_APPROVARE_EMAIL', 'RICHIESTA_ASSENZA_DA_APPROVARE'], true)) {
+                $corpo .= hrEmailTestoRichiestePresenti(
+                    hrEmailRichiestePresentiPeriodo($pdo, $dettaglioRichiesta)
+                ) . "\n\n";
+            }
+        } elseif ($idRichiesta !== null && $idRichiesta > 0) {
+            $corpo .= "Dettaglio richiesta:\n- ID richiesta: " . $idRichiesta . "\n\n";
+        }
+
+        if ($linkCompleto !== null && trim($linkCompleto) !== '') {
+            $corpo .= "Puoi aprire il portale da qui:\n" . $linkCompleto . "\n\n";
+        }
+
+        $corpo .= "Messaggio automatico del portale HR Ravioli S.p.A.";
+        return $corpo;
     }
 }
 
@@ -346,26 +422,9 @@ if (!function_exists('hrEmailInviaNotifica')) {
                 continue;
             }
 
-            $nome = hrEmailNomeUtente($pdo, $idUtente);
-            $dettaglioRichiesta = $idRichiesta !== null ? hrEmailDettaglioRichiesta($pdo, $idRichiesta) : null;
-
-            $corpo = "Buongiorno " . $nome . ",\n\n";
-            $corpo .= $messaggio . "\n\n";
-
-            if (is_array($dettaglioRichiesta)) {
-                $corpo .= hrEmailTestoDettaglioRichiesta($dettaglioRichiesta) . "\n\n";
-
-                if ($tipoEvento === 'RICHIESTA_ASSENZA_DA_APPROVARE_EMAIL') {
-                    $corpo .= hrEmailTestoRichiestePresenti(
-                        hrEmailRichiestePresentiPeriodo($pdo, $dettaglioRichiesta)
-                    ) . "\n\n";
-                }
-            }
-
-            $corpo .= "Puoi aprire il portale da qui:\n" . $linkCompleto . "\n\n";
-            $corpo .= "Messaggio automatico del portale HR Ravioli S.p.A.";
-
+            $corpo = hrEmailCorpoNotifica($pdo, $idUtente, $tipoEvento, $messaggio, $linkCompleto, $idRichiesta);
             $inviata = hrEmailInviaRaw($pdo, $email, $titolo, $corpo);
+
             hrEmailRegistraEsito(
                 $pdo,
                 $tipoEvento,
