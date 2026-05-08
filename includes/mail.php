@@ -419,10 +419,9 @@ if (!function_exists('hrEmailRigaDettaglioHtml')) {
 if (!function_exists('hrEmailDettaglioRichiestaHtml')) {
     function hrEmailDettaglioRichiestaHtml(array $dettaglio): string
     {
-        $html = '<div style="margin:18px 0 0 0;border:1px solid #dbe3ef;border-radius:12px;overflow:hidden;background:#ffffff;">';
-        $html .= '<div style="padding:12px 14px;background:#f8fafc;border-bottom:1px solid #dbe3ef;font-weight:800;color:#0f172a;">Dettaglio richiesta</div>';
+        $html = '<div style="margin:22px 0 0 0;background:#ffffff;">';
+        $html .= '<div style="padding:0 0 8px 0;border-bottom:2px solid #0057d8;font-weight:800;color:#0057d8;font-size:18px;">Dettaglio richiesta</div>';
         $html .= '<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;font-size:14px;">';
-        $html .= hrEmailRigaDettaglioHtml('Codice', $dettaglio['codice_richiesta'] ?? null);
         $html .= hrEmailRigaDettaglioHtml('Richiedente', $dettaglio['richiedente'] ?? null);
         $html .= hrEmailRigaDettaglioHtml('Tipologia', $dettaglio['tipologia'] ?? null);
         $html .= hrEmailRigaDettaglioHtml('Periodo', hrEmailFormatoPeriodoRichiesta($dettaglio));
@@ -446,16 +445,16 @@ if (!function_exists('hrEmailDettaglioRichiestaHtml')) {
 if (!function_exists('hrEmailRichiestePresentiHtml')) {
     function hrEmailRichiestePresentiHtml(array $richiestePresenti): string
     {
-        $html = '<div style="margin:18px 0 0 0;border:1px solid #dbe3ef;border-radius:12px;overflow:hidden;background:#ffffff;">';
-        $html .= '<div style="padding:12px 14px;background:#f8fafc;border-bottom:1px solid #dbe3ef;font-weight:800;color:#0f172a;">Assenze/richieste già presenti nel periodo</div>';
+        $html = '<div style="margin:24px 0 0 0;background:#ffffff;">';
+        $html .= '<div style="padding:0 0 8px 0;border-bottom:2px solid #0057d8;font-weight:800;color:#0057d8;font-size:18px;">Assenze/richieste già presenti nel periodo</div>'; 
 
         if (count($richiestePresenti) === 0) {
-            $html .= '<div style="padding:14px;color:#475569;">Nessuna altra richiesta approvata o in attesa trovata nel periodo.</div></div>';
+            $html .= '<div style="padding:12px 0;color:#475569;">Nessuna altra richiesta approvata o in attesa trovata nel periodo.</div></div>'; 
             return $html;
         }
 
         $html .= '<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;font-size:14px;">';
-        $html .= '<tr style="background:#f8fafc;">'
+        $html .= '<tr>'
             . '<th align="left" style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;">Persona</th>'
             . '<th align="left" style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;">Tipologia</th>'
             . '<th align="left" style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;">Periodo</th>'
@@ -482,9 +481,9 @@ if (!function_exists('hrEmailCorpoNotifica')) {
         $dettaglioRichiesta = $idRichiesta !== null ? hrEmailDettaglioRichiesta($pdo, $idRichiesta) : null;
 
         $html = '<!doctype html><html><head><meta charset="UTF-8"></head>';
-        $html .= '<body style="margin:0;padding:0;background:#f3f6fa;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">';
+        $html .= '<body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">';
         $html .= '<div style="max-width:720px;margin:0 auto;padding:24px;">';
-        $html .= '<div style="background:#ffffff;border:1px solid #dbe3ef;border-radius:16px;padding:22px;">';
+        $html .= '<div style="background:#ffffff;padding:22px;">';
         $html .= '<div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:16px;">Portale HR Ravioli S.p.A.</div>';
         $html .= '<p style="font-size:15px;line-height:1.55;margin:0 0 14px 0;">Buongiorno <strong>' . hrEmailHtml($nome) . '</strong>,</p>';
         $html .= '<p style="font-size:15px;line-height:1.55;margin:0 0 14px 0;">' . nl2br(hrEmailHtml(trim($messaggio))) . '</p>';
@@ -503,12 +502,14 @@ if (!function_exists('hrEmailCorpoNotifica')) {
 
         if ($linkCompleto !== null && trim($linkCompleto) !== '') {
             $html .= '<div style="margin-top:22px;">';
-            $html .= '<a href="' . hrEmailHtml($linkCompleto) . '" style="display:inline-block;background:#0057d8;color:#ffffff;text-decoration:none;font-weight:800;padding:11px 16px;border-radius:10px;">Apri richiesta nel portale</a>';
-            $html .= '<div style="font-size:12px;color:#64748b;margin-top:8px;">' . hrEmailHtml($linkCompleto) . '</div>';
-            $html .= '</div>';
+            $html .= '<a href="' . hrEmailHtml($linkCompleto) . '" style="display:inline-block;background:#0057d8;color:#ffffff;text-decoration:none;font-weight:800;padding:12px 18px;border-radius:10px;">Apri richiesta nel portale</a>'; 
+                        $html .= '</div>';
         }
 
         $html .= '<p style="font-size:12px;line-height:1.5;color:#64748b;margin:22px 0 0 0;">Messaggio automatico del portale HR Ravioli S.p.A.</p>';
+        if (is_array($dettaglioRichiesta) && trim((string)($dettaglioRichiesta['codice_richiesta'] ?? '')) !== '') {
+            $html .= '<p style="font-size:12px;line-height:1.5;color:#64748b;margin:4px 0 0 0;">Codice: ' . hrEmailHtml((string)$dettaglioRichiesta['codice_richiesta']) . '</p>';
+        }
         $html .= '</div></div></body></html>';
         return $html;
     }
