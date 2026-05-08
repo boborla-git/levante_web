@@ -16,6 +16,7 @@ $riepilogo = [
     'relazioni_attive' => 0,
     'gruppi_attivi' => 0,
     'membri_gruppi_attivi' => 0,
+    'recapiti_email_attivi' => 0,
 ];
 
 function h(?string $v): string
@@ -135,6 +136,7 @@ try {
     $riepilogo['relazioni_attive'] = (int)$pdo->query('SELECT COUNT(*) FROM hr_relazioni_organizzative WHERE attiva = 1 AND (data_fine IS NULL OR data_fine >= CURDATE())')->fetchColumn();
     $riepilogo['gruppi_attivi'] = (int)$pdo->query('SELECT COUNT(*) FROM hr_gruppi_lavoro WHERE attivo = 1')->fetchColumn();
     $riepilogo['membri_gruppi_attivi'] = (int)$pdo->query('SELECT COUNT(*) FROM hr_gruppi_utenti WHERE attivo = 1 AND (data_fine IS NULL OR data_fine >= CURDATE())')->fetchColumn();
+    $riepilogo['recapiti_email_attivi'] = (int)$pdo->query("SELECT COUNT(*) FROM hr_recapiti_utenti ru INNER JOIN hr_tipi_recapito tr ON tr.id_tipo_recapito = ru.id_tipo_recapito WHERE ru.attivo = 1 AND tr.codice IN ('EMAIL_LAVORO','EMAIL_PERSONALE')")->fetchColumn();
 
     $tipologie = $pdo->query(
         'SELECT te.*, sp.descrizione AS stato_presenza
@@ -310,6 +312,7 @@ layoutHeader('Configurazione assenze');
     <div class="hr-config-actions">
         <a class="btn" href="relazioni_organizzative.php"><i class="la la-sitemap" aria-hidden="true"></i> Relazioni organizzative</a>
         <a class="btn" href="gruppi_lavoro.php"><i class="la la-users-cog" aria-hidden="true"></i> Gruppi di lavoro</a>
+        <a class="btn" href="recapiti_utenti.php"><i class="la la-envelope" aria-hidden="true"></i> Recapiti utenti</a>
         <a class="btn btn-light" href="assenze.php"><i class="la la-calendar" aria-hidden="true"></i> Vai ad assenze</a>
     </div>
 </section>
@@ -319,6 +322,7 @@ layoutHeader('Configurazione assenze');
     <span><strong><?= (int)$riepilogo['relazioni_attive'] ?></strong> relazioni attive</span>
     <span><strong><?= (int)$riepilogo['gruppi_attivi'] ?></strong> gruppi attivi</span>
     <span><strong><?= (int)$riepilogo['membri_gruppi_attivi'] ?></strong> membri gruppo attivi</span>
+    <span><strong><?= (int)$riepilogo['recapiti_email_attivi'] ?></strong> email attive</span>
 </section>
 
 <?php if ($messaggio !== ''): ?>
