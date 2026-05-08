@@ -383,25 +383,25 @@ if (!function_exists('hrEmailStatoBadge')) {
     {
         $testo = hrEmailValoreTesto($stato, '-');
         $normalizzato = mb_strtolower($testo, 'UTF-8');
-        $bg = '#dcfce7';
-        $border = '#bbf7d0';
-        $color = '#15803d';
+        $bg = '#DCFCE7';
+        $border = 'rgba(22, 163, 74, 0.22)';
+        $color = '#16A34A';
 
         if (strpos($normalizzato, 'rifiut') !== false) {
-            $bg = '#fee2e2';
-            $border = '#fecaca';
-            $color = '#dc2626';
+            $bg = '#FEE2E2';
+            $border = 'rgba(220, 38, 38, 0.22)';
+            $color = '#DC2626';
         } elseif (strpos($normalizzato, 'attesa') !== false || strpos($normalizzato, 'pend') !== false) {
-            $bg = '#fef3c7';
-            $border = '#fde68a';
-            $color = '#b45309';
+            $bg = '#FFF6D6';
+            $border = 'rgba(255, 193, 7, 0.28)';
+            $color = '#9A6500';
         } elseif (strpos($normalizzato, 'annull') !== false) {
-            $bg = '#f1f5f9';
-            $border = '#e2e8f0';
-            $color = '#475569';
+            $bg = '#F1F5F9';
+            $border = '#E2E8F0';
+            $color = '#64748B';
         }
 
-        return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:' . $bg . ';border:1px solid ' . $border . ';color:' . $color . ';font-weight:700;font-size:13px;line-height:1.1;">' . hrEmailHtml($testo) . '</span>';
+        return '<span style="display:inline-block;padding:4px 9px;border-radius:999px;background:' . $bg . ';border:1px solid ' . $border . ';color:' . $color . ';font-weight:800;font-size:12px;line-height:1;white-space:nowrap;">' . hrEmailHtml($testo) . '</span>';
     }
 }
 
@@ -420,7 +420,7 @@ if (!function_exists('hrEmailDettaglioRichiestaHtml')) {
     function hrEmailDettaglioRichiestaHtml(array $dettaglio): string
     {
         $html = '<div style="margin:22px 0 0 0;background:#ffffff;">';
-        $html .= '<div style="padding:0 0 8px 0;border-bottom:2px solid #0057d8;font-weight:800;color:#0057d8;font-size:18px;">Dettaglio richiesta</div>';
+        $html .= '<div style="padding:0 0 8px 0;border-bottom:2px solid #005BD4;font-weight:800;color:#005BD4;font-size:18px;">Dettaglio richiesta</div>';
         $html .= '<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;font-size:14px;">';
         $html .= hrEmailRigaDettaglioHtml('Richiedente', $dettaglio['richiedente'] ?? null);
         $html .= hrEmailRigaDettaglioHtml('Tipologia', $dettaglio['tipologia'] ?? null);
@@ -446,7 +446,7 @@ if (!function_exists('hrEmailRichiestePresentiHtml')) {
     function hrEmailRichiestePresentiHtml(array $richiestePresenti): string
     {
         $html = '<div style="margin:24px 0 0 0;background:#ffffff;">';
-        $html .= '<div style="padding:0 0 8px 0;border-bottom:2px solid #0057d8;font-weight:800;color:#0057d8;font-size:18px;">Assenze/richieste già presenti nel periodo</div>'; 
+        $html .= '<div style="padding:0 0 8px 0;border-bottom:2px solid #005BD4;font-weight:800;color:#005BD4;font-size:18px;">Assenze/richieste già presenti nel periodo</div>'; 
 
         if (count($richiestePresenti) === 0) {
             $html .= '<div style="padding:12px 0;color:#475569;">Nessuna altra richiesta approvata o in attesa trovata nel periodo.</div></div>'; 
@@ -501,9 +501,9 @@ if (!function_exists('hrEmailCorpoNotifica')) {
         }
 
         if ($linkCompleto !== null && trim($linkCompleto) !== '') {
-            $html .= '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:22px;border-collapse:separate;">';
-            $html .= '<tr><td bgcolor="#0057d8" style="background:#0057d8;border-radius:10px;padding:12px 18px;">';
-            $html .= '<a href="' . hrEmailHtml($linkCompleto) . '" style="display:block;color:#ffffff;text-decoration:none;font-weight:800;font-size:14px;line-height:1.2;">Apri richiesta nel portale</a>';
+            $html .= '<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto 0 auto;border-collapse:separate;">';
+            $html .= '<tr><td bgcolor="#005BD4" style="background:#005BD4;border:1px solid #005BD4;border-radius:10px;padding:0;text-align:center;">';
+            $html .= '<a href="' . hrEmailHtml($linkCompleto) . '" style="display:inline-block;padding:11px 18px;color:#ffffff;text-decoration:none;font-weight:800;font-size:14px;line-height:1.15;border-radius:10px;white-space:nowrap;">&#8599;&nbsp; Apri richiesta nel portale</a>';
             $html .= '</td></tr></table>';
         }
 
