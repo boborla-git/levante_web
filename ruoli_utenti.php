@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/db.php';
@@ -12,14 +13,24 @@ $messaggio = '';
 
 try {
     $stmtUtenti = $pdo->query("
-        SELECT id_utente, username, nome, cognome, attivo
+        SELECT
+            id_utente,
+            username,
+            nome,
+            cognome,
+            attivo
         FROM aut_utenti
         ORDER BY username
     ");
     $utenti = $stmtUtenti->fetchAll();
 
     $stmtRuoli = $pdo->query("
-        SELECT id_ruolo, codice_ruolo, descrizione, attivo, ordinamento
+        SELECT
+            id_ruolo,
+            codice_ruolo,
+            descrizione,
+            attivo,
+            ordinamento
         FROM aut_ruoli
         WHERE attivo = 1
         ORDER BY ordinamento, codice_ruolo
@@ -41,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmtDisattiva = $pdo->prepare("
                 UPDATE aut_utenti_ruoli
-                SET attivo = 0,
+                SET
+                    attivo = 0,
                     data_fine = NOW()
                 WHERE id_utente = :id_utente
                   AND attivo = 1
@@ -107,8 +119,67 @@ try {
     die('Errore nel caricamento dei ruoli utente.');
 }
 
+function classeBadgeRuoloUtente(bool $attivo): string
+{
+    return $attivo ? 'status-ok' : 'status-neutral';
+}
+
 layoutHeader('Ruoli utenti');
 ?>
+
+<style>
+.hr-filter-toolbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(280px, 420px);
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 16px;
+}
+.hr-filter-toolbar-main {
+    min-width: 0;
+}
+.hr-filter-search-group {
+    margin-bottom: 0;
+}
+.hr-filter-search-group input[type="search"] {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font: inherit;
+    color: #0f172a;
+    background: #fff;
+    box-sizing: border-box;
+}
+.hr-filter-search-group input[type="search"]:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+}
+.role-select {
+    width: 100%;
+    min-width: 220px;
+}
+.user-badge {
+    white-space: nowrap;
+}
+.admin-save-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+@media (max-width: 900px) {
+    .hr-filter-toolbar {
+        grid-template-columns: 1fr;
+    }
+    .admin-save-actions .btn,
+    .admin-save-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
 
 <div class="card card-wide">
     <h1>Admin</h1>
@@ -120,10 +191,21 @@ layoutHeader('Ruoli utenti');
         <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <h2>Ruoli utenti</h2>
-
-    <div class="meta" style="margin-bottom:18px;">
-        Ogni utente eredita i permessi dal ruolo attivo assegnato.
+    <div class="hr-filter-toolbar">
+        <div class="hr-filter-toolbar-main">
+            <h2 style="margin-bottom:.35rem;">Ruoli utenti</h2>
+            <p class="muted" style="margin:0;">Ogni utente eredita i permessi dal ruolo attivo assegnato.</p>
+        </div>
+        <div class="form-group hr-filter-search-group">
+            <label for="filtroRapidoRuoliUtenti">Filtro rapido</label>
+            <input
+                type="search"
+                id="filtroRapidoRuoliUtenti"
+                placeholder="Cerca in tutte le colonne..."
+                autocomplete="off"
+                data-table-filter="tabellaRuoliUtenti"
+            >
+        </div>
     </div>
 
     <?php if ($errore !== ''): ?>
@@ -135,50 +217,51 @@ layoutHeader('Ruoli utenti');
     <?php endif; ?>
 
     <form method="post">
-        <table>
-            <thead>
-                <tr>
-                    <th>Utente</th>
-                    <th>Nome</th>
-                    <th>Stato</th>
-                    <th>Ruolo attivo</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($utenti as $utente): ?>
-                    <?php
-                    $utenteId = (int)$utente['id_utente'];
-                    $chiave = 'ruolo_utente_' . $utenteId;
-                    $ruoloCorrente = (int)($ruoloUtenteMappa[$utenteId] ?? 0);
-                    $nomeCompleto = trim(((string)$utente['nome']) . ' ' . ((string)$utente['cognome']));
-                    ?>
+        <div class="table-wrap">
+            <table id="tabellaRuoliUtenti">
+                <thead>
                     <tr>
-                        <td><?= htmlspecialchars((string)$utente['username']) ?></td>
-                        <td><?= htmlspecialchars($nomeCompleto !== '' ? $nomeCompleto : (string)$utente['username']) ?></td>
-                        <td>
-                            <?php if ((int)$utente['attivo'] === 1): ?>
-                                <span class="stato-attivo">Attivo</span>
-                            <?php else: ?>
-                                <span class="stato-disattivo">Disattivo</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <select name="<?= htmlspecialchars($chiave) ?>">
-                                <option value="0" <?= $ruoloCorrente === 0 ? 'selected' : '' ?>>nessun ruolo</option>
-                                <?php foreach ($ruoli as $ruolo): ?>
-                                    <option value="<?= (int)$ruolo['id_ruolo'] ?>" <?= $ruoloCorrente === (int)$ruolo['id_ruolo'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars((string)$ruolo['codice_ruolo']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
+                        <th>Utente</th>
+                        <th>Nome</th>
+                        <th>Stato</th>
+                        <th>Ruolo attivo</th>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php foreach ($utenti as $utente): ?>
+                        <?php
+                        $utenteId = (int)$utente['id_utente'];
+                        $chiave = 'ruolo_utente_' . $utenteId;
+                        $ruoloCorrente = (int)($ruoloUtenteMappa[$utenteId] ?? 0);
+                        $nomeCompleto = trim(((string)$utente['nome']) . ' ' . ((string)$utente['cognome']));
+                        $utenteAttivo = (int)$utente['attivo'] === 1;
+                        ?>
+                        <tr>
+                            <td><?= htmlspecialchars((string)$utente['username']) ?></td>
+                            <td><?= htmlspecialchars($nomeCompleto !== '' ? $nomeCompleto : (string)$utente['username']) ?></td>
+                            <td>
+                                <span class="status-badge user-badge <?= classeBadgeRuoloUtente($utenteAttivo) ?>">
+                                    <?= $utenteAttivo ? 'Attivo' : 'Disattivo' ?>
+                                </span>
+                            </td>
+                            <td>
+                                <select class="role-select" name="<?= htmlspecialchars($chiave) ?>">
+                                    <option value="0" <?= $ruoloCorrente === 0 ? 'selected' : '' ?>>nessun ruolo</option>
+                                    <?php foreach ($ruoli as $ruolo): ?>
+                                        <option value="<?= (int)$ruolo['id_ruolo'] ?>" <?= $ruoloCorrente === (int)$ruolo['id_ruolo'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars((string)$ruolo['codice_ruolo']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
 
-        <div class="actions">
-            <button type="submit"><i class="la la-save" aria-hidden="true"></i> Salva ruoli utenti</button>
+        <div class="admin-save-actions">
+            <button class="btn btn-primary" type="submit"><i class="la la-save" aria-hidden="true"></i> Salva ruoli utenti</button>
         </div>
     </form>
 
@@ -186,5 +269,33 @@ layoutHeader('Ruoli utenti');
         <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla dashboard</a>
     </div>
 </div>
+
+<script>
+(function () {
+    function normalizzaTesto(valore) {
+        return (valore || '')
+            .toString()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    document.querySelectorAll('[data-table-filter]').forEach(function (input) {
+        var tableId = input.getAttribute('data-table-filter');
+        var table = document.getElementById(tableId);
+        if (!table) {
+            return;
+        }
+
+        input.addEventListener('input', function () {
+            var filtro = normalizzaTesto(input.value);
+            table.querySelectorAll('tbody tr').forEach(function (row) {
+                var testo = normalizzaTesto(row.textContent);
+                row.style.display = testo.indexOf(filtro) !== -1 ? '' : 'none';
+            });
+        });
+    });
+})();
+</script>
 
 <?php layoutFooter(); ?>
