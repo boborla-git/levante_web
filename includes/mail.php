@@ -383,25 +383,25 @@ if (!function_exists('hrEmailStatoBadge')) {
     {
         $testo = hrEmailValoreTesto($stato, '-');
         $normalizzato = mb_strtolower($testo, 'UTF-8');
-        $bg = '#e8f5e9';
-        $border = '#b7e1c1';
-        $color = '#087333';
+        $bg = '#dcfce7';
+        $border = '#bbf7d0';
+        $color = '#15803d';
 
         if (strpos($normalizzato, 'rifiut') !== false) {
-            $bg = '#fdeaea';
-            $border = '#f5b5b5';
-            $color = '#b42318';
+            $bg = '#fee2e2';
+            $border = '#fecaca';
+            $color = '#dc2626';
         } elseif (strpos($normalizzato, 'attesa') !== false || strpos($normalizzato, 'pend') !== false) {
-            $bg = '#fff7df';
-            $border = '#f3d58b';
-            $color = '#9a6700';
+            $bg = '#fef3c7';
+            $border = '#fde68a';
+            $color = '#b45309';
         } elseif (strpos($normalizzato, 'annull') !== false) {
             $bg = '#f1f5f9';
-            $border = '#cbd5e1';
+            $border = '#e2e8f0';
             $color = '#475569';
         }
 
-        return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:' . $bg . ';border:1px solid ' . $border . ';color:' . $color . ';font-weight:700;font-size:13px;">' . hrEmailHtml($testo) . '</span>';
+        return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:' . $bg . ';border:1px solid ' . $border . ';color:' . $color . ';font-weight:700;font-size:13px;line-height:1.1;">' . hrEmailHtml($testo) . '</span>';
     }
 }
 
@@ -501,9 +501,10 @@ if (!function_exists('hrEmailCorpoNotifica')) {
         }
 
         if ($linkCompleto !== null && trim($linkCompleto) !== '') {
-            $html .= '<div style="margin-top:22px;">';
-            $html .= '<a href="' . hrEmailHtml($linkCompleto) . '" style="display:inline-block;background:#0057d8;color:#ffffff;text-decoration:none;font-weight:800;padding:12px 18px;border-radius:10px;">Apri richiesta nel portale</a>'; 
-                        $html .= '</div>';
+            $html .= '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:22px;border-collapse:separate;">';
+            $html .= '<tr><td bgcolor="#0057d8" style="background:#0057d8;border-radius:10px;padding:12px 18px;">';
+            $html .= '<a href="' . hrEmailHtml($linkCompleto) . '" style="display:block;color:#ffffff;text-decoration:none;font-weight:800;font-size:14px;line-height:1.2;">Apri richiesta nel portale</a>';
+            $html .= '</td></tr></table>';
         }
 
         $html .= '<p style="font-size:12px;line-height:1.5;color:#64748b;margin:22px 0 0 0;">Messaggio automatico del portale HR Ravioli S.p.A.</p>';
