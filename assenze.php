@@ -941,6 +941,64 @@ layoutHeader('Assenze e permessi');
     }
 }
 
+
+
+/* Rifinitura allineamenti pagina assenze: form richiesta e filtro rapido */
+.hr-request-row-secondary {
+    align-items: start;
+    grid-template-columns: minmax(260px, 0.95fr) minmax(360px, 1.45fr) auto;
+}
+.hr-request-row-secondary .form-group {
+    align-self: start;
+}
+.hr-request-row-secondary input,
+.hr-request-row-secondary textarea {
+    height: 38px;
+    min-height: 38px;
+}
+.hr-request-submit {
+    align-self: start;
+    padding-top: calc(1.1rem + 0.35rem);
+}
+.hr-request-submit .btn {
+    height: 38px;
+    min-height: 38px;
+}
+.hr-history-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.hr-history-head > div:first-child h2 {
+    margin-top: 0;
+}
+.hr-history-head .hr-filter-toolbar {
+    margin-top: 0;
+    padding-top: 0;
+}
+.hr-history-head .hr-filter-search-group label {
+    margin-top: 0;
+}
+@media (max-width: 1100px) {
+    .hr-request-submit {
+        padding-top: 0;
+        justify-content: flex-start;
+    }
+}
+@media (max-width: 760px) {
+    .hr-history-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .hr-filter-search-group {
+        width: 100%;
+    }
+    .hr-request-submit .btn {
+        width: 100%;
+    }
+}
+
 </style>
 
 <div class="hr-page-stack">
