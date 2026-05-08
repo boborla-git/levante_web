@@ -676,7 +676,7 @@ try {
                 hrEmailInviaNotifica(
                     $pdo,
                     'RICHIESTA_ASSENZA_DA_APPROVARE_EMAIL',
-                    'Nuova richiesta da approvare',
+                    (string)$utenteSelezionato['nominativo'] . ' - Nuova richiesta assenza',
                     'Hai una nuova richiesta di assenza o permesso da valutare.',
                     '/approvazioni_assenze.php',
                     $idRichiesta,
