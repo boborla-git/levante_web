@@ -560,6 +560,8 @@ try {
 
             $idStato = hrIdStatoRichiesta($pdo, $codiceStato);
             $codiceRichiesta = hrGeneraCodiceRichiesta($pdo);
+            $preferenzaEmailConfermaRichiedente = (!$isDelegato && count($utentiGestibili) > 1) ? 'lavoro' : 'personale';
+
             $minutiTotali = null;
 
             if ($modalita === 'ore') {
@@ -705,7 +707,7 @@ try {
                     $idRichiesta,
                     $idUtenteLoggato,
                     [$idUtenteTarget],
-                    'personale'
+                    $preferenzaEmailConfermaRichiedente
                 );
 
                 $pdo->commit();
@@ -747,7 +749,7 @@ try {
                 $idRichiesta,
                 $idUtenteLoggato,
                 [$idUtenteTarget],
-                'personale'
+                $preferenzaEmailConfermaRichiedente
             );
 
             $pdo->commit();
