@@ -243,7 +243,21 @@ layoutHeader('Recapiti utenti');
     display: grid;
     grid-template-columns: minmax(300px, 2fr) minmax(170px, 1fr) minmax(250px, 1.35fr) minmax(250px, 1.35fr) auto auto;
     gap: 14px;
-    align-items: end;
+    align-items: start;
+}
+.hr-recapito-form-row .form-group {
+    margin-bottom: 0;
+}
+.hr-recapito-form-row label {
+    display: block;
+    min-height: 20px;
+    line-height: 20px;
+    margin-bottom: 6px;
+}
+.hr-recapito-form-row input[type="text"],
+.hr-recapito-form-row select {
+    width: 100%;
+    min-height: 40px;
 }
 .hr-recapito-note-row {
     display: grid;
@@ -265,9 +279,10 @@ layoutHeader('Recapiti utenti');
 .hr-recapito-actions {
     display: flex;
     justify-content: flex-end;
-    align-items: flex-end;
+    align-items: flex-start;
     min-width: 145px;
     white-space: nowrap;
+    padding-top: 26px;
 }
 .hr-recapiti-table td,
 .hr-recapiti-table th {
