@@ -214,15 +214,46 @@ layoutHeader('Recapiti utenti');
 
 <style>
 .hr-recapiti-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(280px, 420px);
+    gap: 16px;
+    align-items: end;
     margin-bottom: 12px;
 }
-.hr-recapiti-search {
-    min-width: min(420px, 100%);
+.hr-recapiti-search-group {
+    margin-bottom: 0;
+}
+.hr-recapiti-search-group input {
+    width: 100%;
+}
+.hr-recapito-new-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 2fr) minmax(220px, 1.5fr) minmax(260px, 2fr);
+    gap: 16px;
+    align-items: start;
+}
+.hr-recapito-note-row {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) auto auto;
+    gap: 16px;
+    align-items: end;
+    margin-top: 16px;
+}
+.hr-recapito-options {
+    min-width: 220px;
+}
+.hr-recapito-options-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    min-height: 40px;
+}
+.hr-recapito-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+    min-width: 150px;
 }
 .hr-recapiti-table td,
 .hr-recapiti-table th {
@@ -232,6 +263,23 @@ layoutHeader('Recapiti utenti');
     color: #64748b;
     font-size: 12px;
     margin-top: 4px;
+}
+@media (max-width: 900px) {
+    .hr-recapiti-toolbar,
+    .hr-recapito-new-grid,
+    .hr-recapito-note-row {
+        grid-template-columns: 1fr;
+    }
+    .hr-recapito-options {
+        min-width: 0;
+    }
+    .hr-recapito-options-list {
+        align-items: flex-start;
+    }
+    .hr-recapito-actions {
+        justify-content: flex-start;
+        min-width: 0;
+    }
 }
 </style>
 
@@ -266,7 +314,7 @@ layoutHeader('Recapiti utenti');
             <input type="hidden" name="azione" value="salva_recapito">
             <input type="hidden" name="id_recapito_utente" value="0">
 
-            <div class="hr-admin-grid">
+            <div class="hr-recapito-new-grid">
                 <div class="form-group">
                     <label for="id_utente">Utente</label>
                     <select name="id_utente" id="id_utente" required>
@@ -295,21 +343,27 @@ layoutHeader('Recapiti utenti');
                     <label for="valore">Valore</label>
                     <input type="text" name="valore" id="valore" maxlength="255" required>
                 </div>
+            </div>
 
-                <div class="form-group span-2">
+            <div class="hr-recapito-note-row">
+                <div class="form-group">
                     <label for="note">Note</label>
                     <input type="text" name="note" id="note" maxlength="255">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group hr-recapito-options">
                     <label>Opzioni</label>
-                    <label><input type="checkbox" name="principale" value="1" checked> principale</label><br>
-                    <label><input type="checkbox" name="verificato" value="1" checked> verificato</label><br>
-                    <label><input type="checkbox" name="attivo" value="1" checked> attivo</label>
+                    <div class="hr-recapito-options-list">
+                        <label><input type="checkbox" name="principale" value="1" checked> principale</label>
+                        <label><input type="checkbox" name="verificato" value="1" checked> verificato</label>
+                        <label><input type="checkbox" name="attivo" value="1" checked> attivo</label>
+                    </div>
+                </div>
+
+                <div class="form-group hr-recapito-actions">
+                    <button type="submit" class="btn btn-primary"><i class="la la-save" aria-hidden="true"></i> Salva recapito</button>
                 </div>
             </div>
-
-            <button type="submit" class="btn btn-primary"><i class="la la-save" aria-hidden="true"></i> Salva recapito</button>
         </form>
     <?php endif; ?>
 </div>
@@ -320,7 +374,10 @@ layoutHeader('Recapiti utenti');
             <h2>Recapiti registrati</h2>
             <div class="meta">Elenco dei recapiti già presenti nel modulo HR.</div>
         </div>
-        <input class="hr-recapiti-search" type="search" id="recapitiSearch" placeholder="Filtra per utente, tipo, valore o note...">
+        <div class="form-group hr-recapiti-search-group">
+            <label for="recapitiSearch">Filtro rapido</label>
+            <input type="search" id="recapitiSearch" placeholder="Cerca in tutte le colonne...">
+        </div>
     </div>
 
     <table class="table hr-recapiti-table" id="recapitiTable">
