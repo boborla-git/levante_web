@@ -9,6 +9,7 @@ require_once __DIR__ . '/includes/ui.php';
 require_once __DIR__ . '/includes/table.php';
 require_once __DIR__ . '/includes/badge.php';
 require_once __DIR__ . '/includes/actions.php';
+require_once __DIR__ . '/includes/mail.php';
 
 richiediPermessoLettura('approvazioni_assenze');
 
@@ -255,6 +256,18 @@ try {
             $idRichiesta,
             $idUtente,
             [(int)$richiesta['id_utente_richiedente']]
+        );
+
+        hrEmailInviaNotifica(
+            $pdo,
+            $azione === 'approva_richiesta' ? 'RICHIESTA_ASSENZA_APPROVATA_EMAIL' : 'RICHIESTA_ASSENZA_RIFIUTATA_EMAIL',
+            $azione === 'approva_richiesta' ? 'Richiesta approvata' : 'Richiesta rifiutata',
+            $testoNotifica,
+            '/assenze.php',
+            $idRichiesta,
+            $idUtente,
+            [(int)$richiesta['id_utente_richiedente']],
+            'personale'
         );
 
         $pdo->commit();

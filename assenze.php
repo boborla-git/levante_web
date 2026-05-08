@@ -9,6 +9,7 @@ require_once __DIR__ . '/includes/ui.php';
 require_once __DIR__ . '/includes/table.php';
 require_once __DIR__ . '/includes/badge.php';
 require_once __DIR__ . '/includes/actions.php';
+require_once __DIR__ . '/includes/mail.php';
 
 richiediPermessoLettura('assenze');
 
@@ -672,6 +673,18 @@ try {
                     [$idResponsabile]
                 );
 
+                hrEmailInviaNotifica(
+                    $pdo,
+                    'RICHIESTA_ASSENZA_DA_APPROVARE_EMAIL',
+                    'Nuova richiesta da approvare',
+                    'Hai una nuova richiesta di assenza o permesso da valutare.',
+                    '/approvazioni_assenze.php',
+                    $idRichiesta,
+                    $idUtenteLoggato,
+                    [$idResponsabile],
+                    'lavoro'
+                );
+
                 hrCreaNotificaWeb(
                     $pdo,
                     'RICHIESTA_ASSENZA_REGISTRATA',
@@ -681,6 +694,18 @@ try {
                     $idRichiesta,
                     $idUtenteLoggato,
                     [$idUtenteTarget]
+                );
+
+                hrEmailInviaNotifica(
+                    $pdo,
+                    'RICHIESTA_ASSENZA_REGISTRATA_EMAIL',
+                    'Richiesta registrata',
+                    'La tua richiesta è stata registrata correttamente ed è in attesa di approvazione.',
+                    '/assenze.php',
+                    $idRichiesta,
+                    $idUtenteLoggato,
+                    [$idUtenteTarget],
+                    'personale'
                 );
 
                 $pdo->commit();
@@ -709,6 +734,20 @@ try {
                 $idRichiesta,
                 $idUtenteLoggato,
                 [$idUtenteTarget]
+            );
+
+            hrEmailInviaNotifica(
+                $pdo,
+                'RICHIESTA_ASSENZA_REGISTRATA_EMAIL',
+                $isDelegato ? 'Richiesta registrata e approvata' : 'Richiesta registrata',
+                $isDelegato
+                    ? 'È stata registrata per te una richiesta già approvata.'
+                    : 'La tua richiesta è stata registrata correttamente.',
+                '/assenze.php',
+                $idRichiesta,
+                $idUtenteLoggato,
+                [$idUtenteTarget],
+                'personale'
             );
 
             $pdo->commit();
@@ -785,6 +824,18 @@ try {
                 $idRichiesta,
                 $idUtenteLoggato,
                 $destinatariAnnullamento
+            );
+
+            hrEmailInviaNotifica(
+                $pdo,
+                'RICHIESTA_ASSENZA_ANNULLATA_EMAIL',
+                'Richiesta annullata',
+                'Una richiesta di assenza o permesso è stata annullata.',
+                '/assenze.php?id_utente=' . $idUtenteTarget,
+                $idRichiesta,
+                $idUtenteLoggato,
+                $destinatariAnnullamento,
+                'lavoro'
             );
 
             $pdo->commit();
