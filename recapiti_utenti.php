@@ -239,11 +239,11 @@ layoutHeader('Recapiti utenti');
     border-color: #2563eb;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
 }
-.hr-recapito-new-grid {
+.hr-recapito-form-row {
     display: grid;
-    grid-template-columns: minmax(260px, 2fr) minmax(220px, 1.5fr) minmax(260px, 2fr);
-    gap: 16px;
-    align-items: start;
+    grid-template-columns: minmax(300px, 2fr) minmax(170px, 1fr) minmax(250px, 1.35fr) minmax(250px, 1.35fr) auto auto;
+    gap: 14px;
+    align-items: end;
 }
 .hr-recapito-note-row {
     display: grid;
@@ -266,7 +266,8 @@ layoutHeader('Recapiti utenti');
     display: flex;
     justify-content: flex-end;
     align-items: flex-end;
-    min-width: 150px;
+    min-width: 145px;
+    white-space: nowrap;
 }
 .hr-recapiti-table td,
 .hr-recapiti-table th {
@@ -277,7 +278,7 @@ layoutHeader('Recapiti utenti');
     font-size: 12px;
     margin-top: 4px;
 }
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
     .hr-recapiti-toolbar,
     .hr-recapito-form-row {
         grid-template-columns: 1fr;
