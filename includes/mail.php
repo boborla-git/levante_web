@@ -248,7 +248,7 @@ if (!function_exists('hrEmailDettaglioRichiesta')) {
                     TIME_FORMAT(ora_a, '%H:%i') AS ora_a_fmt
                 FROM hr_richieste_periodi
                 WHERE id_richiesta = :id_richiesta
-                ORDER BY id_periodo ASC
+                ORDER BY ordinamento ASC, id_richiesta_periodo ASC
                 LIMIT 1
             ";
             $stmtPeriodo = $pdo->prepare($sqlPeriodo);
