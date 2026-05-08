@@ -122,7 +122,7 @@ if (!function_exists('hrEmailInviaRaw')) {
 
         $headers = [
             'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=UTF-8',
+            'Content-Type: text/html; charset=UTF-8',
             'Content-Transfer-Encoding: 8bit',
             'From: ' . (function_exists('mb_encode_mimeheader') ? mb_encode_mimeheader($nomeMittente, 'UTF-8') : $nomeMittente) . ' <' . $mittente . '>',
             'Reply-To: ' . $mittente,
@@ -369,32 +369,148 @@ if (!function_exists('hrEmailTestoRichiestePresenti')) {
     }
 }
 
+
+
+if (!function_exists('hrEmailHtml')) {
+    function hrEmailHtml(?string $valore): string
+    {
+        return htmlspecialchars((string)$valore, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+}
+
+if (!function_exists('hrEmailStatoBadge')) {
+    function hrEmailStatoBadge(?string $stato): string
+    {
+        $testo = hrEmailValoreTesto($stato, '-');
+        $normalizzato = mb_strtolower($testo, 'UTF-8');
+        $bg = '#e8f5e9';
+        $border = '#b7e1c1';
+        $color = '#087333';
+
+        if (strpos($normalizzato, 'rifiut') !== false) {
+            $bg = '#fdeaea';
+            $border = '#f5b5b5';
+            $color = '#b42318';
+        } elseif (strpos($normalizzato, 'attesa') !== false || strpos($normalizzato, 'pend') !== false) {
+            $bg = '#fff7df';
+            $border = '#f3d58b';
+            $color = '#9a6700';
+        } elseif (strpos($normalizzato, 'annull') !== false) {
+            $bg = '#f1f5f9';
+            $border = '#cbd5e1';
+            $color = '#475569';
+        }
+
+        return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;background:' . $bg . ';border:1px solid ' . $border . ';color:' . $color . ';font-weight:700;font-size:13px;">' . hrEmailHtml($testo) . '</span>';
+    }
+}
+
+if (!function_exists('hrEmailRigaDettaglioHtml')) {
+    function hrEmailRigaDettaglioHtml(string $etichetta, ?string $valore, bool $isHtml = false): string
+    {
+        $contenuto = $isHtml ? (string)$valore : hrEmailHtml(hrEmailValoreTesto($valore));
+        return '<tr>'
+            . '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;width:160px;font-weight:700;vertical-align:top;">' . hrEmailHtml($etichetta) . '</td>'
+            . '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#0f172a;vertical-align:top;">' . $contenuto . '</td>'
+            . '</tr>';
+    }
+}
+
+if (!function_exists('hrEmailDettaglioRichiestaHtml')) {
+    function hrEmailDettaglioRichiestaHtml(array $dettaglio): string
+    {
+        $html = '<div style="margin:18px 0 0 0;border:1px solid #dbe3ef;border-radius:12px;overflow:hidden;background:#ffffff;">';
+        $html .= '<div style="padding:12px 14px;background:#f8fafc;border-bottom:1px solid #dbe3ef;font-weight:800;color:#0f172a;">Dettaglio richiesta</div>';
+        $html .= '<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;font-size:14px;">';
+        $html .= hrEmailRigaDettaglioHtml('Codice', $dettaglio['codice_richiesta'] ?? null);
+        $html .= hrEmailRigaDettaglioHtml('Richiedente', $dettaglio['richiedente'] ?? null);
+        $html .= hrEmailRigaDettaglioHtml('Tipologia', $dettaglio['tipologia'] ?? null);
+        $html .= hrEmailRigaDettaglioHtml('Periodo', hrEmailFormatoPeriodoRichiesta($dettaglio));
+        $html .= hrEmailRigaDettaglioHtml('Stato attuale', hrEmailStatoBadge($dettaglio['stato'] ?? null), true);
+
+        $oggetto = trim((string)($dettaglio['oggetto'] ?? ''));
+        if ($oggetto !== '') {
+            $html .= hrEmailRigaDettaglioHtml('Oggetto', $oggetto);
+        }
+
+        $note = trim((string)($dettaglio['note_richiedente'] ?? ''));
+        if ($note !== '') {
+            $html .= hrEmailRigaDettaglioHtml('Note richiedente', nl2br(hrEmailHtml($note)), true);
+        }
+
+        $html .= '</table></div>';
+        return $html;
+    }
+}
+
+if (!function_exists('hrEmailRichiestePresentiHtml')) {
+    function hrEmailRichiestePresentiHtml(array $richiestePresenti): string
+    {
+        $html = '<div style="margin:18px 0 0 0;border:1px solid #dbe3ef;border-radius:12px;overflow:hidden;background:#ffffff;">';
+        $html .= '<div style="padding:12px 14px;background:#f8fafc;border-bottom:1px solid #dbe3ef;font-weight:800;color:#0f172a;">Assenze/richieste già presenti nel periodo</div>';
+
+        if (count($richiestePresenti) === 0) {
+            $html .= '<div style="padding:14px;color:#475569;">Nessuna altra richiesta approvata o in attesa trovata nel periodo.</div></div>';
+            return $html;
+        }
+
+        $html .= '<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;font-size:14px;">';
+        $html .= '<tr style="background:#f8fafc;">'
+            . '<th align="left" style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;">Persona</th>'
+            . '<th align="left" style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;">Tipologia</th>'
+            . '<th align="left" style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;">Periodo</th>'
+            . '<th align="left" style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;">Stato</th>'
+            . '</tr>';
+        foreach ($richiestePresenti as $riga) {
+            $richiedente = hrEmailValoreTesto($riga['richiedente'] ?? null, 'Utente #' . (int)($riga['id_utente_richiedente'] ?? 0));
+            $html .= '<tr>'
+                . '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;color:#0f172a;font-weight:700;">' . hrEmailHtml($richiedente) . '</td>'
+                . '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;color:#0f172a;">' . hrEmailHtml(hrEmailValoreTesto($riga['tipologia'] ?? null)) . '</td>'
+                . '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;color:#0f172a;">' . hrEmailHtml(hrEmailFormatoPeriodoRichiesta($riga)) . '</td>'
+                . '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;color:#0f172a;">' . hrEmailStatoBadge($riga['stato'] ?? null) . '</td>'
+                . '</tr>';
+        }
+        $html .= '</table></div>';
+        return $html;
+    }
+}
+
 if (!function_exists('hrEmailCorpoNotifica')) {
     function hrEmailCorpoNotifica(PDO $pdo, int $idUtenteDestinatario, string $tipoEvento, string $messaggio, ?string $linkCompleto, ?int $idRichiesta): string
     {
         $nome = hrEmailNomeUtente($pdo, $idUtenteDestinatario);
-        $corpo = "Buongiorno " . $nome . ",\n\n";
-        $corpo .= trim($messaggio) . "\n\n";
-
         $dettaglioRichiesta = $idRichiesta !== null ? hrEmailDettaglioRichiesta($pdo, $idRichiesta) : null;
+
+        $html = '<!doctype html><html><head><meta charset="UTF-8"></head>';
+        $html .= '<body style="margin:0;padding:0;background:#f3f6fa;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">';
+        $html .= '<div style="max-width:720px;margin:0 auto;padding:24px;">';
+        $html .= '<div style="background:#ffffff;border:1px solid #dbe3ef;border-radius:16px;padding:22px;">';
+        $html .= '<div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:16px;">Portale HR Ravioli S.p.A.</div>';
+        $html .= '<p style="font-size:15px;line-height:1.55;margin:0 0 14px 0;">Buongiorno <strong>' . hrEmailHtml($nome) . '</strong>,</p>';
+        $html .= '<p style="font-size:15px;line-height:1.55;margin:0 0 14px 0;">' . nl2br(hrEmailHtml(trim($messaggio))) . '</p>';
+
         if (is_array($dettaglioRichiesta)) {
-            $corpo .= hrEmailTestoDettaglioRichiesta($dettaglioRichiesta) . "\n\n";
+            $html .= hrEmailDettaglioRichiestaHtml($dettaglioRichiesta);
 
             if (in_array($tipoEvento, ['RICHIESTA_ASSENZA_DA_APPROVARE_EMAIL', 'RICHIESTA_ASSENZA_DA_APPROVARE'], true)) {
-                $corpo .= hrEmailTestoRichiestePresenti(
+                $html .= hrEmailRichiestePresentiHtml(
                     hrEmailRichiestePresentiPeriodo($pdo, $dettaglioRichiesta)
-                ) . "\n\n";
+                );
             }
         } elseif ($idRichiesta !== null && $idRichiesta > 0) {
-            $corpo .= "Dettaglio richiesta:\n- ID richiesta: " . $idRichiesta . "\n\n";
+            $html .= '<div style="margin:18px 0;padding:14px;border:1px solid #f3d58b;background:#fff7df;border-radius:12px;color:#9a6700;">Dettaglio richiesta non disponibile. ID tecnico: ' . (int)$idRichiesta . '</div>';
         }
 
         if ($linkCompleto !== null && trim($linkCompleto) !== '') {
-            $corpo .= "Puoi aprire il portale da qui:\n" . $linkCompleto . "\n\n";
+            $html .= '<div style="margin-top:22px;">';
+            $html .= '<a href="' . hrEmailHtml($linkCompleto) . '" style="display:inline-block;background:#0057d8;color:#ffffff;text-decoration:none;font-weight:800;padding:11px 16px;border-radius:10px;">Apri richiesta nel portale</a>';
+            $html .= '<div style="font-size:12px;color:#64748b;margin-top:8px;">' . hrEmailHtml($linkCompleto) . '</div>';
+            $html .= '</div>';
         }
 
-        $corpo .= "Messaggio automatico del portale HR Ravioli S.p.A.";
-        return $corpo;
+        $html .= '<p style="font-size:12px;line-height:1.5;color:#64748b;margin:22px 0 0 0;">Messaggio automatico del portale HR Ravioli S.p.A.</p>';
+        $html .= '</div></div></body></html>';
+        return $html;
     }
 }
 
