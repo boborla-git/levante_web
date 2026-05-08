@@ -112,6 +112,83 @@ try {
 
 layoutHeader('Gruppi di lavoro');
 ?>
+
+<style>
+.hr-filter-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(280px, 420px);
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 12px;
+}
+.hr-filter-search-group {
+    margin-bottom: 0;
+}
+.hr-filter-search-group input {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font: inherit;
+    color: #0f172a;
+    background: #fff;
+    box-sizing: border-box;
+}
+.hr-filter-search-group input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+}
+.hr-wide-form-row {
+    display: grid;
+    gap: 14px;
+    align-items: end;
+}
+.hr-wide-form-row .form-group {
+    margin-bottom: 0;
+}
+.hr-wide-form-row label {
+    display: block;
+    min-height: 20px;
+    line-height: 20px;
+    margin-bottom: 6px;
+}
+.hr-wide-form-row input[type="text"],
+.hr-wide-form-row input[type="date"],
+.hr-wide-form-row select {
+    width: 100%;
+    min-height: 40px;
+}
+.hr-relazioni-form-row {
+    grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1.2fr) minmax(180px, 1fr) 150px 150px minmax(220px, 1fr);
+}
+.hr-gruppo-form-row {
+    grid-template-columns: minmax(140px, 0.7fr) minmax(240px, 1.2fr) minmax(320px, 2fr) auto;
+}
+.hr-appartenenza-form-row {
+    grid-template-columns: minmax(220px, 1.2fr) minmax(240px, 1.2fr) minmax(180px, 1fr) 150px 150px auto;
+}
+.hr-form-actions-inline {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+    min-width: 130px;
+    padding-top: 26px;
+}
+@media (max-width: 1100px) {
+    .hr-filter-toolbar,
+    .hr-wide-form-row {
+        grid-template-columns: 1fr;
+    }
+    .hr-form-actions-inline {
+        justify-content: flex-start;
+        min-width: 0;
+        padding-top: 0;
+    }
+}
+</style>
+
 <div class="card card-compact">
     <div class="section-head">
         <div>
@@ -129,12 +206,12 @@ layoutHeader('Gruppi di lavoro');
     <h2>Nuovo gruppo</h2>
     <form method="post" action="gruppi_lavoro.php">
         <input type="hidden" name="azione" value="nuovo_gruppo">
-        <div class="hr-admin-grid">
+        <div class="hr-wide-form-row hr-gruppo-form-row">
             <div class="form-group"><label for="codice">Codice</label><input type="text" name="codice" id="codice" maxlength="50" required></div>
-            <div class="form-group hr-col-span-2"><label for="nome">Nome gruppo</label><input type="text" name="nome" id="nome" maxlength="100" required></div>
-            <div class="form-group hr-col-span-3"><label for="descrizione">Descrizione</label><input type="text" name="descrizione" id="descrizione" maxlength="255"></div>
+            <div class="form-group"><label for="nome">Nome gruppo</label><input type="text" name="nome" id="nome" maxlength="100" required></div>
+            <div class="form-group"><label for="descrizione">Descrizione</label><input type="text" name="descrizione" id="descrizione" maxlength="255"></div>
+            <div class="form-group hr-form-actions-inline"><button type="submit">Salva gruppo</button></div>
         </div>
-        <div class="actions"><button type="submit">Salva gruppo</button></div>
     </form>
 </div>
 
@@ -143,7 +220,7 @@ layoutHeader('Gruppi di lavoro');
     <div class="meta">Nel gruppo non introduci gerarchie: l'eventuale etichetta serve solo a descrivere il contesto operativo.</div>
     <form method="post" action="gruppi_lavoro.php">
         <input type="hidden" name="azione" value="nuova_appartenenza">
-        <div class="hr-admin-grid">
+        <div class="hr-wide-form-row hr-appartenenza-form-row">
             <div class="form-group">
                 <label for="id_gruppo_lavoro">Gruppo</label>
                 <select name="id_gruppo_lavoro" id="id_gruppo_lavoro" required>
@@ -165,15 +242,24 @@ layoutHeader('Gruppi di lavoro');
             <div class="form-group"><label for="ruolo_nel_gruppo">Etichetta nel gruppo</label><input type="text" name="ruolo_nel_gruppo" id="ruolo_nel_gruppo" maxlength="50"></div>
             <div class="form-group"><label for="data_inizio">Data inizio</label><input type="date" name="data_inizio" id="data_inizio" value="<?= date('Y-m-d') ?>" required></div>
             <div class="form-group"><label for="data_fine">Data fine</label><input type="date" name="data_fine" id="data_fine"></div>
+            <div class="form-group hr-form-actions-inline"><button type="submit">Salva appartenenza</button></div>
         </div>
-        <div class="actions"><button type="submit">Salva appartenenza</button></div>
     </form>
 </div>
 
 <div class="card card-wide">
-    <h2>Gruppi censiti</h2>
+    <div class="hr-filter-toolbar">
+        <div>
+            <h2>Gruppi censiti</h2>
+            <div class="meta">Filtra rapidamente per codice, nome, descrizione o stato.</div>
+        </div>
+        <div class="form-group hr-filter-search-group">
+            <label for="gruppiSearch">Filtro rapido</label>
+            <input type="search" id="gruppiSearch" placeholder="Cerca in tutte le colonne...">
+        </div>
+    </div>
     <div class="table-wrap">
-        <table>
+        <table id="gruppiTable">
             <thead><tr><th>Codice</th><th>Nome</th><th>Descrizione</th><th>Stato</th></tr></thead>
             <tbody>
             <?php foreach ($gruppi as $g): ?>
@@ -190,9 +276,18 @@ layoutHeader('Gruppi di lavoro');
 </div>
 
 <div class="card card-wide">
-    <h2>Appartenenze ai gruppi</h2>
+    <div class="hr-filter-toolbar">
+        <div>
+            <h2>Appartenenze ai gruppi</h2>
+            <div class="meta">Filtra rapidamente per gruppo, utente, etichetta, periodo o stato.</div>
+        </div>
+        <div class="form-group hr-filter-search-group">
+            <label for="appartenenzeSearch">Filtro rapido</label>
+            <input type="search" id="appartenenzeSearch" placeholder="Cerca in tutte le colonne...">
+        </div>
+    </div>
     <div class="table-wrap">
-        <table>
+        <table id="appartenenzeTable">
             <thead><tr><th>Gruppo</th><th>Utente</th><th>Etichetta</th><th>Periodo</th><th>Stato</th><th>Azioni</th></tr></thead>
             <tbody>
             <?php foreach ($appartenenze as $a): ?>
@@ -217,4 +312,21 @@ layoutHeader('Gruppi di lavoro');
         </table>
     </div>
 </div>
+<script>
+(function () {
+    function bindQuickFilter(inputId, tableId) {
+        const input = document.getElementById(inputId);
+        const table = document.getElementById(tableId);
+        if (!input || !table) return;
+        input.addEventListener('input', function () {
+            const term = this.value.trim().toLowerCase();
+            table.querySelectorAll('tbody tr').forEach(function (row) {
+                row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+            });
+        });
+    }
+    bindQuickFilter('gruppiSearch', 'gruppiTable');
+    bindQuickFilter('appartenenzeSearch', 'appartenenzeTable');
+})();
+</script>
 <?php layoutFooter(); ?>

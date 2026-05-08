@@ -116,6 +116,83 @@ try {
 
 layoutHeader('Relazioni organizzative');
 ?>
+
+<style>
+.hr-filter-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(280px, 420px);
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 12px;
+}
+.hr-filter-search-group {
+    margin-bottom: 0;
+}
+.hr-filter-search-group input {
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font: inherit;
+    color: #0f172a;
+    background: #fff;
+    box-sizing: border-box;
+}
+.hr-filter-search-group input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+}
+.hr-wide-form-row {
+    display: grid;
+    gap: 14px;
+    align-items: end;
+}
+.hr-wide-form-row .form-group {
+    margin-bottom: 0;
+}
+.hr-wide-form-row label {
+    display: block;
+    min-height: 20px;
+    line-height: 20px;
+    margin-bottom: 6px;
+}
+.hr-wide-form-row input[type="text"],
+.hr-wide-form-row input[type="date"],
+.hr-wide-form-row select {
+    width: 100%;
+    min-height: 40px;
+}
+.hr-relazioni-form-row {
+    grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1.2fr) minmax(180px, 1fr) 150px 150px minmax(220px, 1fr);
+}
+.hr-gruppo-form-row {
+    grid-template-columns: minmax(140px, 0.7fr) minmax(240px, 1.2fr) minmax(320px, 2fr) auto;
+}
+.hr-appartenenza-form-row {
+    grid-template-columns: minmax(220px, 1.2fr) minmax(240px, 1.2fr) minmax(180px, 1fr) 150px 150px auto;
+}
+.hr-form-actions-inline {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+    min-width: 130px;
+    padding-top: 26px;
+}
+@media (max-width: 1100px) {
+    .hr-filter-toolbar,
+    .hr-wide-form-row {
+        grid-template-columns: 1fr;
+    }
+    .hr-form-actions-inline {
+        justify-content: flex-start;
+        min-width: 0;
+        padding-top: 0;
+    }
+}
+</style>
+
 <div class="card card-compact">
     <div class="section-head">
         <div>
@@ -139,7 +216,7 @@ layoutHeader('Relazioni organizzative');
     <form method="post" action="relazioni_organizzative.php">
         <input type="hidden" name="azione" value="nuova_relazione">
         <div class="info-box">Compila la relazione come una frase: <strong>Utente</strong> → <strong>relazione</strong> → <strong>altro utente</strong>.</div>
-        <div class="hr-admin-grid">
+        <div class="hr-wide-form-row hr-relazioni-form-row">
             <div class="form-group">
                 <label for="id_utente">Utente</label>
                 <select name="id_utente" id="id_utente" required>
@@ -175,7 +252,7 @@ layoutHeader('Relazioni organizzative');
                 <label for="data_fine">Data fine</label>
                 <input type="date" name="data_fine" id="data_fine">
             </div>
-            <div class="form-group hr-col-span-2">
+            <div class="form-group">
                 <label for="note">Note</label>
                 <input type="text" name="note" id="note" maxlength="255">
             </div>
@@ -186,9 +263,18 @@ layoutHeader('Relazioni organizzative');
 </div>
 
 <div class="card card-wide">
-    <h2>Relazioni registrate</h2>
+    <div class="hr-filter-toolbar">
+        <div>
+            <h2>Relazioni registrate</h2>
+            <div class="meta">Filtra rapidamente per utente, relazione, periodo, stato o note.</div>
+        </div>
+        <div class="form-group hr-filter-search-group">
+            <label for="relazioniSearch">Filtro rapido</label>
+            <input type="search" id="relazioniSearch" placeholder="Cerca in tutte le colonne...">
+        </div>
+    </div>
     <div class="table-wrap">
-        <table>
+        <table id="relazioniTable">
             <thead>
                 <tr>
                     <th>Utente</th>
@@ -224,4 +310,17 @@ layoutHeader('Relazioni organizzative');
         </table>
     </div>
 </div>
+<script>
+(function () {
+    const input = document.getElementById('relazioniSearch');
+    const table = document.getElementById('relazioniTable');
+    if (!input || !table) return;
+    input.addEventListener('input', function () {
+        const term = this.value.trim().toLowerCase();
+        table.querySelectorAll('tbody tr').forEach(function (row) {
+            row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+        });
+    });
+})();
+</script>
 <?php layoutFooter(); ?>
