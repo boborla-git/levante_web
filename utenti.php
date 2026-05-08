@@ -32,8 +32,66 @@ $stmt = $pdo->query("
 
 $utenti = $stmt->fetchAll();
 
+function classeBadgeUtente(string $tipo): string
+{
+    if ($tipo === 'ok') {
+        return 'status-ok';
+    }
+    if ($tipo === 'wait') {
+        return 'status-wait';
+    }
+    if ($tipo === 'ko') {
+        return 'status-ko';
+    }
+    return 'status-neutral';
+}
+
 layoutHeader('Gestione utenti');
 ?>
+
+<style>
+.admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+.admin-page-head-main {
+    min-width: 260px;
+}
+.admin-page-actions {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+.admin-page-filter {
+    width: min(360px, 100%);
+}
+.admin-page-filter input[type="search"] {
+    width: 100%;
+}
+.user-badge {
+    white-space: nowrap;
+}
+@media (max-width: 760px) {
+    .admin-page-head {
+        display: block;
+    }
+    .admin-page-filter {
+        width: 100%;
+        margin-top: 1rem;
+    }
+    .admin-page-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
 <div class="card card-wide">
     <h1>Admin</h1>
 
@@ -44,26 +102,24 @@ layoutHeader('Gestione utenti');
         <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <div class="page-section-header" style="display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
-        <div>
+    <div class="admin-page-head">
+        <div class="admin-page-head-main">
             <h2 style="margin-bottom:.35rem;">Gestione utenti</h2>
             <p class="muted" style="margin:0;">Elenco degli utenti censiti nel portale.</p>
+            <div class="admin-page-actions">
+                <a class="btn btn-primary" href="utente_nuovo.php"><i class="la la-user-plus" aria-hidden="true"></i> Nuovo utente</a>
+            </div>
         </div>
-        <div class="quick-filter" style="min-width:260px; max-width:360px; flex:0 1 360px;">
+        <div class="form-group hr-filter-search-group admin-page-filter">
             <label for="filtroRapidoUtenti">Filtro rapido</label>
             <input
                 type="search"
                 id="filtroRapidoUtenti"
-                class="form-control"
                 placeholder="Cerca in tutte le colonne..."
                 autocomplete="off"
                 data-table-filter="tabellaUtenti"
             >
         </div>
-    </div>
-
-    <div class="actions" style="margin-top:1rem;">
-        <a class="btn" href="utente_nuovo.php"><i class="la la-user-plus" aria-hidden="true"></i> Nuovo utente</a>
     </div>
 
     <table id="tabellaUtenti">
@@ -90,16 +146,16 @@ layoutHeader('Gestione utenti');
                     <td><?= htmlspecialchars((string)($utente['ruolo_attivo'] ?? 'nessun ruolo')) ?></td>
                     <td>
                         <?php if ((int)$utente['attivo'] === 1): ?>
-                            <span class="stato-attivo">Attivo</span>
+                            <span class="status-badge user-badge <?= classeBadgeUtente('ok') ?>">Attivo</span>
                         <?php else: ?>
-                            <span class="stato-disattivo">Disattivo</span>
+                            <span class="status-badge user-badge <?= classeBadgeUtente('neutral') ?>">Disattivo</span>
                         <?php endif; ?>
                     </td>
                     <td>
                         <?php if ((int)$utente['deve_cambiare_password'] === 1): ?>
-                            <span class="stato-disattivo">Obbligatorio</span>
+                            <span class="status-badge user-badge <?= classeBadgeUtente('wait') ?>">Obbligatorio</span>
                         <?php else: ?>
-                            <span class="stato-attivo">No</span>
+                            <span class="status-badge user-badge <?= classeBadgeUtente('ok') ?>">No</span>
                         <?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars((string)$utente['data_creazione']) ?></td>
