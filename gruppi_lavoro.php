@@ -187,6 +187,21 @@ layoutHeader('Gruppi di lavoro');
         padding-top: 0;
     }
 }
+@media (max-width: 700px) {
+    .section-head,
+    .section-head-actions {
+        align-items: stretch;
+    }
+    .section-head-actions .btn,
+    .actions button,
+    .hr-form-actions-inline button {
+        width: 100%;
+        justify-content: center;
+    }
+    .hr-filter-toolbar {
+        gap: 10px;
+    }
+}
 </style>
 
 <div class="card card-compact">
