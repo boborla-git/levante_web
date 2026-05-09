@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/ui.php';
 
 richiediPermessoLettura('calendario_assenze');
 
@@ -393,9 +394,7 @@ layoutHeader('Calendario assenze');
 </style>
 
 <div class="hr-cal-page">
-<?php if ($error !== ''): ?>
-    <div class="alert alert-error"><?= h($error) ?></div>
-<?php endif; ?>
+<?php renderHrAlert($error, 'danger'); ?>
 
 <section class="hr-cal-layout">
     <aside class="card hr-day-panel" aria-live="polite">

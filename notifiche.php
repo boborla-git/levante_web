@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/ui.php';
 require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('notifiche');
@@ -128,13 +129,8 @@ layoutHeader('Notifiche');
     </div>
 </div>
 
-<?php if ($messaggio !== ''): ?>
-    <div class="alert alert-success"><i class="la la-check-circle"></i> <?= h($messaggio) ?></div>
-<?php endif; ?>
-
-<?php if ($errore !== ''): ?>
-    <div class="alert alert-danger"><i class="la la-exclamation-triangle"></i> <?= h($errore) ?></div>
-<?php endif; ?>
+<?php renderHrAlert($messaggio, 'success'); ?>
+<?php renderHrAlert($errore, 'danger'); ?>
 
 <div class="summary-grid">
     <div class="summary-card">

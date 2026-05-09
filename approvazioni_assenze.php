@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/ui.php';
 require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('approvazioni_assenze');
@@ -584,13 +585,8 @@ layoutHeader('Approvazioni assenze');
         </a>
     </section>
 
-    <?php if ($messaggio !== ''): ?>
-        <div class="alert alert-success"><?= h($messaggio) ?></div>
-    <?php endif; ?>
-
-    <?php if ($errore !== ''): ?>
-        <div class="alert alert-danger"><?= h($errore) ?></div>
-    <?php endif; ?>
+    <?php renderHrAlert($messaggio, 'success'); ?>
+    <?php renderHrAlert($errore, 'danger'); ?>
 
     <section class="approvals-summary" aria-label="Riepilogo approvazioni assenze">
         <span><strong><?= (int)$riepilogo['visualizzate'] ?></strong> richieste visualizzate</span>

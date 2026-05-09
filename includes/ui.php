@@ -92,20 +92,35 @@ if (!function_exists('renderHrAlert')) {
     /**
      * Renderizza un messaggio operativo standard.
      * Tipi supportati: success, danger, warning, info.
+     * Alias supportati: error => danger.
      */
-    function renderHrAlert(string $message, string $type = 'info'): void
+    function renderHrAlert(string $message, string $type = 'info', string $icon = ''): void
     {
         $message = trim($message);
         if ($message === '') {
             return;
         }
 
+        if ($type === 'error') {
+            $type = 'danger';
+        }
+
         $allowed = ['success', 'danger', 'warning', 'info'];
         if (!in_array($type, $allowed, true)) {
             $type = 'info';
         }
+
+        $defaultIcons = [
+            'success' => 'la la-check-circle',
+            'danger' => 'la la-exclamation-triangle',
+            'warning' => 'la la-exclamation-circle',
+            'info' => 'la la-info-circle',
+        ];
+        $icon = trim($icon !== '' ? $icon : ($defaultIcons[$type] ?? ''));
         ?>
-        <div class="alert alert-<?= hrUiEscape($type) ?>" role="status"><?= hrUiEscape($message) ?></div>
+        <div class="alert alert-<?= hrUiEscape($type) ?>" role="status">
+            <?php if ($icon !== ''): ?><i class="<?= hrUiEscape($icon) ?>" aria-hidden="true"></i> <?php endif; ?><?= hrUiEscape($message) ?>
+        </div>
         <?php
     }
 }
