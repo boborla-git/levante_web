@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('configurazione_assenze');
 
@@ -317,7 +318,7 @@ layoutHeader('Relazioni organizzative');
                     <td><?= h((string)$r['utente_collegato']) ?></td>
                     <td><?= h((string)$r['data_inizio']) ?><?= $r['data_fine'] ? ' → ' . h((string)$r['data_fine']) : '' ?></td>
                     <td><?= h((string)$r['note']) ?></td>
-                    <td><span class="status-badge <?= (int)$r['attiva'] === 1 ? 'status-ok' : 'status-neutral' ?>"><?= (int)$r['attiva'] === 1 ? 'Attiva' : 'Chiusa' ?></span></td>
+                    <td><?= renderHrStatusBadge((int)$r['attiva'] === 1 ? 'ATTIVA' : 'CHIUSA', (int)$r['attiva'] === 1 ? 'Attiva' : 'Chiusa') ?></td>
                     <td>
                         <?php if ($puoScrivere && (int)$r['attiva'] === 1): ?>
                             <form method="post" action="relazioni_organizzative.php" onsubmit="return confirm('Chiudere questa relazione?');">

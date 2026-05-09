@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('utenti');
 
@@ -31,20 +32,6 @@ $stmt = $pdo->query("
 ");
 
 $utenti = $stmt->fetchAll();
-
-function classeBadgeUtente(string $tipo): string
-{
-    if ($tipo === 'ok') {
-        return 'status-ok';
-    }
-    if ($tipo === 'wait') {
-        return 'status-wait';
-    }
-    if ($tipo === 'ko') {
-        return 'status-ko';
-    }
-    return 'status-neutral';
-}
 
 layoutHeader('Gestione utenti');
 ?>
@@ -214,16 +201,16 @@ layoutHeader('Gestione utenti');
                     <td><?= htmlspecialchars((string)($utente['ruolo_attivo'] ?? 'nessun ruolo')) ?></td>
                     <td>
                         <?php if ((int)$utente['attivo'] === 1): ?>
-                            <span class="status-badge user-badge <?= classeBadgeUtente('ok') ?>">Attivo</span>
+                            <?= renderHrStatusBadge('ATTIVO', 'Attivo', ['class' => 'user-badge']) ?>
                         <?php else: ?>
-                            <span class="status-badge user-badge <?= classeBadgeUtente('neutral') ?>">Disattivo</span>
+                            <?= renderHrStatusBadge('DISATTIVO', 'Disattivo', ['class' => 'user-badge']) ?>
                         <?php endif; ?>
                     </td>
                     <td>
                         <?php if ((int)$utente['deve_cambiare_password'] === 1): ?>
-                            <span class="status-badge user-badge <?= classeBadgeUtente('wait') ?>">Obbligatorio</span>
+                            <?= renderHrStatusBadge('OBBLIGATORIO', 'Obbligatorio', ['class' => 'user-badge']) ?>
                         <?php else: ?>
-                            <span class="status-badge user-badge <?= classeBadgeUtente('ok') ?>">No</span>
+                            <?= renderHrStatusBadge('NO', 'No', ['class' => 'user-badge']) ?>
                         <?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars((string)$utente['data_creazione']) ?></td>

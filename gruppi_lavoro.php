@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('configurazione_assenze');
 
@@ -282,7 +283,7 @@ layoutHeader('Gruppi di lavoro');
                     <td><strong><?= h((string)$g['codice']) ?></strong></td>
                     <td><?= h((string)$g['nome']) ?></td>
                     <td><?= h((string)$g['descrizione']) ?></td>
-                    <td><span class="status-badge <?= (int)$g['attivo'] === 1 ? 'status-ok' : 'status-neutral' ?>"><?= (int)$g['attivo'] === 1 ? 'Attivo' : 'Disattivo' ?></span></td>
+                    <td><?= renderHrStatusBadge((int)$g['attivo'] === 1 ? 'ATTIVO' : 'DISATTIVO', (int)$g['attivo'] === 1 ? 'Attivo' : 'Disattivo') ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -311,7 +312,7 @@ layoutHeader('Gruppi di lavoro');
                     <td><?= h((string)$a['utente']) ?></td>
                     <td><?= h((string)$a['ruolo_nel_gruppo']) ?></td>
                     <td><?= h((string)$a['data_inizio']) ?><?= $a['data_fine'] ? ' → ' . h((string)$a['data_fine']) : '' ?></td>
-                    <td><span class="status-badge <?= (int)$a['attivo'] === 1 ? 'status-ok' : 'status-neutral' ?>"><?= (int)$a['attivo'] === 1 ? 'Attiva' : 'Chiusa' ?></span></td>
+                    <td><?= renderHrStatusBadge((int)$a['attivo'] === 1 ? 'ATTIVA' : 'CHIUSA', (int)$a['attivo'] === 1 ? 'Attiva' : 'Chiusa') ?></td>
                     <td>
                         <?php if ($puoScrivere && (int)$a['attivo'] === 1): ?>
                             <form method="post" action="gruppi_lavoro.php" onsubmit="return confirm('Chiudere questa appartenenza?');">

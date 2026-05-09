@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoScrittura('utenti');
 
@@ -117,11 +118,6 @@ try {
 } catch (Throwable $e) {
     http_response_code(500);
     die('Errore nel caricamento dei ruoli utente.');
-}
-
-function classeBadgeRuoloUtente(bool $attivo): string
-{
-    return $attivo ? 'status-ok' : 'status-neutral';
 }
 
 layoutHeader('Ruoli utenti');
@@ -299,9 +295,7 @@ layoutHeader('Ruoli utenti');
                             <td><?= htmlspecialchars((string)$utente['username']) ?></td>
                             <td><?= htmlspecialchars($nomeCompleto !== '' ? $nomeCompleto : (string)$utente['username']) ?></td>
                             <td>
-                                <span class="status-badge user-badge <?= classeBadgeRuoloUtente($utenteAttivo) ?>">
-                                    <?= $utenteAttivo ? 'Attivo' : 'Disattivo' ?>
-                                </span>
+                                <?= renderHrStatusBadge($utenteAttivo ? 'ATTIVO' : 'DISATTIVO', $utenteAttivo ? 'Attivo' : 'Disattivo', ['class' => 'user-badge']) ?>
                             </td>
                             <td>
                                 <select class="role-select" name="<?= htmlspecialchars($chiave) ?>">

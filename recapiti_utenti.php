@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('recapiti_utenti');
 
@@ -25,7 +26,7 @@ function h(?string $v): string
 
 function boolLabel(int $value, string $label): string
 {
-    return $value === 1 ? '<span class="badge badge-success">' . h($label) . '</span>' : '<span class="muted">-</span>';
+    return renderHrBooleanBadge($value === 1, $label);
 }
 
 function nominativoUtente(array $u): string

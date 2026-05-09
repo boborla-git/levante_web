@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('approvazioni_assenze');
 
@@ -153,29 +154,6 @@ function hrPeriodoRichiesta(array $r): string
     }
 
     return $periodo;
-}
-
-function hrClasseEsito(string $stato): string
-{
-    if ($stato === 'APPROVATA') {
-        return 'badge-success';
-    }
-
-    if ($stato === 'RIFIUTATA') {
-        return 'badge-danger';
-    }
-
-    return 'badge-warning';
-}
-
-function hrDescrizioneStato(string $stato): string
-{
-    return match ($stato) {
-        'IN_ATTESA' => 'In attesa',
-        'APPROVATA' => 'Approvata',
-        'RIFIUTATA' => 'Rifiutata',
-        default => $stato,
-    };
 }
 
 try {
@@ -673,11 +651,9 @@ layoutHeader('Approvazioni assenze');
                                 </td>
                                 <td><?= h(hrPeriodoRichiesta($richiesta)) ?></td>
                                 <td>
-                                    <span class="badge <?= h(hrClasseEsito($stato)) ?>">
-                                        <?= h(hrDescrizioneStato($stato)) ?>
-                                    </span>
+                                    <?= renderHrStatusBadge($stato) ?>
                                     <?php if ((int)$richiesta['gestita_da_hr'] === 1): ?>
-                                        <br><span class="badge badge-warning" style="margin-top: 0.35rem;">gestita da HR</span>
+                                        <br><?= renderHrStatusBadge('IN_ATTESA', 'gestita da HR', ['style' => 'margin-top: 0.35rem;']) ?>
                                     <?php endif; ?>
                                 </td>
                                 <td>

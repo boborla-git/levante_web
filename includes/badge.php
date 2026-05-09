@@ -12,9 +12,10 @@ if (!function_exists('hrStatusBadgeClass')) {
     function hrStatusBadgeClass(string $codice): string
     {
         return match (strtoupper(trim($codice))) {
-            'APPROVATA', 'APPROVATO', 'OK' => 'status-ok',
-            'RIFIUTATA', 'RIFIUTATO', 'RESPINTA', 'RESPINTO', 'KO' => 'status-ko',
-            'IN_ATTESA', 'PENDENTE', 'PENDENTI' => 'status-wait',
+            'APPROVATA', 'APPROVATO', 'ATTIVA', 'ATTIVO', 'LETTA', 'OK', 'NO' => 'status-ok',
+            'RIFIUTATA', 'RIFIUTATO', 'RESPINTA', 'RESPINTO', 'KO', 'ERRORE' => 'status-ko',
+            'IN_ATTESA', 'PENDENTE', 'PENDENTI', 'OBBLIGATORIO', 'DA_LEGGERE' => 'status-wait',
+            'ANNULLATA', 'ANNULLATO', 'CHIUSA', 'CHIUSO', 'DISATTIVA', 'DISATTIVO' => 'status-neutral',
             default => 'status-neutral',
         };
     }
@@ -34,6 +35,16 @@ if (!function_exists('hrStatusBadgeLabel')) {
             'BOZZA' => 'Bozza',
             'SCADUTA' => 'Scaduta',
             'SCADUTO' => 'Scaduto',
+            'ATTIVA' => 'Attiva',
+            'ATTIVO' => 'Attivo',
+            'DISATTIVA' => 'Disattiva',
+            'DISATTIVO' => 'Disattivo',
+            'CHIUSA' => 'Chiusa',
+            'CHIUSO' => 'Chiuso',
+            'LETTA' => 'Letta',
+            'DA_LEGGERE' => 'Da leggere',
+            'OBBLIGATORIO' => 'Obbligatorio',
+            'NO' => 'No',
             default => trim($codice) !== '' ? trim($codice) : '—',
         };
     }
@@ -41,7 +52,7 @@ if (!function_exists('hrStatusBadgeLabel')) {
 
 if (!function_exists('renderHrStatusBadge')) {
     /**
-     * Rende un badge stato HR standard.
+     * Rende un badge stato standard coerente con il design system del sito.
      *
      * Opzioni supportate:
      * - class: classi CSS aggiuntive
@@ -55,5 +66,18 @@ if (!function_exists('renderHrStatusBadge')) {
         $testo = $label !== null && trim($label) !== '' ? $label : hrStatusBadgeLabel($codice);
 
         return '<span class="' . hrBadgeEscape($classi) . '"' . $styleAttr . '>' . hrBadgeEscape($testo) . '</span>';
+    }
+}
+
+if (!function_exists('renderHrBooleanBadge')) {
+    function renderHrBooleanBadge(bool $valore, string $labelSi, string $labelNo = '—'): string
+    {
+        if ($valore) {
+            return renderHrStatusBadge('OK', $labelSi);
+        }
+
+        return $labelNo === '—'
+            ? '<span class="muted">-</span>'
+            : renderHrStatusBadge('NEUTRAL', $labelNo);
     }
 }
