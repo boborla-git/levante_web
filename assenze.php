@@ -999,6 +999,48 @@ layoutHeader('Assenze e permessi');
     }
 }
 
+/* Responsive definitivo form nuova richiesta: su smartphone tutto in colonna e senza overflow */
+@media (max-width: 760px) {
+    .hr-request-layout {
+        gap: 0.9rem;
+    }
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 0.8rem;
+        width: 100%;
+    }
+    .hr-request-row-secondary .form-group,
+    .hr-request-row-secondary .actions,
+    .hr-field-oggetto,
+    .hr-field-note,
+    .hr-request-submit {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        align-self: stretch;
+        padding-top: 0 !important;
+    }
+    .hr-field-oggetto input,
+    .hr-field-note textarea,
+    .hr-request-submit .btn {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .hr-field-note textarea {
+        min-height: 76px;
+        height: 76px;
+    }
+    .hr-request-submit {
+        justify-content: stretch;
+    }
+    .hr-request-submit .btn {
+        justify-content: center;
+    }
+}
+
 </style>
 
 <div class="hr-page-stack">
