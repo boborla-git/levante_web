@@ -214,9 +214,6 @@ try {
                 te.descrizione_calendario,
                 te.colore_calendario,
                 te.disturbabile,
-                sr.codice AS codice_stato_richiesta,
-                sr.descrizione AS stato_richiesta,
-                sr.colore AS colore_stato_richiesta,
                 sp.descrizione_breve AS stato_presenza_breve,
                 sp.descrizione AS stato_presenza,
                 u.nome,
@@ -225,7 +222,7 @@ try {
             FROM hr_richieste r
             INNER JOIN hr_stati_richiesta sr
                 ON sr.id_stato_richiesta = r.id_stato_richiesta
-               AND sr.codice IN ('APPROVATA', 'IN_ATTESA')
+               AND sr.codice = 'APPROVATA'
             INNER JOIN hr_richieste_periodi p
                 ON p.id_richiesta = r.id_richiesta
             INNER JOIN hr_tipologie_evento te
@@ -266,9 +263,6 @@ try {
                 'colore' => $color,
                 'stato_presenza' => (string)($row['stato_presenza_breve'] ?: $row['stato_presenza']),
                 'disturbabile' => (int)$row['disturbabile'] === 1,
-                'codice_stato' => (string)$row['codice_stato_richiesta'],
-                'stato' => (string)$row['stato_richiesta'],
-                'colore_stato' => hrColoreValido((string)($row['colore_stato_richiesta'] ?? '')),
                 'tipo_periodo' => (string)$row['tipo_periodo'],
                 'ora_da' => $row['ora_da'] ? substr((string)$row['ora_da'], 0, 5) : '',
                 'ora_a' => $row['ora_a'] ? substr((string)$row['ora_a'], 0, 5) : '',
@@ -302,14 +296,9 @@ foreach ($eventsByDay as $dayKey => $events) {
         }
 
         if (!isset($summaryMap[$label])) {
-            $summaryMap[$label] = ['count' => 0, 'pending' => 0, 'approved' => 0, 'color' => $event['colore']];
+            $summaryMap[$label] = ['count' => 0, 'color' => $event['colore']];
         }
         $summaryMap[$label]['count']++;
-        if (($event['codice_stato'] ?? '') === 'IN_ATTESA') {
-            $summaryMap[$label]['pending']++;
-        } elseif (($event['codice_stato'] ?? '') === 'APPROVATA') {
-            $summaryMap[$label]['approved']++;
-        }
 
         if (!isset($detailMap[$label])) {
             $detailMap[$label] = [
@@ -370,12 +359,6 @@ layoutHeader('Calendario assenze');
 .hr-cal-event-line { display: flex; align-items: center; gap: 7px; font-size: 13px; line-height: 1.25; color: #334155; }
 .hr-dot { display: inline-block; width: 11px; height: 11px; border-radius: 999px; background: var(--dot-color, #6c757d); box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 0 3px rgba(15,23,42,.10); flex: 0 0 auto; }
 .hr-dot-lg { width: 14px; height: 14px; }
-.hr-dot-pending { background: transparent; border: 2px solid var(--dot-color, #f0ad4e); box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 0 3px rgba(15,23,42,.10); }
-.hr-cal-event-line.is-pending { font-weight: 700; }
-.hr-cal-event-line.is-pending .hr-cal-event-status { color: #b45309; font-weight: 800; }
-.hr-detail-status { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 800; margin-left: 6px; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; }
-.hr-detail-status.is-pending { background: #fff7db; color: #a16207; border-color: #f4d67a; }
-.hr-detail-status.is-approved { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
 .hr-day-panel { position: sticky; top: 88px; }
 .hr-day-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .hr-day-nav { display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; flex: 0 0 auto; }
@@ -387,8 +370,26 @@ layoutHeader('Calendario assenze');
 .hr-detail-name { font-weight: 700; }
 .hr-detail-meta { color: #64748b; font-size: 13px; margin-top: 3px; }
 @media (max-width: 1100px) { .hr-cal-layout { grid-template-columns: 1fr; } .hr-day-panel { position: static; order: -1; } }
-@media (max-width: 760px) { .hr-calendar-head { align-items: stretch; flex-direction: column; } .hr-cal-toolbar { justify-content: stretch; } .hr-cal-toolbar .btn { flex: 1 1 auto; text-align: center; } .hr-day-panel-head { align-items: flex-start; } .hr-day-panel-head h2 { font-size: 20px; line-height: 1.15; } .hr-day-nav { flex-wrap: nowrap !important; gap: 4px; } .hr-day-nav .hr-icon-btn { width: 36px; height: 34px; } .hr-cal-grid { gap: 6px; } .hr-cal-weekday { display: none; } .hr-cal-day { min-height: 78px; padding: 8px; } .hr-cal-day:not(.has-events):not(.is-today):not(.is-selected) { min-height: 54px; } .hr-cal-event-line { font-size: 12px; } }
-@media (max-width: 520px) { .hr-cal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) {
+    .hr-calendar-head { align-items: stretch; flex-direction: column; }
+    .hr-cal-toolbar { justify-content: stretch; }
+    .hr-cal-toolbar .btn { flex: 1 1 auto; text-align: center; }
+    .hr-day-panel-head { align-items: flex-start; }
+    .hr-day-panel-head h2 { font-size: 20px; line-height: 1.15; }
+    .hr-day-nav { flex-wrap: nowrap !important; gap: 4px; }
+    .hr-day-nav .hr-icon-btn { width: 36px; height: 34px; }
+    .hr-cal-grid { gap: 6px; }
+    .hr-cal-weekday { display: none; }
+    .hr-cal-day { min-height: 78px; padding: 8px; }
+    .hr-cal-day:not(.has-events):not(.is-today):not(.is-selected) { min-height: 54px; }
+    .hr-cal-event-line { font-size: 12px; }
+}
+@media (max-width: 520px) {
+    .hr-cal-layout { gap: 14px; }
+    .hr-day-panel, .hr-calendar-card { width: 100%; }
+    .hr-cal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hr-cal-day { border-radius: 10px; }
+}
 </style>
 
 <div class="hr-cal-page">
@@ -437,13 +438,9 @@ layoutHeader('Calendario assenze');
                 <div class="<?= h($classes) ?>" data-day="<?= h($key) ?>" role="button" tabindex="0">
                     <span class="hr-cal-day-number"><?= h($day->format('j')) ?></span>
                     <?php foreach ($summaries as $label => $summary): ?>
-                        <?php $pendingCount = (int)($summary['pending'] ?? 0); ?>
-                        <span class="hr-cal-event-line<?= $pendingCount > 0 ? ' is-pending' : '' ?>">
-                            <span class="hr-dot<?= $pendingCount > 0 ? ' hr-dot-pending' : '' ?>" style="--dot-color: <?= h($summary['color']) ?>"></span>
-                            <span>
-                                <?= h(mb_strtolower((string)$label, 'UTF-8')) ?>: <strong><?= (int)$summary['count'] ?></strong>
-                                <?php if ($pendingCount > 0): ?><span class="hr-cal-event-status"> · <?= $pendingCount ?> in attesa</span><?php endif; ?>
-                            </span>
+                        <span class="hr-cal-event-line">
+                            <span class="hr-dot" style="--dot-color: <?= h($summary['color']) ?>"></span>
+                            <span><?= h(mb_strtolower((string)$label, 'UTF-8')) ?>: <strong><?= (int)$summary['count'] ?></strong></span>
                         </span>
                     <?php endforeach; ?>
                 </div>
@@ -486,15 +483,9 @@ layoutHeader('Calendario assenze');
         labels.forEach(function (label) {
             const group = groups[label];
             const color = group.color || '#6c757d';
-            const items = (group.items || []).slice().sort(function (a, b) {
-                const ap = a.codice_stato === 'IN_ATTESA' ? 0 : 1;
-                const bp = b.codice_stato === 'IN_ATTESA' ? 0 : 1;
-                return ap - bp;
-            });
-            const pendingCount = items.filter(function (item) { return item.codice_stato === 'IN_ATTESA'; }).length;
-            const dotClass = pendingCount > 0 ? ' hr-dot-pending' : '';
+            const items = group.items || [];
             html += '<div class="hr-detail-group">';
-            html += '<div class="hr-detail-group-title"><span class="hr-dot hr-dot-lg' + dotClass + '" style="--dot-color:' + escapeHtml(color) + '"></span>' + escapeHtml(label) + ' <span class="badge">' + items.length + '</span>' + (pendingCount > 0 ? '<span class="hr-detail-status is-pending">' + pendingCount + ' in attesa</span>' : '') + '</div>';
+            html += '<div class="hr-detail-group-title"><span class="hr-dot hr-dot-lg" style="--dot-color:' + escapeHtml(color) + '"></span>' + escapeHtml(label) + ' <span class="badge">' + items.length + '</span></div>';
             items.forEach(function (item) {
                 let meta = '';
                 if (item.tipo_periodo === 'ORE' && item.ora_da && item.ora_a) {
@@ -502,9 +493,7 @@ layoutHeader('Calendario assenze');
                 } else {
                     meta = 'Giornata';
                 }
-                const statusClass = item.codice_stato === 'IN_ATTESA' ? ' is-pending' : (item.codice_stato === 'APPROVATA' ? ' is-approved' : '');
-                const status = item.stato ? '<span class="hr-detail-status' + statusClass + '">' + escapeHtml(item.stato) + '</span>' : '';
-                html += '<div class="hr-detail-row"><div class="hr-detail-name">' + escapeHtml(item.nome || '') + status + '</div><div class="hr-detail-meta">' + meta + '</div></div>';
+                html += '<div class="hr-detail-row"><div class="hr-detail-name">' + escapeHtml(item.nome || '') + '</div><div class="hr-detail-meta">' + meta + '</div></div>';
             });
             html += '</div>';
         });
