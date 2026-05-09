@@ -505,3 +505,244 @@ input:focus, select:focus, textarea:focus,
     }
     .brand img { width: 150px; }
 }
+
+/* ---------------------------------------------------------------------------
+   14. Layout operativi e filtri rapidi
+   --------------------------------------------------------------------------- */
+.section-toolbar,
+.operation-toolbar,
+.table-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.85rem 0 1rem;
+}
+
+.section-toolbar .toolbar-left,
+.operation-toolbar .toolbar-left,
+.table-toolbar .toolbar-left {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.section-toolbar .toolbar-right,
+.operation-toolbar .toolbar-right,
+.table-toolbar .toolbar-right {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.quick-filter,
+.filter-quick,
+.quick-filter-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 260px;
+  max-width: 380px;
+}
+
+.quick-filter label,
+.filter-quick label,
+.quick-filter-box label {
+  margin: 0;
+  color: var(--rav-gray-900);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.quick-filter input,
+.filter-quick input,
+.quick-filter-box input,
+input.quick-filter-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--rav-gray-300);
+  border-radius: var(--rav-radius-sm);
+  background: #ffffff;
+  color: var(--rav-gray-900);
+  font: inherit;
+}
+
+.quick-filter input::placeholder,
+.filter-quick input::placeholder,
+.quick-filter-box input::placeholder,
+input.quick-filter-input::placeholder {
+  color: var(--rav-gray-500);
+}
+
+/* ---------------------------------------------------------------------------
+   15. Griglie form responsive
+   --------------------------------------------------------------------------- */
+.form-grid,
+.form-grid-inline,
+.inline-form-grid,
+.responsive-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+  align-items: end;
+}
+
+.form-grid .full,
+.form-grid-inline .full,
+.inline-form-grid .full,
+.responsive-form-grid .full {
+  grid-column: 1 / -1;
+}
+
+.form-field,
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.form-field label,
+.field-group label {
+  margin: 0;
+  color: var(--rav-gray-900);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea,
+.field-group input,
+.field-group select,
+.field-group textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+}
+
+.form-field textarea,
+.field-group textarea {
+  min-height: 40px;
+  resize: vertical;
+}
+
+.form-submit,
+.form-submit-inline {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  min-width: max-content;
+}
+
+/* ---------------------------------------------------------------------------
+   16. Tabelle responsive
+   --------------------------------------------------------------------------- */
+.table-scroll,
+.table-responsive,
+.responsive-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll table,
+.table-responsive table,
+.responsive-table-wrap table {
+  min-width: 720px;
+}
+
+/* ---------------------------------------------------------------------------
+   17. Menu mobile / drawer
+   --------------------------------------------------------------------------- */
+.mobile-menu-toggle,
+.drawer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 40px;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--rav-radius-sm);
+  color: var(--rav-gray-900);
+  text-decoration: none;
+}
+
+.drawer-item:hover,
+.drawer-item.active {
+  background: var(--rav-blue-soft);
+  color: var(--rav-blue);
+  text-decoration: none;
+}
+
+.drawer-item.level-1 { padding-left: 1.25rem; }
+.drawer-item.level-2 { padding-left: 1.9rem; }
+.drawer-item.level-3 { padding-left: 2.55rem; }
+
+/* ---------------------------------------------------------------------------
+   18. Adattamenti smartphone verticale
+   --------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .section-toolbar,
+  .operation-toolbar,
+  .table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .section-toolbar .toolbar-left,
+  .section-toolbar .toolbar-right,
+  .operation-toolbar .toolbar-left,
+  .operation-toolbar .toolbar-right,
+  .table-toolbar .toolbar-left,
+  .table-toolbar .toolbar-right {
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .quick-filter,
+  .filter-quick,
+  .quick-filter-box {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .form-grid,
+  .form-grid-inline,
+  .inline-form-grid,
+  .responsive-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-submit,
+  .form-submit-inline,
+  .form-submit .btn,
+  .form-submit-inline .btn {
+    width: 100%;
+  }
+
+  .form-actions,
+  .page-actions,
+  .action-row,
+  .table-actions {
+    align-items: stretch;
+  }
+
+  .form-actions .btn,
+  .page-actions .btn,
+  .action-row .btn {
+    width: 100%;
+  }
+}
