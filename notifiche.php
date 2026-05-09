@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/db.php';
@@ -150,7 +151,11 @@ layoutHeader('Notifiche');
 </div>
 
 <div class="card">
-    <h2>Ultime notifiche</h2>
+    <div class="section-head">
+        <div>
+            <h2>Ultime notifiche</h2>
+        </div>
+    </div>
 
     <?php if (count($notifiche) === 0): ?>
         <p class="empty-state"><i class="la la-inbox"></i> Non hai notifiche.</p>
@@ -176,7 +181,7 @@ layoutHeader('Notifiche');
                     <div class="notification-body">
                         <div class="notification-title-row">
                             <h3><?= h((string)$notifica['titolo']) ?></h3>
-                            <span class="status-badge <?= $letta ? 'badge-success' : 'badge-warning' ?>">
+                            <span class="status-badge <?= $letta ? 'status-ok' : 'status-wait' ?>">
                                 <?= $letta ? 'Letta' : 'Nuova' ?>
                             </span>
                         </div>
