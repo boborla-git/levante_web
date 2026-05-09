@@ -1338,33 +1338,5 @@ layoutHeader('Assenze e permessi');
 </div>
 
 
-<script>
-(function () {
-    function normalizzaTesto(valore) {
-        return (valore || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    }
-
-    document.querySelectorAll('[data-quick-filter]').forEach(function (input) {
-        var tableId = input.getAttribute('data-quick-filter');
-        var table = document.getElementById(tableId);
-        if (!table) { return; }
-        var empty = document.querySelector('[data-quick-filter-empty="' + tableId + '"]');
-        var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
-
-        input.addEventListener('input', function () {
-            var query = normalizzaTesto(input.value.trim());
-            var visible = 0;
-            rows.forEach(function (row) {
-                var match = query === '' || normalizzaTesto(row.textContent).indexOf(query) !== -1;
-                row.style.display = match ? '' : 'none';
-                if (match) { visible += 1; }
-            });
-            if (empty) {
-                empty.style.display = visible === 0 ? 'block' : 'none';
-            }
-        });
-    });
-})();
-</script>
 
 <?php layoutFooter(); ?>

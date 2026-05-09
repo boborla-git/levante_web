@@ -293,7 +293,7 @@ layoutHeader('Relazioni organizzative');
         </div>
         <div class="form-group hr-filter-search-group">
             <label for="relazioniSearch">Filtro rapido</label>
-            <input type="search" id="relazioniSearch" placeholder="Cerca in tutte le colonne...">
+            <input type="search" id="relazioniSearch" data-table-filter="relazioniTable" placeholder="Cerca in tutte le colonne...">
         </div>
     </div>
     <div class="table-wrap">
@@ -333,17 +333,4 @@ layoutHeader('Relazioni organizzative');
         </table>
     </div>
 </div>
-<script>
-(function () {
-    const input = document.getElementById('relazioniSearch');
-    const table = document.getElementById('relazioniTable');
-    if (!input || !table) return;
-    input.addEventListener('input', function () {
-        const term = this.value.trim().toLowerCase();
-        table.querySelectorAll('tbody tr').forEach(function (row) {
-            row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
-        });
-    });
-})();
-</script>
 <?php layoutFooter(); ?>

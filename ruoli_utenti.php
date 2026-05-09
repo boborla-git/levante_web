@@ -329,32 +329,5 @@ layoutHeader('Ruoli utenti');
     </div>
 </div>
 
-<script>
-(function () {
-    function normalizzaTesto(valore) {
-        return (valore || '')
-            .toString()
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '');
-    }
-
-    document.querySelectorAll('[data-table-filter]').forEach(function (input) {
-        var tableId = input.getAttribute('data-table-filter');
-        var table = document.getElementById(tableId);
-        if (!table) {
-            return;
-        }
-
-        input.addEventListener('input', function () {
-            var filtro = normalizzaTesto(input.value);
-            table.querySelectorAll('tbody tr').forEach(function (row) {
-                var testo = normalizzaTesto(row.textContent);
-                row.style.display = testo.indexOf(filtro) !== -1 ? '' : 'none';
-            });
-        });
-    });
-})();
-</script>
 
 <?php layoutFooter(); ?>

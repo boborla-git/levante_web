@@ -270,7 +270,7 @@ layoutHeader('Gruppi di lavoro');
         </div>
         <div class="form-group hr-filter-search-group">
             <label for="gruppiSearch">Filtro rapido</label>
-            <input type="search" id="gruppiSearch" placeholder="Cerca in tutte le colonne...">
+            <input type="search" id="gruppiSearch" data-table-filter="gruppiTable" placeholder="Cerca in tutte le colonne...">
         </div>
     </div>
     <div class="table-wrap">
@@ -298,7 +298,7 @@ layoutHeader('Gruppi di lavoro');
         </div>
         <div class="form-group hr-filter-search-group">
             <label for="appartenenzeSearch">Filtro rapido</label>
-            <input type="search" id="appartenenzeSearch" placeholder="Cerca in tutte le colonne...">
+            <input type="search" id="appartenenzeSearch" data-table-filter="appartenenzeTable" placeholder="Cerca in tutte le colonne...">
         </div>
     </div>
     <div class="table-wrap">
@@ -327,21 +327,4 @@ layoutHeader('Gruppi di lavoro');
         </table>
     </div>
 </div>
-<script>
-(function () {
-    function bindQuickFilter(inputId, tableId) {
-        const input = document.getElementById(inputId);
-        const table = document.getElementById(tableId);
-        if (!input || !table) return;
-        input.addEventListener('input', function () {
-            const term = this.value.trim().toLowerCase();
-            table.querySelectorAll('tbody tr').forEach(function (row) {
-                row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
-            });
-        });
-    }
-    bindQuickFilter('gruppiSearch', 'gruppiTable');
-    bindQuickFilter('appartenenzeSearch', 'appartenenzeTable');
-})();
-</script>
 <?php layoutFooter(); ?>

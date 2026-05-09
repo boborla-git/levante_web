@@ -400,7 +400,7 @@ layoutHeader('Recapiti utenti');
         </div>
         <div class="form-group hr-recapiti-search-group">
             <label for="recapitiSearch">Filtro rapido</label>
-            <input type="search" id="recapitiSearch" placeholder="Cerca in tutte le colonne...">
+            <input type="search" id="recapitiSearch" data-table-filter="recapitiTable" placeholder="Cerca in tutte le colonne...">
         </div>
     </div>
 
@@ -476,18 +476,5 @@ layoutHeader('Recapiti utenti');
     </table>
 </div>
 
-<script>
-(function () {
-    const input = document.getElementById('recapitiSearch');
-    const table = document.getElementById('recapitiTable');
-    if (!input || !table) return;
-    input.addEventListener('input', function () {
-        const needle = input.value.toLowerCase().trim();
-        table.querySelectorAll('tbody tr').forEach(function (row) {
-            row.style.display = row.textContent.toLowerCase().includes(needle) ? '' : 'none';
-        });
-    });
-})();
-</script>
 
 <?php layoutFooter(); ?>

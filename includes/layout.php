@@ -566,6 +566,47 @@ function layoutFooter(): void
                 }
             });
 
+
+
+            function normalizzaFiltroRapido(valore) {
+                return (valore || '')
+                    .toString()
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '');
+            }
+
+            function applicaFiltroRapido(input, table) {
+                var filtro = normalizzaFiltroRapido(input.value);
+                var righe = table.querySelectorAll('tbody tr');
+                var visibili = 0;
+
+                righe.forEach(function (row) {
+                    var testo = normalizzaFiltroRapido(row.textContent);
+                    var mostra = testo.indexOf(filtro) !== -1;
+                    row.style.display = mostra ? '' : 'none';
+                    if (mostra) visibili += 1;
+                });
+
+                var empty = document.querySelector('[data-quick-filter-empty="' + table.id + '"]');
+                if (empty) {
+                    empty.style.display = visibili === 0 ? '' : 'none';
+                }
+            }
+
+            document.querySelectorAll('[data-table-filter], [data-quick-filter]').forEach(function (input) {
+                var tableId = input.getAttribute('data-table-filter') || input.getAttribute('data-quick-filter');
+                if (!tableId) return;
+
+                var table = document.getElementById(tableId);
+                if (!table) return;
+
+                applicaFiltroRapido(input, table);
+                input.addEventListener('input', function () {
+                    applicaFiltroRapido(input, table);
+                });
+            });
+
             window.addEventListener('resize', function () {
                 if (window.innerWidth > 1100) {
                     closeDrawer();
