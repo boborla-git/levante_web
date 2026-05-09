@@ -98,7 +98,7 @@ try {
          ORDER BY nominativo, username"
     )->fetchAll();
 
-    $tipiRelazione = $pdo->query("SELECT * FROM hr_tipi_relazione_organizzativa WHERE attivo = 1 AND codice IN ('RESPONSABILE_DIRETTO','RESPONSABILE_FUNZIONALE') ORDER BY descrizione")->fetchAll();
+    $tipiRelazione = $pdo->query("SELECT * FROM hr_tipi_relazione_organizzativa WHERE attivo = 1 AND codice IN ('RESPONSABILE_FUNZIONALE','RESPONSABILE_DIRETTO') ORDER BY CASE WHEN codice = 'RESPONSABILE_FUNZIONALE' THEN 0 ELSE 1 END, descrizione")->fetchAll();
 
     $relazioniAttive = $pdo->query(
         "SELECT ro.*, tr.codice, tr.descrizione AS tipo_relazione,
@@ -242,20 +242,28 @@ layoutHeader('Relazioni organizzative');
                 </select>
             </div>
             <div class="form-group">
+                <label for="id_tipo_relazione">Relazione</label>
+                <select name="id_tipo_relazione" id="id_tipo_relazione" required>
+                    <option value="">Seleziona...</option>
+                    <?php
+                    $relazioniViste = [];
+                    foreach ($tipiRelazione as $t):
+                        $descrizioneOpzione = descrizioneRelazioneBreve((string)$t['codice'], (string)$t['descrizione']);
+                        if (isset($relazioniViste[$descrizioneOpzione])) {
+                            continue;
+                        }
+                        $relazioniViste[$descrizioneOpzione] = true;
+                    ?>
+                        <option value="<?= (int)$t['id_tipo_relazione'] ?>"><?= h($descrizioneOpzione) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
                 <label for="id_utente_collegato">Altro utente</label>
                 <select name="id_utente_collegato" id="id_utente_collegato" required>
                     <option value="">Seleziona...</option>
                     <?php foreach ($utenti as $u): ?>
                         <option value="<?= (int)$u['id_utente'] ?>"><?= h(trim((string)$u['nominativo']) !== '' ? (string)$u['nominativo'] : (string)$u['username']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="id_tipo_relazione">Relazione</label>
-                <select name="id_tipo_relazione" id="id_tipo_relazione" required>
-                    <option value="">Seleziona...</option>
-                    <?php foreach ($tipiRelazione as $t): ?>
-                        <option value="<?= (int)$t['id_tipo_relazione'] ?>"><?= h(descrizioneRelazioneBreve((string)$t['codice'], (string)$t['descrizione'])) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
