@@ -89,6 +89,65 @@ layoutHeader('Gestione utenti');
 .user-badge {
     white-space: nowrap;
 }
+
+.admin-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.admin-tabs-label {
+    white-space: nowrap;
+}
+.table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.table-wrap table {
+    min-width: 760px;
+}
+@media (max-width: 900px) {
+    .admin-tabs {
+        align-items: stretch;
+    }
+    .admin-tabs-label {
+        width: 100%;
+    }
+    .admin-tabs a {
+        flex: 1 1 auto;
+        justify-content: center;
+        text-align: center;
+    }
+    .hr-filter-toolbar {
+        gap: 12px;
+    }
+    .hr-filter-search-group input[type="search"] {
+        min-height: 42px;
+    }
+}
+@media (max-width: 520px) {
+    .card.card-wide {
+        padding: 16px;
+    }
+    .admin-tabs a {
+        width: 100%;
+    }
+    .hr-filter-toolbar-main h2 {
+        margin-top: 0;
+    }
+    .table-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+    .table-actions .btn {
+        width: 100%;
+        justify-content: center;
+        white-space: nowrap;
+    }
+}
+
 @media (max-width: 900px) {
     .hr-filter-toolbar {
         grid-template-columns: 1fr;
