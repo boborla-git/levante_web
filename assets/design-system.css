@@ -746,3 +746,191 @@ input.quick-filter-input::placeholder {
     width: 100%;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   19. Consolidamento finale: toolbar, filtri e layout legacy
+   --------------------------------------------------------------------------- */
+.page-content,
+.main-content,
+.container,
+.content-wrapper {
+  min-width: 0;
+}
+
+.page-card,
+.module-card,
+.content-card,
+.admin-card {
+  min-width: 0;
+}
+
+.section-toolbar,
+.operation-toolbar,
+.table-toolbar,
+.form-toolbar,
+.admin-toolbar,
+.list-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+}
+
+.toolbar-left,
+.toolbar-right,
+.toolbar-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.toolbar-right,
+.toolbar-actions {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.quick-filter input,
+.quick-filter-input,
+.filter-quick input,
+.quick-filter-box input,
+.filtro-rapido input {
+  height: 40px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  color: var(--rav-gray-900);
+}
+
+.quick-filter input::placeholder,
+.quick-filter-input::placeholder,
+.filter-quick input::placeholder,
+.quick-filter-box input::placeholder,
+.filtro-rapido input::placeholder {
+  color: var(--rav-gray-500);
+}
+
+.admin-tabs,
+.section-tabs,
+.nav-pills,
+.pill-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.admin-tabs a,
+.section-tabs a,
+.nav-pills a,
+.pill-tabs a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 34px;
+  padding: 0.42rem 0.72rem;
+  border: 1px solid var(--rav-gray-300);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--rav-gray-900);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-tabs a.active,
+.section-tabs a.active,
+.nav-pills a.active,
+.pill-tabs a.active {
+  background: var(--rav-yellow);
+  border-color: var(--rav-blue);
+  color: var(--rav-blue);
+}
+
+.admin-tabs a:hover,
+.section-tabs a:hover,
+.nav-pills a:hover,
+.pill-tabs a:hover {
+  border-color: var(--rav-blue);
+  color: var(--rav-blue);
+  text-decoration: none;
+}
+
+/* Evita tagli dei form su mobile: solo le tabelle devono scorrere orizzontalmente. */
+.form-grid,
+.form-grid-inline,
+.inline-form-grid,
+.responsive-form-grid,
+.desktop-inline,
+.form-inline-desktop,
+.responsive-form-row {
+  min-width: 0;
+}
+
+.form-grid > *,
+.form-grid-inline > *,
+.inline-form-grid > *,
+.responsive-form-grid > *,
+.desktop-inline > *,
+.form-inline-desktop > *,
+.responsive-form-row > * {
+  min-width: 0;
+}
+
+@media (min-width: 901px) {
+  .toolbar-right .quick-filter,
+  .toolbar-right .filter-quick,
+  .toolbar-right .quick-filter-box,
+  .toolbar-right .filtro-rapido,
+  .toolbar-actions .quick-filter,
+  .toolbar-actions .filter-quick,
+  .toolbar-actions .quick-filter-box,
+  .toolbar-actions .filtro-rapido {
+    width: min(100%, 380px);
+  }
+}
+
+@media (max-width: 768px) {
+  .section-toolbar,
+  .operation-toolbar,
+  .table-toolbar,
+  .form-toolbar,
+  .admin-toolbar,
+  .list-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .toolbar-left,
+  .toolbar-right,
+  .toolbar-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: stretch;
+  }
+
+  .toolbar-left .btn,
+  .toolbar-right .btn,
+  .toolbar-actions .btn {
+    width: 100%;
+  }
+
+  .admin-tabs,
+  .section-tabs,
+  .nav-pills,
+  .pill-tabs {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .admin-tabs a,
+  .section-tabs a,
+  .nav-pills a,
+  .pill-tabs a {
+    width: 100%;
+  }
+}
