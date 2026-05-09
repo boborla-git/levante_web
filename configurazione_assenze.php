@@ -272,33 +272,52 @@ layoutHeader('Configurazione assenze');
     font-size: 13px;
     margin-top: 6px;
 }
+
+.hr-config-card .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.hr-config-table {
+    min-width: 1040px;
+}
+.hr-config-table input[type="text"],
+.hr-config-table input[type="number"] {
+    min-height: 40px;
+}
+
 @media (max-width: 1000px) {
     .hr-config-header {
         align-items: stretch;
         flex-direction: column;
+        padding: 18px;
     }
     .hr-config-actions {
         justify-content: flex-start;
     }
+    .hr-config-actions .btn {
+        justify-content: center;
+    }
     .hr-config-summary span { white-space: normal; }
-    .hr-config-table,
-    .hr-config-table tbody,
-    .hr-config-table tr,
-    .hr-config-table td,
-    .hr-config-table th {
-        display: block;
+}
+
+@media (max-width: 640px) {
+    .hr-config-header h1 {
+        font-size: 24px;
+    }
+    .hr-config-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .hr-config-actions .btn,
+    .hr-config-card button[type="submit"] {
         width: 100%;
     }
-    .hr-config-table thead { display: none; }
-    .hr-config-table tr {
-        border: 1px solid #d7dee8;
-        border-radius: 12px;
-        margin-bottom: 12px;
-        padding: 12px;
+    .hr-config-summary {
+        display: grid;
+        grid-template-columns: 1fr;
     }
-    .hr-config-table td {
-        border: 0 !important;
-        padding: 8px 0 !important;
+    .hr-config-card {
+        padding: 14px;
     }
 }
 </style>
