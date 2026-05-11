@@ -2081,3 +2081,87 @@ input:focus, select:focus, textarea:focus,
         width: 100%;
     }
 }
+
+/* === Rifinitura finale layout admin/toolbar === */
+.card.card-wide > .admin-list-toolbar,
+.admin-list-toolbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 380px) !important;
+    gap: 1rem 1.5rem !important;
+    align-items: end !important;
+    justify-content: stretch !important;
+    width: 100% !important;
+    margin: 1.25rem 0 1rem !important;
+}
+
+.admin-list-toolbar-main {
+    min-width: 0 !important;
+    justify-self: stretch !important;
+    align-self: end !important;
+    text-align: left !important;
+}
+
+.admin-list-toolbar-main h2,
+.admin-list-toolbar-main .section-title {
+    margin-top: 0 !important;
+    margin-bottom: .35rem !important;
+    text-align: left !important;
+}
+
+.admin-list-toolbar-main .muted {
+    margin: 0 !important;
+    text-align: left !important;
+}
+
+.admin-page-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: .5rem !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    margin-top: .75rem !important;
+}
+
+.admin-list-filter {
+    justify-self: end !important;
+    align-self: end !important;
+    width: min(100%, 380px) !important;
+    margin: 0 !important;
+}
+
+.admin-list-filter label {
+    display: block !important;
+    margin: 0 0 .35rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+}
+
+.admin-list-filter input[type="search"] {
+    width: 100% !important;
+    min-height: 40px !important;
+}
+
+.permissions-role-form {
+    margin-top: 1rem !important;
+}
+
+@media (max-width: 760px) {
+    .card.card-wide > .admin-list-toolbar,
+    .admin-list-toolbar {
+        grid-template-columns: 1fr !important;
+        align-items: stretch !important;
+        gap: .85rem !important;
+    }
+
+    .admin-list-filter {
+        justify-self: stretch !important;
+        width: 100% !important;
+    }
+
+    .admin-page-actions,
+    .admin-page-actions .btn,
+    .admin-list-toolbar-main .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+}
