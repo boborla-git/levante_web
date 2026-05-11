@@ -666,3 +666,85 @@ input:focus, select:focus, textarea:focus,
         justify-content: center;
     }
 }
+
+/* Tabelle responsive comuni */
+.table-scroll,
+.table-wrap,
+.responsive-table,
+.table-responsive,
+.hr-table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--rav-radius-sm);
+}
+
+.table-scroll table,
+.table-wrap table,
+.responsive-table table,
+.table-responsive table,
+.hr-table-scroll table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-scroll th,
+.table-scroll td,
+.table-wrap th,
+.table-wrap td,
+.responsive-table th,
+.responsive-table td,
+.table-responsive th,
+.table-responsive td,
+.hr-table-scroll th,
+.hr-table-scroll td {
+    vertical-align: middle;
+}
+
+.hr-table-compact th,
+.hr-table-compact td {
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+}
+
+.hr-table-nowrap th,
+.hr-table-nowrap td {
+    white-space: nowrap;
+}
+
+.hr-table-actions {
+    width: 1%;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .table-scroll,
+    .table-wrap,
+    .responsive-table,
+    .table-responsive,
+    .hr-table-scroll {
+        margin-top: 0.75rem;
+        padding-bottom: 0.35rem;
+    }
+
+    .table-scroll table,
+    .table-wrap table,
+    .responsive-table table,
+    .table-responsive table,
+    .hr-table-scroll table {
+        min-width: 760px;
+    }
+
+    .table-scroll::after,
+    .table-wrap::after,
+    .responsive-table::after,
+    .table-responsive::after,
+    .hr-table-scroll::after {
+        content: "Scorri orizzontalmente per vedere tutte le colonne";
+        display: block;
+        margin-top: 0.4rem;
+        color: var(--rav-gray-500);
+        font-size: 0.78rem;
+    }
+}
