@@ -46,25 +46,29 @@ layoutHeader('Gestione utenti');
         <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <div class="admin-list-toolbar">
-        <div class="admin-list-toolbar-main">
-            <h2 style="margin-bottom:.35rem;">Gestione utenti</h2>
-            <p class="muted" style="margin:0;">Elenco degli utenti censiti nel portale.</p>
+    <section class="admin-page-block">
+        <div class="admin-section-heading">
+            <h2>Gestione utenti</h2>
+            <p class="muted">Elenco degli utenti censiti nel portale.</p>
+        </div>
+
+        <div class="admin-actions-toolbar">
             <div class="admin-page-actions">
                 <a class="btn btn-primary" href="utente_nuovo.php"><i class="la la-user-plus" aria-hidden="true"></i> Nuovo utente</a>
             </div>
+
+            <div class="form-group admin-list-filter">
+                <label for="filtroRapidoUtenti">Filtro rapido</label>
+                <input
+                    type="search"
+                    id="filtroRapidoUtenti"
+                    placeholder="Cerca in tutte le colonne..."
+                    autocomplete="off"
+                    data-table-filter="tabellaUtenti"
+                >
+            </div>
         </div>
-        <div class="form-group admin-list-filter">
-            <label for="filtroRapidoUtenti">Filtro rapido</label>
-            <input
-                type="search"
-                id="filtroRapidoUtenti"
-                placeholder="Cerca in tutte le colonne..."
-                autocomplete="off"
-                data-table-filter="tabellaUtenti"
-            >
-        </div>
-    </div>
+    </section>
 
     <div class="table-wrap">
     <table id="tabellaUtenti">

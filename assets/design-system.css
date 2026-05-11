@@ -2165,3 +2165,81 @@ input:focus, select:focus, textarea:focus,
         justify-content: center !important;
     }
 }
+
+/* === Layout admin definitivo: intestazione sezione + toolbar azioni/filtro === */
+.admin-page-block {
+    display: grid;
+    gap: 0.9rem;
+    margin: 1.35rem 0 1rem;
+}
+
+.admin-section-heading {
+    display: grid;
+    gap: 0.3rem;
+    max-width: 880px;
+}
+
+.admin-section-heading h2 {
+    margin: 0;
+}
+
+.admin-section-heading .muted {
+    margin: 0;
+}
+
+.admin-actions-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 380px);
+    gap: 0.85rem 1.25rem;
+    align-items: end;
+    width: 100%;
+}
+
+.admin-actions-toolbar .admin-page-actions,
+.admin-actions-toolbar .permissions-role-form {
+    min-width: 0;
+    margin: 0;
+}
+
+.admin-actions-toolbar .admin-list-filter {
+    justify-self: end;
+    width: min(100%, 380px);
+    margin: 0;
+}
+
+.admin-actions-toolbar-role {
+    grid-template-columns: minmax(420px, 1fr) minmax(260px, 380px);
+}
+
+.admin-actions-toolbar-role .permissions-role-form select {
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .admin-actions-toolbar,
+    .admin-actions-toolbar-role {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .admin-actions-toolbar .admin-list-filter,
+    .admin-actions-toolbar-role .admin-list-filter {
+        justify-self: stretch;
+        width: 100%;
+    }
+}
+
+@media (max-width: 760px) {
+    .admin-page-block {
+        gap: 0.8rem;
+        margin-top: 1rem;
+    }
+
+    .admin-actions-toolbar .admin-page-actions,
+    .admin-actions-toolbar .admin-page-actions .btn,
+    .admin-actions-toolbar button.btn,
+    .admin-actions-toolbar a.btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

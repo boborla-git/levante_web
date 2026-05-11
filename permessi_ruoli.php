@@ -255,24 +255,38 @@ layoutHeader('Permessi ruoli');
         <a class="active" href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <div class="admin-list-toolbar">
-        <div class="admin-list-toolbar-main">
-            <h2 style="margin-bottom:.35rem;">Permessi ruoli</h2>
-            <p class="muted" style="margin:0;">
+    <section class="admin-page-block">
+        <div class="admin-section-heading">
+            <h2>Permessi ruoli</h2>
+            <p class="muted">
                 Gestione permessi su risorse gerarchiche del portale. Le righe rappresentano l'albero di <code>aut_risorse</code>.
             </p>
         </div>
-        <div class="form-group admin-list-filter">
-            <label for="filtroRapidoPermessiRuoli">Filtro rapido</label>
-            <input
-                type="search"
-                id="filtroRapidoPermessiRuoli"
-                placeholder="Cerca in tutte le colonne..."
-                autocomplete="off"
-                data-table-filter="tabellaPermessiRuoli"
-            >
+
+        <div class="admin-actions-toolbar admin-actions-toolbar-role">
+            <form method="get" id="formRuolo" class="permissions-role-form">
+                <label for="id_ruolo"><strong>Ruolo da gestire:</strong></label>
+                <select name="id_ruolo" id="id_ruolo" onchange="this.form.submit()">
+                    <?php foreach ($ruoli as $ruolo): ?>
+                        <option value="<?= (int)$ruolo['id_ruolo'] ?>" <?= (int)$ruolo['id_ruolo'] === $idRuoloSelezionato ? 'selected' : '' ?>>
+                            <?= htmlspecialchars((string)$ruolo['codice_ruolo']) ?> - <?= htmlspecialchars((string)$ruolo['descrizione']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
+
+            <div class="form-group admin-list-filter">
+                <label for="filtroRapidoPermessiRuoli">Filtro rapido</label>
+                <input
+                    type="search"
+                    id="filtroRapidoPermessiRuoli"
+                    placeholder="Cerca in tutte le colonne..."
+                    autocomplete="off"
+                    data-table-filter="tabellaPermessiRuoli"
+                >
+            </div>
         </div>
-    </div>
+    </section>
 
     <?php if ($errore !== ''): ?>
         <div class="errore"><?= htmlspecialchars($errore) ?></div>
@@ -281,17 +295,6 @@ layoutHeader('Permessi ruoli');
     <?php if ($messaggio !== ''): ?>
         <div class="ok"><?= htmlspecialchars($messaggio) ?></div>
     <?php endif; ?>
-
-    <form method="get" id="formRuolo" class="permissions-role-form">
-        <label for="id_ruolo"><strong>Ruolo da gestire:</strong></label>
-        <select name="id_ruolo" id="id_ruolo" onchange="this.form.submit()">
-            <?php foreach ($ruoli as $ruolo): ?>
-                <option value="<?= (int)$ruolo['id_ruolo'] ?>" <?= (int)$ruolo['id_ruolo'] === $idRuoloSelezionato ? 'selected' : '' ?>>
-                    <?= htmlspecialchars((string)$ruolo['codice_ruolo']) ?> - <?= htmlspecialchars((string)$ruolo['descrizione']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </form>
 
     <div class="meta" style="margin-bottom:18px;">
         <strong>Ruolo corrente:</strong>
