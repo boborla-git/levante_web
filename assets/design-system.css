@@ -1666,7 +1666,19 @@ input:focus, select:focus, textarea:focus,
 .approvals-filter-grid select,
 .approvals-filter-grid input {
     width: 100%;
-    min-height: 36px;
+    min-height: 38px;
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    font: inherit;
+    background: #fff;
+}
+
+.approvals-filter-grid select:focus,
+.approvals-filter-grid input:focus {
+    outline: none;
+    border-color: var(--primary, #005bd4);
+    box-shadow: 0 0 0 2px rgba(0, 91, 212, 0.16);
 }
 
 .approvals-filter-actions {
@@ -1693,14 +1705,6 @@ input:focus, select:focus, textarea:focus,
     margin-bottom: 0.2rem;
 }
 
-
-@media (max-width: 760px) {
-    .approvals-table-title {
-        flex-direction: column;
-        align-items: stretch;
-    }
-}
-
 .approvals-actions {
     display: grid;
     gap: 0.45rem;
@@ -1720,6 +1724,11 @@ input:focus, select:focus, textarea:focus,
     width: 100%;
 }
 
+.quick-filter-empty {
+    display: none;
+    margin-top: 0.75rem;
+}
+
 @media (max-width: 1100px) {
     .approvals-filter-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1731,8 +1740,10 @@ input:focus, select:focus, textarea:focus,
 }
 
 @media (max-width: 760px) {
-    .approvals-hero {
+    .approvals-hero,
+    .approvals-table-title {
         flex-direction: column;
+        align-items: stretch;
     }
 
     .approvals-summary {
@@ -1743,66 +1754,25 @@ input:focus, select:focus, textarea:focus,
         white-space: normal;
     }
 
-    .approvals-filter-grid {
-        grid-template-columns: 1fr;
-    }
-
+    .approvals-filters-header,
     .approvals-filter-actions,
     .approvals-action-form {
         display: grid;
         grid-template-columns: 1fr;
     }
 
-    
-@media (max-width: 760px) {
-    .approvals-table-title {
-        flex-direction: column;
-        align-items: stretch;
+    .approvals-filter-grid {
+        grid-template-columns: 1fr;
     }
-}
 
-.approvals-actions {
+    .approvals-actions {
         min-width: 0;
     }
-}
 
-.hr-filter-toolbar {
-    display: flex;
-    align-items: flex-end;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin: 0 0 0.75rem;
-}
-.hr-filter-search-group {
-    width: min(380px, 100%);
-}
-.hr-filter-search-group input {
-    width: 100%;
-    min-height: 38px;
-    border: 1px solid var(--border-color, #cbd5e1);
-    border-radius: 8px;
-    padding: 0.55rem 0.75rem;
-    font: inherit;
-    background: #fff;
-}
-.hr-filter-search-group input:focus {
-    outline: none;
-    border-color: var(--primary, #005bd4);
-    box-shadow: 0 0 0 2px rgba(0, 91, 212, 0.16);
-}
-.quick-filter-empty {
-    display: none;
-    margin-top: 0.75rem;
-}
-@media (max-width: 760px) {
-    .hr-filter-toolbar {
-        justify-content: stretch;
-    }
-    .hr-filter-search-group {
-        width: 100%;
+    .approvals-table-card {
+        padding: 0.85rem;
     }
 }
-
 
 /* === Stili migrati da calendario_assenze.php === */
 .hr-cal-toolbar { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; }

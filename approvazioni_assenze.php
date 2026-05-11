@@ -16,7 +16,7 @@ $puoConfigurare = haPermessoLettura('configurazione_assenze');
 $errore = '';
 $messaggio = '';
 
-$filtroStato = trim((string)($_GET['stato'] ?? ''));
+$filtroStato = trim((string)($_GET['stato'] ?? 'IN_ATTESA'));
 $filtroDataDa = trim((string)($_GET['data_da'] ?? ''));
 $filtroDataA = trim((string)($_GET['data_a'] ?? ''));
 $filtroTipologia = trim((string)($_GET['tipologia'] ?? ''));
@@ -41,6 +41,11 @@ $tipologie = [];
 function h(?string $valore): string
 {
     return htmlspecialchars((string)$valore, ENT_QUOTES, 'UTF-8');
+}
+
+function selectedAttr(string $valore, string $corrente): string
+{
+    return $valore === $corrente ? ' selected' : '';
 }
 
 function hrScopeLabelApprovazioni(bool $puoConfigurare): string
@@ -362,11 +367,71 @@ layoutHeader('Approvazioni assenze');
         <span><strong><?= (int)$riepilogo['rifiutate_oggi'] ?></strong> rifiutate oggi</span>
     </section>
 
+    <section class="card approvals-filters" aria-label="Filtri approvazioni assenze">
+        <div class="approvals-filters-header">
+            <div class="approvals-filters-title">
+                <i class="la la-filter"></i>
+                <span>Filtri</span>
+                <?php if ($filtriAttivi): ?>
+                    <?= renderHrStatusBadge('IN_ATTESA', 'filtri attivi') ?>
+                <?php endif; ?>
+            </div>
+            <a href="approvazioni_assenze.php" class="btn btn-sm btn-outline-secondary">
+                <i class="la la-undo"></i> Ripristina
+            </a>
+        </div>
+
+        <form method="get" class="approvals-filter-grid">
+            <label>
+                Stato
+                <select name="stato">
+                    <option value=""<?= selectedAttr('', $filtroStato) ?>>Tutti</option>
+                    <option value="IN_ATTESA"<?= selectedAttr('IN_ATTESA', $filtroStato) ?>>In attesa</option>
+                    <option value="APPROVATA"<?= selectedAttr('APPROVATA', $filtroStato) ?>>Approvate</option>
+                    <option value="RIFIUTATA"<?= selectedAttr('RIFIUTATA', $filtroStato) ?>>Rifiutate</option>
+                </select>
+            </label>
+
+            <label>
+                Dal giorno
+                <input type="date" name="data_da" value="<?= h($filtroDataDa) ?>">
+            </label>
+
+            <label>
+                Al giorno
+                <input type="date" name="data_a" value="<?= h($filtroDataA) ?>">
+            </label>
+
+            <label>
+                Tipologia
+                <select name="tipologia">
+                    <option value=""<?= selectedAttr('', $filtroTipologia) ?>>Tutte</option>
+                    <?php foreach ($tipologie as $tipologia): ?>
+                        <option value="<?= h((string)$tipologia['codice']) ?>"<?= selectedAttr((string)$tipologia['codice'], $filtroTipologia) ?>>
+                            <?= h((string)$tipologia['descrizione']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+
+            <label>
+                Richiedente
+                <input type="search" name="utente" value="<?= h($filtroUtente) ?>" placeholder="Nome o cognome" autocomplete="off">
+            </label>
+
+            <div class="approvals-filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="la la-search"></i> Applica
+                </button>
+            </div>
+        </form>
+    </section>
+
     <section class="card approvals-table-card">
         <div class="approvals-table-title">
             <div>
                 <h2>Richieste</h2>
-                <p class="text-muted">Sono mostrate solo le informazioni utili alla decisione.</p>
+                <p class="text-muted">Sono mostrate le richieste coerenti con i filtri impostati; il filtro rapido cerca nella tabella già caricata.</p>
             </div>
             <div class="hr-filter-toolbar">
                 <div class="form-group hr-filter-search-group">
