@@ -49,19 +49,7 @@ if (!function_exists('renderHrPageHeader')) {
             </div>
 
             <?php if (count($actions) > 0): ?>
-                <div class="section-head-actions">
-                    <?php foreach ($actions as $action): ?>
-                        <?php
-                        $href = (string)($action['href'] ?? '#');
-                        $label = (string)($action['label'] ?? '');
-                        $actionIcon = trim((string)($action['icon'] ?? ''));
-                        $actionClass = trim((string)($action['class'] ?? 'btn btn-light'));
-                        ?>
-                        <a class="<?= hrUiEscape($actionClass) ?>" href="<?= hrUiEscape($href) ?>">
-                            <?php if ($actionIcon !== ''): ?><i class="<?= hrUiEscape($actionIcon) ?>" aria-hidden="true"></i> <?php endif; ?><?= hrUiEscape($label) ?>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
+                <?php renderHrToolbar($actions, 'section-head-actions hr-toolbar'); ?>
             <?php endif; ?>
             <?php if ($innerClass !== ''): ?>
                 </div>
@@ -143,19 +131,7 @@ if (!function_exists('renderHrSectionHeader')) {
             <?php if (count($actions) > 0 || trim($filterHtml) !== ''): ?>
                 <div class="hr-section-tools">
                     <?php if (count($actions) > 0): ?>
-                        <div class="section-head-actions">
-                            <?php foreach ($actions as $action): ?>
-                                <?php
-                                $href = (string)($action['href'] ?? '#');
-                                $label = (string)($action['label'] ?? '');
-                                $actionIcon = trim((string)($action['icon'] ?? ''));
-                                $actionClass = trim((string)($action['class'] ?? 'btn btn-light'));
-                                ?>
-                                <a class="<?= hrUiEscape($actionClass) ?>" href="<?= hrUiEscape($href) ?>">
-                                    <?php if ($actionIcon !== ''): ?><i class="<?= hrUiEscape($actionIcon) ?>" aria-hidden="true"></i> <?php endif; ?><?= hrUiEscape($label) ?>
-                                </a>
-                            <?php endforeach; ?>
-                        </div>
+                        <?php renderHrToolbar($actions, 'section-head-actions hr-toolbar'); ?>
                     <?php endif; ?>
                     <?= $filterHtml ?>
                 </div>
@@ -182,5 +158,66 @@ if (!function_exists('renderHrCardClose')) {
         ?>
         </section>
         <?php
+    }
+}
+
+
+if (!function_exists('renderHrToolbar')) {
+    /**
+     * Renderizza una toolbar azioni standard, usabile in header, card e righe operative.
+     * Ogni azione accetta: href, label, icon, class, type, name, value, attributes.
+     */
+    function renderHrToolbar(array $actions, string $class = 'hr-toolbar', string $tag = 'div'): void
+    {
+        if (count($actions) === 0) {
+            return;
+        }
+        $tag = strtolower($tag);
+        if (!in_array($tag, ['div', 'nav'], true)) {
+            $tag = 'div';
+        }
+        ?>
+        <<?= $tag ?> class="<?= hrUiEscape($class) ?>">
+            <?php foreach ($actions as $action): ?>
+                <?php renderHrAction($action); ?>
+            <?php endforeach; ?>
+        </<?= $tag ?>>
+        <?php
+    }
+}
+
+if (!function_exists('renderHrAction')) {
+    /** Renderizza un singolo pulsante/link azione coerente con il design system. */
+    function renderHrAction(array $action): void
+    {
+        $label = (string)($action['label'] ?? '');
+        $icon = trim((string)($action['icon'] ?? ''));
+        $class = trim((string)($action['class'] ?? 'btn btn-light'));
+        $href = trim((string)($action['href'] ?? ''));
+        $type = trim((string)($action['type'] ?? 'button'));
+        $name = trim((string)($action['name'] ?? ''));
+        $value = (string)($action['value'] ?? '');
+        $attributes = is_array($action['attributes'] ?? null) ? $action['attributes'] : [];
+        $attrHtml = '';
+        foreach ($attributes as $attrName => $attrValue) {
+            $attrName = preg_replace('/[^a-zA-Z0-9_:\-]/', '', (string)$attrName);
+            if ($attrName === '') {
+                continue;
+            }
+            if ($attrValue === true) {
+                $attrHtml .= ' ' . $attrName;
+            } elseif ($attrValue !== false && $attrValue !== null) {
+                $attrHtml .= ' ' . $attrName . '="' . hrUiEscape((string)$attrValue) . '"';
+            }
+        }
+        if ($href !== ''): ?>
+            <a class="<?= hrUiEscape($class) ?>" href="<?= hrUiEscape($href) ?>"<?= $attrHtml ?>>
+                <?php if ($icon !== ''): ?><i class="<?= hrUiEscape($icon) ?>" aria-hidden="true"></i> <?php endif; ?><?= hrUiEscape($label) ?>
+            </a>
+        <?php else: ?>
+            <button class="<?= hrUiEscape($class) ?>" type="<?= hrUiEscape($type) ?>"<?= $name !== '' ? ' name="' . hrUiEscape($name) . '"' : '' ?><?= $name !== '' ? ' value="' . hrUiEscape($value) . '"' : '' ?><?= $attrHtml ?>>
+                <?php if ($icon !== ''): ?><i class="<?= hrUiEscape($icon) ?>" aria-hidden="true"></i> <?php endif; ?><?= hrUiEscape($label) ?>
+            </button>
+        <?php endif;
     }
 }

@@ -610,3 +610,59 @@ input:focus, select:focus, textarea:focus,
         width: 100%;
     }
 }
+
+
+/* Toolbar e azioni comuni */
+.hr-toolbar,
+.toolbar-actions,
+.action-row,
+.table-actions,
+.form-actions,
+.page-actions,
+.section-head-actions,
+.card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.hr-toolbar-right { justify-content: flex-end; }
+.hr-toolbar-between { justify-content: space-between; }
+.hr-toolbar-center { justify-content: center; }
+.hr-toolbar .btn,
+.toolbar-actions .btn,
+.action-row .btn,
+.table-actions .btn,
+.form-actions .btn,
+.page-actions .btn,
+.section-head-actions .btn,
+.card-actions .btn {
+    white-space: nowrap;
+}
+@media (max-width: 768px) {
+    .hr-toolbar,
+    .toolbar-actions,
+    .action-row,
+    .table-actions,
+    .form-actions,
+    .page-actions,
+    .section-head-actions,
+    .card-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    .hr-toolbar .btn,
+    .toolbar-actions .btn,
+    .action-row .btn,
+    .table-actions .btn,
+    .form-actions .btn,
+    .page-actions .btn,
+    .section-head-actions .btn,
+    .card-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
