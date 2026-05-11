@@ -255,14 +255,14 @@ layoutHeader('Permessi ruoli');
         <a class="active" href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <div class="hr-filter-toolbar">
-        <div class="hr-filter-toolbar-main">
+    <div class="admin-list-toolbar">
+        <div class="admin-list-toolbar-main">
             <h2 style="margin-bottom:.35rem;">Permessi ruoli</h2>
             <p class="muted" style="margin:0;">
                 Gestione permessi su risorse gerarchiche del portale. Le righe rappresentano l'albero di <code>aut_risorse</code>.
             </p>
         </div>
-        <div class="form-group hr-filter-search-group">
+        <div class="form-group admin-list-filter">
             <label for="filtroRapidoPermessiRuoli">Filtro rapido</label>
             <input
                 type="search"

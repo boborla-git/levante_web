@@ -46,15 +46,15 @@ layoutHeader('Gestione utenti');
         <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <div class="hr-filter-toolbar">
-        <div class="hr-filter-toolbar-main">
+    <div class="admin-list-toolbar">
+        <div class="admin-list-toolbar-main">
             <h2 style="margin-bottom:.35rem;">Gestione utenti</h2>
             <p class="muted" style="margin:0;">Elenco degli utenti censiti nel portale.</p>
             <div class="admin-page-actions">
                 <a class="btn btn-primary" href="utente_nuovo.php"><i class="la la-user-plus" aria-hidden="true"></i> Nuovo utente</a>
             </div>
         </div>
-        <div class="form-group hr-filter-search-group">
+        <div class="form-group admin-list-filter">
             <label for="filtroRapidoUtenti">Filtro rapido</label>
             <input
                 type="search"
