@@ -2291,3 +2291,90 @@ input:focus, select:focus, textarea:focus,
         width: 100%;
     }
 }
+
+/* === Rifinitura tabella permessi ruoli === */
+.admin-current-role {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 1rem;
+    align-items: center;
+    padding: 0.8rem 0.95rem;
+    border: 1px solid #dbe3ee;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.admin-current-role span {
+    white-space: nowrap;
+}
+
+.permissions-table {
+    min-width: 1080px;
+}
+
+.permissions-table tbody tr.permissions-row-container {
+    background: #f8fafc;
+}
+
+.permissions-table tbody tr.permissions-row-container .permissions-resource-cell strong {
+    color: #0f172a;
+}
+
+.permissions-table tbody tr.permissions-row-resource:hover {
+    background: #f8fbff;
+}
+
+.permission-choice {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    min-height: 34px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.permission-choice:hover {
+    background: #edf4ff;
+}
+
+.permission-choice input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.resource-menu-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.resource-menu-badge-on {
+    color: #166534;
+    background: #dcfce7;
+    border: 1px solid #bbf7d0;
+}
+
+.resource-menu-badge-off {
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+}
+
+@media (max-width: 760px) {
+    .admin-current-role {
+        align-items: stretch;
+    }
+
+    .admin-current-role span {
+        width: 100%;
+        white-space: normal;
+    }
+}

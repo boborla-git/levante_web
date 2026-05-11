@@ -242,6 +242,23 @@ foreach ($nodiPerPadre as $idPadre => $figli) {
 $risorseGerarchiche = appiattisciAlberoRisorse($nodiPerPadre);
 $ruoloSelezionato = $ruoliPerId[$idRuoloSelezionato];
 
+$totaleRisorse = count($risorseGerarchiche);
+$totaleContenitori = 0;
+$totaleRisorseProtette = 0;
+$totaleVisibiliMenu = 0;
+
+foreach ($risorseGerarchiche as $risorsaConteggio) {
+    if (risorsaContenitorePuro($risorsaConteggio)) {
+        $totaleContenitori++;
+    } else {
+        $totaleRisorseProtette++;
+    }
+
+    if ((int)($risorsaConteggio['visibile_menu'] ?? 0) === 1) {
+        $totaleVisibiliMenu++;
+    }
+}
+
 layoutHeader('Permessi ruoli');
 ?>
 
@@ -297,9 +314,11 @@ layoutHeader('Permessi ruoli');
     <?php endif; ?>
 
     <div class="meta admin-current-role">
-        <strong>Ruolo corrente:</strong>
-        <?= htmlspecialchars((string)$ruoloSelezionato['codice_ruolo']) ?>
-        - <?= htmlspecialchars((string)$ruoloSelezionato['descrizione']) ?>
+        <span><strong>Ruolo corrente:</strong> <?= htmlspecialchars((string)$ruoloSelezionato['codice_ruolo']) ?> - <?= htmlspecialchars((string)$ruoloSelezionato['descrizione']) ?></span>
+        <span><strong>Risorse:</strong> <?= (int)$totaleRisorse ?></span>
+        <span><strong>Protette:</strong> <?= (int)$totaleRisorseProtette ?></span>
+        <span><strong>Contenitori:</strong> <?= (int)$totaleContenitori ?></span>
+        <span><strong>Visibili menu:</strong> <?= (int)$totaleVisibiliMenu ?></span>
     </div>
 
     <form method="post">
@@ -311,11 +330,12 @@ layoutHeader('Permessi ruoli');
                 <thead>
                     <tr>
                         <th>Risorsa</th>
-                        <th class="permissions-radio-cell">None</th>
-                        <th class="permissions-radio-cell">Read</th>
-                        <th class="permissions-radio-cell">Write</th>
+                        <th class="permissions-radio-cell">Nessuno</th>
+                        <th class="permissions-radio-cell">Lettura</th>
+                        <th class="permissions-radio-cell">Scrittura</th>
                         <th>Tipo</th>
                         <th>Percorso</th>
+                        <th>Menu</th>
                         <th>Codice</th>
                     </tr>
                 </thead>
@@ -325,35 +345,47 @@ layoutHeader('Permessi ruoli');
                         $idRisorsa = (int)$risorsa['id_risorsa'];
                         $livelloCorrente = livelloCorrenteRuolo($permessiRuoliMappa, $idRuoloSelezionato, $idRisorsa);
                         $depth = (int)($risorsa['depth'] ?? 0);
-                                                $percorso = trim((string)($risorsa['percorso'] ?? ''));
+                        $percorso = trim((string)($risorsa['percorso'] ?? ''));
                         $chiave = 'permesso_risorsa_' . $idRisorsa;
                         $tipo = trim((string)($risorsa['tipo_risorsa'] ?? ''));
                         $prefisso = $depth > 0 ? str_repeat('↳ ', $depth) : '';
                         $depthClass = 'resource-depth-' . min($depth, 8);
                         $contenitorePuro = risorsaContenitorePuro($risorsa);
+                        $visibileMenu = (int)($risorsa['visibile_menu'] ?? 0) === 1;
                         ?>
-                        <tr>
+                        <tr class="<?= $contenitorePuro ? 'permissions-row-container' : 'permissions-row-resource' ?>">
                             <td class="permissions-resource-cell <?= htmlspecialchars($depthClass) ?>">
                                 <?= htmlspecialchars($prefisso) ?>
                                 <strong><?= htmlspecialchars((string)$risorsa['descrizione']) ?></strong>
                             </td>
 
                             <?php if ($contenitorePuro): ?>
-                                <td colspan="3" class="permissions-auto-cell">automatico</td>
+                                <td colspan="3" class="permissions-auto-cell">contenitore menu</td>
                             <?php else: ?>
                                 <td class="permissions-radio-cell">
-                                    <input type="radio" name="<?= htmlspecialchars($chiave) ?>" value="none" <?= $livelloCorrente === 'none' ? 'checked' : '' ?>>
+                                    <label class="permission-choice" title="Nessun accesso">
+                                        <input type="radio" name="<?= htmlspecialchars($chiave) ?>" value="none" aria-label="Nessun accesso per <?= htmlspecialchars((string)$risorsa['descrizione']) ?>" <?= $livelloCorrente === 'none' ? 'checked' : '' ?>>
+                                    </label>
                                 </td>
                                 <td class="permissions-radio-cell">
-                                    <input type="radio" name="<?= htmlspecialchars($chiave) ?>" value="read" <?= $livelloCorrente === 'read' ? 'checked' : '' ?>>
+                                    <label class="permission-choice" title="Solo lettura">
+                                        <input type="radio" name="<?= htmlspecialchars($chiave) ?>" value="read" aria-label="Solo lettura per <?= htmlspecialchars((string)$risorsa['descrizione']) ?>" <?= $livelloCorrente === 'read' ? 'checked' : '' ?>>
+                                    </label>
                                 </td>
                                 <td class="permissions-radio-cell">
-                                    <input type="radio" name="<?= htmlspecialchars($chiave) ?>" value="write" <?= $livelloCorrente === 'write' ? 'checked' : '' ?>>
+                                    <label class="permission-choice" title="Lettura e scrittura">
+                                        <input type="radio" name="<?= htmlspecialchars($chiave) ?>" value="write" aria-label="Lettura e scrittura per <?= htmlspecialchars((string)$risorsa['descrizione']) ?>" <?= $livelloCorrente === 'write' ? 'checked' : '' ?>>
+                                    </label>
                                 </td>
                             <?php endif; ?>
 
                             <td><?= htmlspecialchars($tipo) ?></td>
                             <td><?= $percorso !== '' ? '<code>' . htmlspecialchars($percorso) . '</code>' : '&mdash;' ?></td>
+                            <td>
+                                <span class="resource-menu-badge <?= $visibileMenu ? 'resource-menu-badge-on' : 'resource-menu-badge-off' ?>">
+                                    <?= $visibileMenu ? 'Sì' : 'No' ?>
+                                </span>
+                            </td>
                             <td><code><?= htmlspecialchars((string)$risorsa['codice_risorsa']) ?></code></td>
                         </tr>
                     <?php endforeach; ?>
