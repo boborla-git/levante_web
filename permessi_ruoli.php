@@ -296,7 +296,7 @@ layoutHeader('Permessi ruoli');
         <div class="ok"><?= htmlspecialchars($messaggio) ?></div>
     <?php endif; ?>
 
-    <div class="meta" style="margin-bottom:18px;">
+    <div class="meta admin-current-role">
         <strong>Ruolo corrente:</strong>
         <?= htmlspecialchars((string)$ruoloSelezionato['codice_ruolo']) ?>
         - <?= htmlspecialchars((string)$ruoloSelezionato['descrizione']) ?>
@@ -325,15 +325,15 @@ layoutHeader('Permessi ruoli');
                         $idRisorsa = (int)$risorsa['id_risorsa'];
                         $livelloCorrente = livelloCorrenteRuolo($permessiRuoliMappa, $idRuoloSelezionato, $idRisorsa);
                         $depth = (int)($risorsa['depth'] ?? 0);
-                        $padding = 12 + ($depth * 28);
-                        $percorso = trim((string)($risorsa['percorso'] ?? ''));
+                                                $percorso = trim((string)($risorsa['percorso'] ?? ''));
                         $chiave = 'permesso_risorsa_' . $idRisorsa;
                         $tipo = trim((string)($risorsa['tipo_risorsa'] ?? ''));
                         $prefisso = $depth > 0 ? str_repeat('↳ ', $depth) : '';
+                        $depthClass = 'resource-depth-' . min($depth, 8);
                         $contenitorePuro = risorsaContenitorePuro($risorsa);
                         ?>
                         <tr>
-                            <td style="padding-left: <?= $padding ?>px; white-space: nowrap;">
+                            <td class="permissions-resource-cell <?= htmlspecialchars($depthClass) ?>">
                                 <?= htmlspecialchars($prefisso) ?>
                                 <strong><?= htmlspecialchars((string)$risorsa['descrizione']) ?></strong>
                             </td>

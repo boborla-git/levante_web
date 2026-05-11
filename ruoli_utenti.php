@@ -134,22 +134,25 @@ layoutHeader('Ruoli utenti');
         <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
     </div>
 
-    <div class="hr-filter-toolbar">
-        <div class="hr-filter-toolbar-main">
-            <h2 style="margin-bottom:.35rem;">Ruoli utenti</h2>
-            <p class="muted" style="margin:0;">Ogni utente eredita i permessi dal ruolo attivo assegnato.</p>
+    <section class="admin-page-block">
+        <div class="admin-section-heading">
+            <h2>Ruoli utenti</h2>
+            <p class="muted">Ogni utente eredita i permessi dal ruolo attivo assegnato.</p>
         </div>
-        <div class="form-group hr-filter-search-group">
-            <label for="filtroRapidoRuoliUtenti">Filtro rapido</label>
-            <input
-                type="search"
-                id="filtroRapidoRuoliUtenti"
-                placeholder="Cerca in tutte le colonne..."
-                autocomplete="off"
-                data-table-filter="tabellaRuoliUtenti"
-            >
+
+        <div class="admin-actions-toolbar admin-actions-toolbar-single">
+            <div class="form-group admin-list-filter">
+                <label for="filtroRapidoRuoliUtenti">Filtro rapido</label>
+                <input
+                    type="search"
+                    id="filtroRapidoRuoliUtenti"
+                    placeholder="Cerca in tutte le colonne..."
+                    autocomplete="off"
+                    data-table-filter="tabellaRuoliUtenti"
+                >
+            </div>
         </div>
-    </div>
+    </section>
 
     <?php if ($errore !== ''): ?>
         <div class="errore"><?= htmlspecialchars($errore) ?></div>

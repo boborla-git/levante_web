@@ -2253,3 +2253,41 @@ input:focus, select:focus, textarea:focus,
         justify-content: center;
     }
 }
+
+/* === Rifiniture admin utenti/ruoli/permessi === */
+.admin-actions-toolbar-single {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: end;
+}
+
+.admin-actions-toolbar-single .admin-list-filter {
+    width: min(100%, 380px);
+}
+
+.admin-current-role {
+    margin-bottom: 18px;
+}
+
+.permissions-resource-cell {
+    white-space: nowrap;
+}
+
+.permissions-resource-cell.resource-depth-0 { padding-left: 12px; }
+.permissions-resource-cell.resource-depth-1 { padding-left: 40px; }
+.permissions-resource-cell.resource-depth-2 { padding-left: 68px; }
+.permissions-resource-cell.resource-depth-3 { padding-left: 96px; }
+.permissions-resource-cell.resource-depth-4 { padding-left: 124px; }
+.permissions-resource-cell.resource-depth-5 { padding-left: 152px; }
+.permissions-resource-cell.resource-depth-6 { padding-left: 180px; }
+.permissions-resource-cell.resource-depth-7 { padding-left: 208px; }
+.permissions-resource-cell.resource-depth-8 { padding-left: 236px; }
+
+@media (max-width: 900px) {
+    .admin-actions-toolbar-single {
+        justify-items: stretch;
+    }
+
+    .admin-actions-toolbar-single .admin-list-filter {
+        width: 100%;
+    }
+}
