@@ -1260,3 +1260,763 @@ input:focus, select:focus, textarea:focus,
         min-width: 0;
     }
 }
+
+
+/* =========================================================
+   Stili HR operativi migrati dalle pagine
+   ========================================================= */
+
+/* === Stili migrati da assenze.php === */
+.hr-page-stack { display: flex; flex-direction: column; gap: 16px; }
+.hr-hero-card { padding: 18px 24px; }
+.hr-hero-card .section-head { align-items: center; }
+.hr-hero-card h1 { margin: 0 0 6px; }
+.hr-hero-card .meta { max-width: 860px; line-height: 1.45; }
+.hr-scope-card { padding: 14px 18px; }
+.hr-scope-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--muted, #64748b); }
+.hr-scope-line strong { color: var(--text, #172033); }
+.hr-summary-line { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 1rem; border: 1px solid var(--border, #d9e2ec); border-radius: 14px; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
+.hr-summary-line span { display: inline-flex; align-items: baseline; gap: .35rem; white-space: nowrap; color: var(--muted, #64748b); font-size: .92rem; }
+.hr-summary-line strong { color: var(--text, #172033); font-size: 1.08rem; }
+.hr-form-card, .hr-history-card { padding: 1rem; }
+.hr-form-card h2, .hr-history-card h2 { margin-top: 0; margin-bottom: .85rem; }
+.hr-history-card .table-wrap { margin-top: .25rem; }
+@media (max-width: 760px) {
+    .hr-hero-card .section-head { align-items: stretch; flex-direction: column; }
+    .section-head-actions .btn { width: 100%; justify-content: center; }
+    .hr-summary-line span { white-space: normal; }
+}
+
+
+.hr-request-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+.hr-request-row {
+    display: grid;
+    gap: 0.8rem;
+    align-items: end;
+}
+.hr-request-row-primary {
+    grid-template-columns: minmax(220px, 1.35fr) minmax(190px, 1.05fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(125px, 0.7fr) minmax(125px, 0.7fr);
+}
+.hr-request-row-secondary {
+    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr) auto;
+}
+.hr-request-layout .form-group,
+.hr-request-layout .actions {
+    margin: 0;
+}
+.hr-request-layout label {
+    display: block;
+    margin: 0 0 0.35rem;
+    min-height: 1.1rem;
+}
+.hr-request-layout input,
+.hr-request-layout select,
+.hr-request-layout textarea {
+    width: 100%;
+    min-height: 38px;
+    font: inherit;
+}
+.hr-request-layout textarea {
+    height: 38px;
+    min-height: 38px;
+    resize: vertical;
+}
+.hr-request-submit {
+    display: flex;
+    justify-content: flex-end;
+    align-self: end;
+}
+.hr-request-submit .btn {
+    min-height: 38px;
+    white-space: nowrap;
+}
+.hr-request-layout .is-hidden {
+    display: none !important;
+}
+@media (max-width: 1100px) {
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        grid-template-columns: 1fr 1fr;
+    }
+    .hr-request-submit {
+        justify-content: flex-start;
+    }
+}
+@media (max-width: 760px) {
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        grid-template-columns: 1fr;
+    }
+    .hr-request-submit .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.hr-filter-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin: 0 0 0.75rem;
+}
+.hr-filter-search-group {
+    width: min(380px, 100%);
+}
+.hr-filter-search-group input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    font: inherit;
+    background: #fff;
+}
+.hr-filter-search-group input:focus {
+    outline: none;
+    border-color: var(--primary, #005bd4);
+    box-shadow: 0 0 0 2px rgba(0, 91, 212, 0.16);
+}
+.quick-filter-empty {
+    display: none;
+    margin-top: 0.75rem;
+}
+@media (max-width: 760px) {
+    
+.hr-request-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+.hr-request-row {
+    display: grid;
+    gap: 0.8rem;
+    align-items: end;
+}
+.hr-request-row-primary {
+    grid-template-columns: minmax(220px, 1.35fr) minmax(190px, 1.05fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(125px, 0.7fr) minmax(125px, 0.7fr);
+}
+.hr-request-row-secondary {
+    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr) auto;
+}
+.hr-request-layout .form-group,
+.hr-request-layout .actions {
+    margin: 0;
+}
+.hr-request-layout label {
+    display: block;
+    margin: 0 0 0.35rem;
+    min-height: 1.1rem;
+}
+.hr-request-layout input,
+.hr-request-layout select,
+.hr-request-layout textarea {
+    width: 100%;
+    min-height: 38px;
+    font: inherit;
+}
+.hr-request-layout textarea {
+    height: 38px;
+    min-height: 38px;
+    resize: vertical;
+}
+.hr-request-submit {
+    display: flex;
+    justify-content: flex-end;
+    align-self: end;
+}
+.hr-request-submit .btn {
+    min-height: 38px;
+    white-space: nowrap;
+}
+.hr-request-layout .is-hidden {
+    display: none !important;
+}
+@media (max-width: 1100px) {
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        grid-template-columns: 1fr 1fr;
+    }
+    .hr-request-submit {
+        justify-content: flex-start;
+    }
+}
+@media (max-width: 760px) {
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        grid-template-columns: 1fr;
+    }
+    .hr-request-submit .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.hr-filter-toolbar {
+        justify-content: stretch;
+    }
+    .hr-filter-search-group {
+        width: 100%;
+    }
+}
+
+
+
+/* Rifinitura allineamenti pagina assenze: form richiesta e filtro rapido */
+.hr-request-row-secondary {
+    align-items: start;
+    grid-template-columns: minmax(260px, 0.95fr) minmax(360px, 1.45fr) auto;
+}
+.hr-request-row-secondary .form-group {
+    align-self: start;
+}
+.hr-request-row-secondary input,
+.hr-request-row-secondary textarea {
+    height: 38px;
+    min-height: 38px;
+}
+.hr-request-submit {
+    align-self: start;
+    padding-top: calc(1.1rem + 0.35rem);
+}
+.hr-request-submit .btn {
+    height: 38px;
+    min-height: 38px;
+}
+.hr-history-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.hr-history-head > div:first-child h2 {
+    margin-top: 0;
+}
+.hr-history-head .hr-filter-toolbar {
+    margin-top: 0;
+    padding-top: 0;
+}
+.hr-history-head .hr-filter-search-group label {
+    margin-top: 0;
+}
+@media (max-width: 1100px) {
+    .hr-request-submit {
+        padding-top: 0;
+        justify-content: flex-start;
+    }
+}
+@media (max-width: 760px) {
+    .hr-history-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .hr-filter-search-group {
+        width: 100%;
+    }
+    .hr-request-submit .btn {
+        width: 100%;
+    }
+}
+
+/* Responsive definitivo form nuova richiesta: su smartphone tutto in colonna e senza overflow */
+@media (max-width: 760px) {
+    .hr-request-layout {
+        gap: 0.9rem;
+    }
+    .hr-request-row-primary,
+    .hr-request-row-secondary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 0.8rem;
+        width: 100%;
+    }
+    .hr-request-row-secondary .form-group,
+    .hr-request-row-secondary .actions,
+    .hr-field-oggetto,
+    .hr-field-note,
+    .hr-request-submit {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        align-self: stretch;
+        padding-top: 0 !important;
+    }
+    .hr-field-oggetto input,
+    .hr-field-note textarea,
+    .hr-request-submit .btn {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .hr-field-note textarea {
+        min-height: 76px;
+        height: 76px;
+    }
+    .hr-request-submit {
+        justify-content: stretch;
+    }
+    .hr-request-submit .btn {
+        justify-content: center;
+    }
+}
+
+
+/* === Stili migrati da approvazioni_assenze.php === */
+.approvals-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.approvals-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.15rem;
+}
+
+.approvals-hero h1 {
+    margin-bottom: 0.35rem;
+}
+
+.approvals-scope {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.55rem;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--border-color, #d9e2ec);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--text-muted, #64748b);
+    font-size: 0.9rem;
+}
+
+.approvals-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border-color, #d9e2ec);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.approvals-summary span {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    white-space: nowrap;
+    color: var(--text-muted, #64748b);
+    font-size: 0.92rem;
+}
+
+.approvals-summary strong {
+    color: var(--text-color, #172033);
+    font-size: 1.08rem;
+}
+
+.approvals-filters {
+    padding: 0.95rem 1rem;
+}
+
+.approvals-filters-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.approvals-filters-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 700;
+}
+
+.approvals-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(130px, 0.8fr) minmax(130px, 0.8fr) minmax(160px, 1fr) minmax(180px, 1.1fr) auto;
+    gap: 0.65rem;
+    align-items: end;
+}
+
+.approvals-filter-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--text-muted, #64748b);
+}
+
+.approvals-filter-grid select,
+.approvals-filter-grid input {
+    width: 100%;
+    min-height: 36px;
+}
+
+.approvals-filter-actions {
+    display: flex;
+    gap: 0.45rem;
+    justify-content: flex-end;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.approvals-table-card {
+    padding: 1rem;
+}
+
+.approvals-table-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.approvals-table-title h2 {
+    margin-bottom: 0.2rem;
+}
+
+
+@media (max-width: 760px) {
+    .approvals-table-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+.approvals-actions {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 290px;
+}
+
+.approvals-action-form {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) auto;
+    gap: 0.45rem;
+    margin: 0;
+    align-items: center;
+}
+
+.approvals-action-form input {
+    min-width: 0;
+    width: 100%;
+}
+
+@media (max-width: 1100px) {
+    .approvals-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .approvals-filter-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 760px) {
+    .approvals-hero {
+        flex-direction: column;
+    }
+
+    .approvals-summary {
+        gap: 0.45rem 0.75rem;
+    }
+
+    .approvals-summary span {
+        white-space: normal;
+    }
+
+    .approvals-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .approvals-filter-actions,
+    .approvals-action-form {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    
+@media (max-width: 760px) {
+    .approvals-table-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+.approvals-actions {
+        min-width: 0;
+    }
+}
+
+.hr-filter-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin: 0 0 0.75rem;
+}
+.hr-filter-search-group {
+    width: min(380px, 100%);
+}
+.hr-filter-search-group input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    font: inherit;
+    background: #fff;
+}
+.hr-filter-search-group input:focus {
+    outline: none;
+    border-color: var(--primary, #005bd4);
+    box-shadow: 0 0 0 2px rgba(0, 91, 212, 0.16);
+}
+.quick-filter-empty {
+    display: none;
+    margin-top: 0.75rem;
+}
+@media (max-width: 760px) {
+    .hr-filter-toolbar {
+        justify-content: stretch;
+    }
+    .hr-filter-search-group {
+        width: 100%;
+    }
+}
+
+
+/* === Stili migrati da calendario_assenze.php === */
+.hr-cal-toolbar { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; }
+.hr-icon-btn { width: 40px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1; border-radius: 8px; border: 1px solid transparent; transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.hr-icon-btn .la { font-size: 1.1rem; line-height: 1; }
+.hr-icon-btn-primary { background: #0068c9; color: #ffd400; border-color: #0068c9; }
+.hr-icon-btn-primary:hover, .hr-icon-btn-primary:focus { background: #0068c9; color: #ffd400; border-color: #ffd400; box-shadow: 0 0 0 2px rgba(255, 212, 0, .55); outline: none; }
+.hr-icon-btn-secondary { background: #ffd400; color: #0068c9; border-color: #ffd400; }
+.hr-icon-btn-secondary:hover, .hr-icon-btn-secondary:focus { background: #ffd400; color: #0068c9; border-color: #0068c9; box-shadow: 0 0 0 2px rgba(0, 104, 201, .28); outline: none; }
+.hr-cal-page { display: flex; flex-direction: column; gap: 16px; }
+.hr-cal-layout { display: grid; grid-template-columns: minmax(320px, .42fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.hr-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.hr-calendar-head h1, .hr-calendar-head h2, .hr-day-panel h2 { margin: 0; }
+.hr-calendar-subtitle { margin-top: 6px; color: #64748b; font-size: 14px; }
+.hr-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.hr-cal-weekday { font-weight: 700; color: #475569; text-align: center; padding: 6px 4px; }
+.hr-cal-day { min-height: 116px; border: 1px solid #d7dee8; border-radius: 12px; background: #fff; padding: 10px; text-align: left; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
+.hr-cal-day:hover, .hr-cal-day:focus { border-color: #94a3b8; box-shadow: 0 8px 20px rgba(15, 23, 42, .08); outline: none; }
+.hr-cal-day.is-muted { background: #f8fafc; color: #94a3b8; }
+.hr-cal-day.is-today { border-color: #2563eb; box-shadow: inset 0 0 0 1px #2563eb; }
+.hr-cal-day.is-selected { border-color: #111827; box-shadow: inset 0 0 0 1px #111827, 0 10px 22px rgba(15, 23, 42, .10); }
+.hr-cal-day-number { font-weight: 800; font-size: 16px; color: #0f172a; }
+.hr-cal-event-line { display: flex; align-items: center; gap: 7px; font-size: 13px; line-height: 1.25; color: #334155; }
+.hr-dot { display: inline-block; width: 11px; height: 11px; border-radius: 999px; background: var(--dot-color, #6c757d); box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 0 3px rgba(15,23,42,.10); flex: 0 0 auto; }
+.hr-dot-lg { width: 14px; height: 14px; }
+.hr-day-panel { position: sticky; top: 88px; }
+.hr-day-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.hr-day-nav { display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; flex: 0 0 auto; }
+.hr-day-nav .btn { padding: 0; }
+.hr-day-panel-empty { color: #64748b; margin: 0; }
+.hr-detail-group { margin-top: 14px; }
+.hr-detail-group-title { display: flex; align-items: center; gap: 8px; font-weight: 800; margin-bottom: 8px; }
+.hr-detail-row { border: 1px solid #d7dee8; border-radius: 10px; padding: 10px 12px; background: #f8fafc; margin-bottom: 8px; }
+.hr-detail-name { font-weight: 700; }
+.hr-detail-meta { color: #64748b; font-size: 13px; margin-top: 3px; }
+@media (max-width: 1100px) { .hr-cal-layout { grid-template-columns: 1fr; } .hr-day-panel { position: static; order: -1; } }
+@media (max-width: 760px) {
+    .hr-calendar-head { align-items: stretch; flex-direction: column; }
+    .hr-cal-toolbar { justify-content: stretch; }
+    .hr-cal-toolbar .btn { flex: 1 1 auto; text-align: center; }
+    .hr-day-panel-head { align-items: flex-start; }
+    .hr-day-panel-head h2 { font-size: 20px; line-height: 1.15; }
+    .hr-day-nav { flex-wrap: nowrap !important; gap: 4px; }
+    .hr-day-nav .hr-icon-btn { width: 36px; height: 34px; }
+    .hr-cal-grid { gap: 6px; }
+    .hr-cal-weekday { display: none; }
+    .hr-cal-day { min-height: 78px; padding: 8px; }
+    .hr-cal-day:not(.has-events):not(.is-today):not(.is-selected) { min-height: 54px; }
+    .hr-cal-event-line { font-size: 12px; }
+}
+@media (max-width: 520px) {
+    .hr-cal-layout { gap: 14px; }
+    .hr-day-panel, .hr-calendar-card { width: 100%; }
+    .hr-cal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hr-cal-day { border-radius: 10px; }
+}
+
+
+/* === Stili migrati da configurazione_assenze.php === */
+.hr-config-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+}
+.hr-color-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 150px;
+    max-width: 190px;
+}
+.hr-color-option {
+    position: relative;
+    display: inline-flex;
+}
+.hr-color-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.hr-color-chip {
+    width: 26px;
+    height: 26px;
+    border: 1px solid #d7dee8;
+    background: #fff;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.hr-color-chip:hover {
+    transform: translateY(-1px);
+    border-color: #94a3b8;
+}
+.hr-color-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--dot-color, #6c757d);
+    box-shadow: inset 0 0 0 1px rgba(15,23,42,.16);
+    flex: 0 0 auto;
+}
+.hr-color-check {
+    position: absolute;
+    right: -5px;
+    bottom: -5px;
+    display: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: #16a34a;
+    color: #fff;
+    font-weight: 900;
+    font-size: 10px;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 2px #fff;
+}
+.hr-color-option input:checked + .hr-color-chip {
+    border-color: #111827;
+    box-shadow: 0 0 0 2px rgba(17, 24, 39, .14);
+}
+.hr-color-option input:checked + .hr-color-chip .hr-color-check {
+    display: inline-flex;
+}
+.hr-flag-list {
+    display: grid;
+    gap: 6px;
+}
+.hr-flag-list label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    font-size: 14px;
+}
+.hr-config-table input[type="text"],
+.hr-config-table input[type="number"] {
+    width: 100%;
+    max-width: 240px;
+}
+.hr-config-table .col-actions {
+    width: 100px;
+    text-align: center;
+}
+.hr-config-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 24px;
+}
+.hr-config-header h1 {
+    margin: 0;
+    font-size: 26px;
+}
+.hr-config-header p {
+    margin: 6px 0 0;
+}
+.hr-config-stack { display: flex; flex-direction: column; gap: 16px; }
+.hr-config-summary { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 1rem; border: 1px solid #d7dee8; border-radius: 14px; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
+.hr-config-summary span { display: inline-flex; align-items: baseline; gap: .35rem; white-space: nowrap; color: #64748b; font-size: .92rem; }
+.hr-config-summary strong { color: #172033; font-size: 1.08rem; }
+.hr-config-card { padding: 1rem; }
+.hr-config-card h2 { margin-top: 0; margin-bottom: .35rem; }
+.hr-muted-note {
+    color: #64748b;
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+.hr-config-card .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.hr-config-table {
+    min-width: 1040px;
+}
+.hr-config-table input[type="text"],
+.hr-config-table input[type="number"] {
+    min-height: 40px;
+}
+
+@media (max-width: 1000px) {
+    .hr-config-header {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 18px;
+    }
+    .hr-config-actions {
+        justify-content: flex-start;
+    }
+    .hr-config-actions .btn {
+        justify-content: center;
+    }
+    .hr-config-summary span { white-space: normal; }
+}
+
+@media (max-width: 640px) {
+    .hr-config-header h1 {
+        font-size: 24px;
+    }
+    .hr-config-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .hr-config-actions .btn,
+    .hr-config-card button[type="submit"] {
+        width: 100%;
+    }
+    .hr-config-summary {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+    .hr-config-card {
+        padding: 14px;
+    }
+}

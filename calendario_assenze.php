@@ -336,62 +336,7 @@ if ($selectedDateForJs === false) {
 
 layoutHeader('Calendario assenze');
 ?>
-<style>
-.hr-cal-toolbar { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; }
-.hr-icon-btn { width: 40px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1; border-radius: 8px; border: 1px solid transparent; transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease; }
-.hr-icon-btn .la { font-size: 1.1rem; line-height: 1; }
-.hr-icon-btn-primary { background: #0068c9; color: #ffd400; border-color: #0068c9; }
-.hr-icon-btn-primary:hover, .hr-icon-btn-primary:focus { background: #0068c9; color: #ffd400; border-color: #ffd400; box-shadow: 0 0 0 2px rgba(255, 212, 0, .55); outline: none; }
-.hr-icon-btn-secondary { background: #ffd400; color: #0068c9; border-color: #ffd400; }
-.hr-icon-btn-secondary:hover, .hr-icon-btn-secondary:focus { background: #ffd400; color: #0068c9; border-color: #0068c9; box-shadow: 0 0 0 2px rgba(0, 104, 201, .28); outline: none; }
-.hr-cal-page { display: flex; flex-direction: column; gap: 16px; }
-.hr-cal-layout { display: grid; grid-template-columns: minmax(320px, .42fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-.hr-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.hr-calendar-head h1, .hr-calendar-head h2, .hr-day-panel h2 { margin: 0; }
-.hr-calendar-subtitle { margin-top: 6px; color: #64748b; font-size: 14px; }
-.hr-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
-.hr-cal-weekday { font-weight: 700; color: #475569; text-align: center; padding: 6px 4px; }
-.hr-cal-day { min-height: 116px; border: 1px solid #d7dee8; border-radius: 12px; background: #fff; padding: 10px; text-align: left; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
-.hr-cal-day:hover, .hr-cal-day:focus { border-color: #94a3b8; box-shadow: 0 8px 20px rgba(15, 23, 42, .08); outline: none; }
-.hr-cal-day.is-muted { background: #f8fafc; color: #94a3b8; }
-.hr-cal-day.is-today { border-color: #2563eb; box-shadow: inset 0 0 0 1px #2563eb; }
-.hr-cal-day.is-selected { border-color: #111827; box-shadow: inset 0 0 0 1px #111827, 0 10px 22px rgba(15, 23, 42, .10); }
-.hr-cal-day-number { font-weight: 800; font-size: 16px; color: #0f172a; }
-.hr-cal-event-line { display: flex; align-items: center; gap: 7px; font-size: 13px; line-height: 1.25; color: #334155; }
-.hr-dot { display: inline-block; width: 11px; height: 11px; border-radius: 999px; background: var(--dot-color, #6c757d); box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 0 3px rgba(15,23,42,.10); flex: 0 0 auto; }
-.hr-dot-lg { width: 14px; height: 14px; }
-.hr-day-panel { position: sticky; top: 88px; }
-.hr-day-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.hr-day-nav { display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; flex: 0 0 auto; }
-.hr-day-nav .btn { padding: 0; }
-.hr-day-panel-empty { color: #64748b; margin: 0; }
-.hr-detail-group { margin-top: 14px; }
-.hr-detail-group-title { display: flex; align-items: center; gap: 8px; font-weight: 800; margin-bottom: 8px; }
-.hr-detail-row { border: 1px solid #d7dee8; border-radius: 10px; padding: 10px 12px; background: #f8fafc; margin-bottom: 8px; }
-.hr-detail-name { font-weight: 700; }
-.hr-detail-meta { color: #64748b; font-size: 13px; margin-top: 3px; }
-@media (max-width: 1100px) { .hr-cal-layout { grid-template-columns: 1fr; } .hr-day-panel { position: static; order: -1; } }
-@media (max-width: 760px) {
-    .hr-calendar-head { align-items: stretch; flex-direction: column; }
-    .hr-cal-toolbar { justify-content: stretch; }
-    .hr-cal-toolbar .btn { flex: 1 1 auto; text-align: center; }
-    .hr-day-panel-head { align-items: flex-start; }
-    .hr-day-panel-head h2 { font-size: 20px; line-height: 1.15; }
-    .hr-day-nav { flex-wrap: nowrap !important; gap: 4px; }
-    .hr-day-nav .hr-icon-btn { width: 36px; height: 34px; }
-    .hr-cal-grid { gap: 6px; }
-    .hr-cal-weekday { display: none; }
-    .hr-cal-day { min-height: 78px; padding: 8px; }
-    .hr-cal-day:not(.has-events):not(.is-today):not(.is-selected) { min-height: 54px; }
-    .hr-cal-event-line { font-size: 12px; }
-}
-@media (max-width: 520px) {
-    .hr-cal-layout { gap: 14px; }
-    .hr-day-panel, .hr-calendar-card { width: 100%; }
-    .hr-cal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .hr-cal-day { border-radius: 10px; }
-}
-</style>
+
 
 <div class="hr-cal-page">
 <?php renderHrAlert($error, 'danger'); ?>

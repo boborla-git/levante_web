@@ -4,7 +4,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
-require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('assenze');
 
@@ -288,6 +287,20 @@ function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigura
 
     uasort($utenti, static fn(array $a, array $b): int => strcmp((string)$a['nominativo'], (string)$b['nominativo']));
     return $utenti;
+}
+
+function hrClasseStato(string $codice): string
+{
+    if ($codice === 'APPROVATA') {
+        return 'status-ok';
+    }
+    if ($codice === 'IN_ATTESA') {
+        return 'status-wait';
+    }
+    if ($codice === 'RIFIUTATA') {
+        return 'status-ko';
+    }
+    return 'status-neutral';
 }
 
 try {
@@ -730,305 +743,7 @@ $infoRecapitoMancante = (!$isDelegato && !hrHaRecapitoEmailPersonale($pdo, $idUt
 layoutHeader('Assenze e permessi');
 ?>
 
-<style>
-.hr-page-stack { display: flex; flex-direction: column; gap: 16px; }
-.hr-hero-card { padding: 18px 24px; }
-.hr-hero-card .section-head { align-items: center; }
-.hr-hero-card h1 { margin: 0 0 6px; }
-.hr-hero-card .meta { max-width: 860px; line-height: 1.45; }
-.hr-scope-card { padding: 14px 18px; }
-.hr-scope-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--muted, #64748b); }
-.hr-scope-line strong { color: var(--text, #172033); }
-.hr-summary-line { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 1rem; border: 1px solid var(--border, #d9e2ec); border-radius: 14px; background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.04); }
-.hr-summary-line span { display: inline-flex; align-items: baseline; gap: .35rem; white-space: nowrap; color: var(--muted, #64748b); font-size: .92rem; }
-.hr-summary-line strong { color: var(--text, #172033); font-size: 1.08rem; }
-.hr-form-card, .hr-history-card { padding: 1rem; }
-.hr-form-card h2, .hr-history-card h2 { margin-top: 0; margin-bottom: .85rem; }
-.hr-history-card .table-wrap { margin-top: .25rem; }
-@media (max-width: 760px) {
-    .hr-hero-card .section-head { align-items: stretch; flex-direction: column; }
-    .section-head-actions .btn { width: 100%; justify-content: center; }
-    .hr-summary-line span { white-space: normal; }
-}
 
-
-.hr-request-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-}
-.hr-request-row {
-    display: grid;
-    gap: 0.8rem;
-    align-items: end;
-}
-.hr-request-row-primary {
-    grid-template-columns: minmax(220px, 1.35fr) minmax(190px, 1.05fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(125px, 0.7fr) minmax(125px, 0.7fr);
-}
-.hr-request-row-secondary {
-    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr) auto;
-}
-.hr-request-layout .form-group,
-.hr-request-layout .actions {
-    margin: 0;
-}
-.hr-request-layout label {
-    display: block;
-    margin: 0 0 0.35rem;
-    min-height: 1.1rem;
-}
-.hr-request-layout input,
-.hr-request-layout select,
-.hr-request-layout textarea {
-    width: 100%;
-    min-height: 38px;
-    font: inherit;
-}
-.hr-request-layout textarea {
-    height: 38px;
-    min-height: 38px;
-    resize: vertical;
-}
-.hr-request-submit {
-    display: flex;
-    justify-content: flex-end;
-    align-self: end;
-}
-.hr-request-submit .btn {
-    min-height: 38px;
-    white-space: nowrap;
-}
-.hr-request-layout .is-hidden {
-    display: none !important;
-}
-@media (max-width: 1100px) {
-    .hr-request-row-primary,
-    .hr-request-row-secondary {
-        grid-template-columns: 1fr 1fr;
-    }
-    .hr-request-submit {
-        justify-content: flex-start;
-    }
-}
-@media (max-width: 760px) {
-    .hr-request-row-primary,
-    .hr-request-row-secondary {
-        grid-template-columns: 1fr;
-    }
-    .hr-request-submit .btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-.hr-filter-toolbar {
-    display: flex;
-    align-items: flex-end;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin: 0 0 0.75rem;
-}
-.hr-filter-search-group {
-    width: min(380px, 100%);
-}
-.hr-filter-search-group input {
-    width: 100%;
-    min-height: 38px;
-    border: 1px solid var(--border-color, #cbd5e1);
-    border-radius: 8px;
-    padding: 0.55rem 0.75rem;
-    font: inherit;
-    background: #fff;
-}
-.hr-filter-search-group input:focus {
-    outline: none;
-    border-color: var(--primary, #005bd4);
-    box-shadow: 0 0 0 2px rgba(0, 91, 212, 0.16);
-}
-.quick-filter-empty {
-    display: none;
-    margin-top: 0.75rem;
-}
-@media (max-width: 760px) {
-    
-.hr-request-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-}
-.hr-request-row {
-    display: grid;
-    gap: 0.8rem;
-    align-items: end;
-}
-.hr-request-row-primary {
-    grid-template-columns: minmax(220px, 1.35fr) minmax(190px, 1.05fr) minmax(120px, 0.65fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(125px, 0.7fr) minmax(125px, 0.7fr);
-}
-.hr-request-row-secondary {
-    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1.4fr) auto;
-}
-.hr-request-layout .form-group,
-.hr-request-layout .actions {
-    margin: 0;
-}
-.hr-request-layout label {
-    display: block;
-    margin: 0 0 0.35rem;
-    min-height: 1.1rem;
-}
-.hr-request-layout input,
-.hr-request-layout select,
-.hr-request-layout textarea {
-    width: 100%;
-    min-height: 38px;
-    font: inherit;
-}
-.hr-request-layout textarea {
-    height: 38px;
-    min-height: 38px;
-    resize: vertical;
-}
-.hr-request-submit {
-    display: flex;
-    justify-content: flex-end;
-    align-self: end;
-}
-.hr-request-submit .btn {
-    min-height: 38px;
-    white-space: nowrap;
-}
-.hr-request-layout .is-hidden {
-    display: none !important;
-}
-@media (max-width: 1100px) {
-    .hr-request-row-primary,
-    .hr-request-row-secondary {
-        grid-template-columns: 1fr 1fr;
-    }
-    .hr-request-submit {
-        justify-content: flex-start;
-    }
-}
-@media (max-width: 760px) {
-    .hr-request-row-primary,
-    .hr-request-row-secondary {
-        grid-template-columns: 1fr;
-    }
-    .hr-request-submit .btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-.hr-filter-toolbar {
-        justify-content: stretch;
-    }
-    .hr-filter-search-group {
-        width: 100%;
-    }
-}
-
-
-
-/* Rifinitura allineamenti pagina assenze: form richiesta e filtro rapido */
-.hr-request-row-secondary {
-    align-items: start;
-    grid-template-columns: minmax(260px, 0.95fr) minmax(360px, 1.45fr) auto;
-}
-.hr-request-row-secondary .form-group {
-    align-self: start;
-}
-.hr-request-row-secondary input,
-.hr-request-row-secondary textarea {
-    height: 38px;
-    min-height: 38px;
-}
-.hr-request-submit {
-    align-self: start;
-    padding-top: calc(1.1rem + 0.35rem);
-}
-.hr-request-submit .btn {
-    height: 38px;
-    min-height: 38px;
-}
-.hr-history-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-}
-.hr-history-head > div:first-child h2 {
-    margin-top: 0;
-}
-.hr-history-head .hr-filter-toolbar {
-    margin-top: 0;
-    padding-top: 0;
-}
-.hr-history-head .hr-filter-search-group label {
-    margin-top: 0;
-}
-@media (max-width: 1100px) {
-    .hr-request-submit {
-        padding-top: 0;
-        justify-content: flex-start;
-    }
-}
-@media (max-width: 760px) {
-    .hr-history-head {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .hr-filter-search-group {
-        width: 100%;
-    }
-    .hr-request-submit .btn {
-        width: 100%;
-    }
-}
-
-/* Responsive definitivo form nuova richiesta: su smartphone tutto in colonna e senza overflow */
-@media (max-width: 760px) {
-    .hr-request-layout {
-        gap: 0.9rem;
-    }
-    .hr-request-row-primary,
-    .hr-request-row-secondary {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) !important;
-        gap: 0.8rem;
-        width: 100%;
-    }
-    .hr-request-row-secondary .form-group,
-    .hr-request-row-secondary .actions,
-    .hr-field-oggetto,
-    .hr-field-note,
-    .hr-request-submit {
-        width: 100%;
-        min-width: 0;
-        max-width: 100%;
-        align-self: stretch;
-        padding-top: 0 !important;
-    }
-    .hr-field-oggetto input,
-    .hr-field-note textarea,
-    .hr-request-submit .btn {
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-    }
-    .hr-field-note textarea {
-        min-height: 76px;
-        height: 76px;
-    }
-    .hr-request-submit {
-        justify-content: stretch;
-    }
-    .hr-request-submit .btn {
-        justify-content: center;
-    }
-}
-
-</style>
 
 <div class="hr-page-stack">
 <div class="card card-compact hr-hero-card">
@@ -1229,7 +944,7 @@ layoutHeader('Assenze e permessi');
                             <td><?= h((string)$r['richiedente']) ?></td>
                             <td><?= h((string)$r['tipologia']) ?></td>
                             <td><?= $periodo ?></td>
-                            <td><?= renderHrStatusBadge((string)$r['stato_codice'], (string)$r['stato']) ?></td>
+                            <td><span class="status-badge <?= hrClasseStato((string)$r['stato_codice']) ?>"><?= h((string)$r['stato']) ?></span></td>
                             <td><?= h(trim((string)$r['responsabile']) !== '' ? (string)$r['responsabile'] : 'Nessun responsabile') ?></td>
                             <td><?= h((string)$r['data_creazione_fmt']) ?></td>
                             <td>
@@ -1325,5 +1040,33 @@ layoutHeader('Assenze e permessi');
 </div>
 
 
+<script>
+(function () {
+    function normalizzaTesto(valore) {
+        return (valore || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    document.querySelectorAll('[data-quick-filter]').forEach(function (input) {
+        var tableId = input.getAttribute('data-quick-filter');
+        var table = document.getElementById(tableId);
+        if (!table) { return; }
+        var empty = document.querySelector('[data-quick-filter-empty="' + tableId + '"]');
+        var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+
+        input.addEventListener('input', function () {
+            var query = normalizzaTesto(input.value.trim());
+            var visible = 0;
+            rows.forEach(function (row) {
+                var match = query === '' || normalizzaTesto(row.textContent).indexOf(query) !== -1;
+                row.style.display = match ? '' : 'none';
+                if (match) { visible += 1; }
+            });
+            if (empty) {
+                empty.style.display = visible === 0 ? 'block' : 'none';
+            }
+        });
+    });
+})();
+</script>
 
 <?php layoutFooter(); ?>
