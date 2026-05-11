@@ -68,3 +68,37 @@ if (!function_exists('renderAdminQuickFilter')) {
         <?php
     }
 }
+
+if (!function_exists('renderAdminAlert')) {
+    /** Renderizza un messaggio operativo standard dell'area Admin. */
+    function renderAdminAlert(string $message, string $type = 'info'): void
+    {
+        $message = trim($message);
+        if ($message === '') {
+            return;
+        }
+
+        $allowedTypes = ['success', 'danger', 'warning', 'info'];
+        if (!in_array($type, $allowedTypes, true)) {
+            $type = 'info';
+        }
+        ?>
+        <div class="alert alert-<?= adminEscape($type) ?>" role="status"><?= adminEscape($message) ?></div>
+        <?php
+    }
+}
+
+if (!function_exists('renderAdminSaveActions')) {
+    /** Renderizza la barra comune dei pulsanti di salvataggio dell'area Admin. */
+    function renderAdminSaveActions(string $label, string $icon = 'la la-save', string $buttonClass = 'btn btn-primary'): void
+    {
+        ?>
+        <div class="admin-save-actions">
+            <button class="<?= adminEscape($buttonClass) ?>" type="submit">
+                <?php if (trim($icon) !== ''): ?><i class="<?= adminEscape($icon) ?>" aria-hidden="true"></i> <?php endif; ?><?= adminEscape($label) ?>
+            </button>
+        </div>
+        <?php
+    }
+}
+

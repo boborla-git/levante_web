@@ -141,13 +141,8 @@ layoutHeader('Ruoli utenti');
         </div>
     </section>
 
-    <?php if ($errore !== ''): ?>
-        <div class="errore"><?= htmlspecialchars($errore) ?></div>
-    <?php endif; ?>
-
-    <?php if ($messaggio !== ''): ?>
-        <div class="ok"><?= htmlspecialchars($messaggio) ?></div>
-    <?php endif; ?>
+    <?php renderAdminAlert($errore, 'danger'); ?>
+    <?php renderAdminAlert($messaggio, 'success'); ?>
 
     <form method="post">
         <div class="table-wrap">
@@ -191,9 +186,7 @@ layoutHeader('Ruoli utenti');
             </table>
         </div>
 
-        <div class="admin-save-actions">
-            <button class="btn btn-primary" type="submit"><i class="la la-save" aria-hidden="true"></i> Salva ruoli utenti</button>
-        </div>
+        <?php renderAdminSaveActions('Salva ruoli utenti'); ?>
     </form>
 
     <div class="links">

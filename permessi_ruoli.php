@@ -292,13 +292,8 @@ layoutHeader('Permessi ruoli');
         </div>
     </section>
 
-    <?php if ($errore !== ''): ?>
-        <div class="errore"><?= htmlspecialchars($errore) ?></div>
-    <?php endif; ?>
-
-    <?php if ($messaggio !== ''): ?>
-        <div class="ok"><?= htmlspecialchars($messaggio) ?></div>
-    <?php endif; ?>
+    <?php renderAdminAlert($errore, 'danger'); ?>
+    <?php renderAdminAlert($messaggio, 'success'); ?>
 
     <div class="meta admin-current-role">
         <span><strong>Ruolo corrente:</strong> <?= htmlspecialchars((string)$ruoloSelezionato['codice_ruolo']) ?> - <?= htmlspecialchars((string)$ruoloSelezionato['descrizione']) ?></span>
@@ -380,9 +375,7 @@ layoutHeader('Permessi ruoli');
             </table>
         </div>
 
-        <div class="admin-save-actions">
-            <button class="btn btn-primary" type="submit"><i class="la la-save" aria-hidden="true"></i> Salva permessi ruolo</button>
-        </div>
+        <?php renderAdminSaveActions('Salva permessi ruolo'); ?>
     </form>
 </div>
 
