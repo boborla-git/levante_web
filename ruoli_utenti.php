@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/admin.php';
 require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoScrittura('utenti');
@@ -127,12 +128,7 @@ layoutHeader('Ruoli utenti');
 <div class="card card-wide">
     <h1>Admin</h1>
 
-    <div class="admin-tabs">
-        <span class="admin-tabs-label">Sezione:</span>
-        <a href="utenti.php"><i class="la la-users" aria-hidden="true"></i> Utenti</a>
-        <a class="active" href="ruoli_utenti.php"><i class="la la-user-tag" aria-hidden="true"></i> Ruoli utenti</a>
-        <a href="permessi_ruoli.php"><i class="la la-key" aria-hidden="true"></i> Permessi ruoli</a>
-    </div>
+    <?php renderAdminTabs('ruoli_utenti'); ?>
 
     <section class="admin-page-block">
         <div class="admin-section-heading">
@@ -141,16 +137,7 @@ layoutHeader('Ruoli utenti');
         </div>
 
         <div class="admin-actions-toolbar admin-actions-toolbar-single">
-            <div class="form-group admin-list-filter">
-                <label for="filtroRapidoRuoliUtenti">Filtro rapido</label>
-                <input
-                    type="search"
-                    id="filtroRapidoRuoliUtenti"
-                    placeholder="Cerca in tutte le colonne..."
-                    autocomplete="off"
-                    data-table-filter="tabellaRuoliUtenti"
-                >
-            </div>
+            <?php renderAdminQuickFilter('filtroRapidoRuoliUtenti', 'tabellaRuoliUtenti'); ?>
         </div>
     </section>
 
