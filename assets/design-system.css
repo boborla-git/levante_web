@@ -750,7 +750,8 @@ input:focus, select:focus, textarea:focus,
 }
 
 /* CSS residui migrati da pagine admin/HR */
-\n/* Migrazione CSS locale da utenti.php */
+
+/* Migrazione CSS locale da utenti.php */
 .hr-filter-toolbar {
     display: grid;
     grid-template-columns: minmax(260px, 1fr) minmax(280px, 420px);
@@ -858,7 +859,8 @@ input:focus, select:focus, textarea:focus,
         justify-content: center;
     }
 }
-\n/* Migrazione CSS locale da permessi_ruoli.php */
+
+/* Migrazione CSS locale da permessi_ruoli.php */
 .hr-filter-toolbar {
     display: grid;
     grid-template-columns: minmax(260px, 1fr) minmax(280px, 420px);
@@ -987,7 +989,8 @@ input:focus, select:focus, textarea:focus,
         justify-content: center;
     }
 }
-\n/* Migrazione CSS locale da relazioni_organizzative.php */
+
+/* Migrazione CSS locale da relazioni_organizzative.php */
 .hr-filter-toolbar {
     display: grid;
     grid-template-columns: minmax(220px, 1fr) minmax(280px, 420px);
@@ -1076,7 +1079,8 @@ input:focus, select:focus, textarea:focus,
         gap: 10px;
     }
 }
-\n/* Migrazione CSS locale da gruppi_lavoro.php */
+
+/* Migrazione CSS locale da gruppi_lavoro.php */
 .hr-filter-toolbar {
     display: grid;
     grid-template-columns: minmax(220px, 1fr) minmax(280px, 420px);
@@ -1165,7 +1169,8 @@ input:focus, select:focus, textarea:focus,
         gap: 10px;
     }
 }
-\n/* Migrazione CSS locale da recapiti_utenti.php */
+
+/* Migrazione CSS locale da recapiti_utenti.php */
 .hr-recapiti-toolbar {
     display: grid;
     grid-template-columns: minmax(220px, 1fr) minmax(280px, 420px);
@@ -2213,6 +2218,11 @@ input:focus, select:focus, textarea:focus,
 
 .admin-actions-toolbar-role .permissions-role-form select {
     width: 100%;
+}
+
+.role-select {
+    width: 100%;
+    min-width: 220px;
 }
 
 @media (max-width: 900px) {
