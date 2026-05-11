@@ -1017,9 +1017,75 @@ layoutHeader('Assenze e permessi');
     const oraA = document.getElementById('ora_a');
     const labelDataDa = document.getElementById('label_data_da');
 
+    const MINUTI_STEP = 5;
+    const MINUTI_DEFAULT_DURATA = 60;
+
     function toggleBlock(element, show) {
         if (!element) return;
         element.classList.toggle('is-hidden', !show);
+    }
+
+    function pad2(value) {
+        return String(value).padStart(2, '0');
+    }
+
+    function parseOra(value) {
+        const match = /^(\d{1,2}):(\d{2})$/.exec(value || '');
+        if (!match) {
+            return null;
+        }
+        const ore = Number(match[1]);
+        const minuti = Number(match[2]);
+        if (ore < 0 || ore > 23 || minuti < 0 || minuti > 59) {
+            return null;
+        }
+        return ore * 60 + minuti;
+    }
+
+    function formatOra(minutiTotali) {
+        const minutiGiorno = 24 * 60;
+        const normalizzati = ((minutiTotali % minutiGiorno) + minutiGiorno) % minutiGiorno;
+        const ore = Math.floor(normalizzati / 60);
+        const minuti = normalizzati % 60;
+        return pad2(ore) + ':' + pad2(minuti);
+    }
+
+    function arrotondaAStep(value) {
+        const minuti = parseOra(value);
+        if (minuti === null) {
+            return '';
+        }
+        return formatOra(Math.round(minuti / MINUTI_STEP) * MINUTI_STEP);
+    }
+
+    function impostaOraFineDefault() {
+        if (!oraDa || !oraA || modalita.value !== 'ore') {
+            return;
+        }
+        const oraDaNormalizzata = arrotondaAStep(oraDa.value);
+        if (!oraDaNormalizzata) {
+            oraA.value = '';
+            return;
+        }
+        oraDa.value = oraDaNormalizzata;
+        const minutiInizio = parseOra(oraDaNormalizzata);
+        if (minutiInizio === null) {
+            return;
+        }
+        oraA.value = formatOra(minutiInizio + MINUTI_DEFAULT_DURATA);
+    }
+
+    function sincronizzaDataFine() {
+        if (!dataDa || !dataA || !dataDa.value) {
+            return;
+        }
+        if (modalita.value === 'ore') {
+            dataA.value = dataDa.value;
+            return;
+        }
+        if (!dataA.value || dataA.value < dataDa.value) {
+            dataA.value = dataDa.value;
+        }
     }
 
     function aggiornaCampi() {
@@ -1033,27 +1099,42 @@ layoutHeader('Assenze e permessi');
             labelDataDa.textContent = isOre ? 'Giorno' : 'Dal giorno';
         }
 
-        dataA.required = !isOre;
-        oraDa.required = isOre;
-        oraA.required = isOre;
+        if (dataA) {
+            dataA.required = !isOre;
+        }
+        if (oraDa) {
+            oraDa.required = isOre;
+            oraDa.step = String(MINUTI_STEP * 60);
+        }
+        if (oraA) {
+            oraA.required = isOre;
+            oraA.step = String(MINUTI_STEP * 60);
+        }
+
+        sincronizzaDataFine();
 
         if (isOre) {
-            dataA.value = dataDa.value;
-        } else {
-            if (!dataA.value) {
-                dataA.value = dataDa.value;
+            if (oraDa && oraDa.value) {
+                impostaOraFineDefault();
             }
-            oraDa.value = '';
-            oraA.value = '';
+        } else {
+            if (oraDa) oraDa.value = '';
+            if (oraA) oraA.value = '';
         }
     }
 
     modalita.addEventListener('change', aggiornaCampi);
-    dataDa.addEventListener('change', function () {
-        if (modalita.value === 'ore') {
-            dataA.value = dataDa.value;
-        }
-    });
+
+    if (dataDa) {
+        dataDa.addEventListener('change', function () {
+            sincronizzaDataFine();
+        });
+    }
+
+    if (oraDa) {
+        oraDa.addEventListener('change', impostaOraFineDefault);
+        oraDa.addEventListener('blur', impostaOraFineDefault);
+    }
 
     aggiornaCampi();
 })();
