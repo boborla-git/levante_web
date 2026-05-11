@@ -206,12 +206,6 @@ input:focus, select:focus, textarea:focus,
     font-weight: 700;
 }
 
-/* Esito filtro rapido */
-.quick-filter-empty {
-    display: none;
-    margin-top: 0.75rem;
-}
-
 /* Tabelle */
 .table-wrap, .responsive-table, .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .table, table { border-collapse: collapse; }
@@ -512,431 +506,107 @@ input:focus, select:focus, textarea:focus,
     .brand img { width: 150px; }
 }
 
-/* ---------------------------------------------------------------------------
-   14. Layout operativi e filtri rapidi
-   --------------------------------------------------------------------------- */
-.section-toolbar,
-.operation-toolbar,
-.table-toolbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 0.85rem 0 1rem;
+/* Header, card e blocchi standard comuni */
+.hr-page-header,
+.hr-card,
+.hr-standard-card {
+    background: #ffffff;
+    border: 1px solid var(--rav-gray-200);
+    border-radius: var(--rav-radius-lg);
+    box-shadow: var(--rav-shadow-soft);
 }
 
-.section-toolbar .toolbar-left,
-.operation-toolbar .toolbar-left,
-.table-toolbar .toolbar-left {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.65rem;
-  flex-wrap: wrap;
+.hr-page-header,
+.hr-standard-card,
+.hr-card {
+    padding: 1rem;
 }
 
-.section-toolbar .toolbar-right,
-.operation-toolbar .toolbar-right,
-.table-toolbar .toolbar-right {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 0.65rem;
-  flex-wrap: wrap;
+.hr-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
 }
 
-.quick-filter,
-.filter-quick,
-.quick-filter-box {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 260px;
-  max-width: 380px;
+.hr-page-title,
+.hr-section-title {
+    display: grid;
+    gap: 0.35rem;
 }
 
-.quick-filter label,
-.filter-quick label,
-.quick-filter-box label {
-  margin: 0;
-  color: var(--rav-gray-900);
-  font-weight: 800;
-  line-height: 1.1;
+.hr-page-title h1,
+.hr-section-title h2,
+.hr-section-title h3 {
+    margin: 0;
+    color: var(--rav-gray-900);
+    line-height: 1.2;
 }
 
-.quick-filter input,
-.filter-quick input,
-.quick-filter-box input,
-input.quick-filter-input {
-  width: 100%;
-  min-height: 40px;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--rav-gray-300);
-  border-radius: var(--rav-radius-sm);
-  background: #ffffff;
-  color: var(--rav-gray-900);
-  font: inherit;
+.hr-page-title p,
+.hr-section-title p {
+    margin: 0;
 }
 
-.quick-filter input::placeholder,
-.filter-quick input::placeholder,
-.quick-filter-box input::placeholder,
-input.quick-filter-input::placeholder {
-  color: var(--rav-gray-500);
+.hr-section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
 }
 
-/* ---------------------------------------------------------------------------
-   15. Griglie form responsive
-   --------------------------------------------------------------------------- */
-.form-grid,
-.form-grid-inline,
-.inline-form-grid,
-.responsive-form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.85rem;
-  align-items: end;
+.hr-section-tools {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-left: auto;
 }
 
-.form-grid .full,
-.form-grid-inline .full,
-.inline-form-grid .full,
-.responsive-form-grid .full {
-  grid-column: 1 / -1;
+.hr-section-tools .quick-filter,
+.hr-section-tools .quick-filter-box,
+.hr-section-tools .filtro-rapido {
+    margin-left: 0;
 }
 
-.form-field,
-.field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
+.hr-card + .hr-card,
+.hr-standard-card + .hr-standard-card,
+.hr-page-header + .hr-card,
+.hr-page-header + .hr-standard-card {
+    margin-top: 1rem;
 }
 
-.form-field label,
-.field-group label {
-  margin: 0;
-  color: var(--rav-gray-900);
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.form-field input,
-.form-field select,
-.form-field textarea,
-.field-group input,
-.field-group select,
-.field-group textarea {
-  width: 100%;
-  min-height: 40px;
-  padding: 0.55rem 0.75rem;
-  font: inherit;
-}
-
-.form-field textarea,
-.field-group textarea {
-  min-height: 40px;
-  resize: vertical;
-}
-
-.form-submit,
-.form-submit-inline {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  min-width: max-content;
-}
-
-/* ---------------------------------------------------------------------------
-   16. Tabelle responsive
-   --------------------------------------------------------------------------- */
-.table-scroll,
-.table-responsive,
-.responsive-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.table-scroll table,
-.table-responsive table,
-.responsive-table-wrap table {
-  min-width: 720px;
-}
-
-/* ---------------------------------------------------------------------------
-   17. Menu mobile / drawer
-   --------------------------------------------------------------------------- */
-.mobile-menu-toggle,
-.drawer-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-}
-
-.drawer-item {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-height: 40px;
-  padding: 0.55rem 0.7rem;
-  border-radius: var(--rav-radius-sm);
-  color: var(--rav-gray-900);
-  text-decoration: none;
-}
-
-.drawer-item:hover,
-.drawer-item.active {
-  background: var(--rav-blue-soft);
-  color: var(--rav-blue);
-  text-decoration: none;
-}
-
-.drawer-item.level-1 { padding-left: 1.25rem; }
-.drawer-item.level-2 { padding-left: 1.9rem; }
-.drawer-item.level-3 { padding-left: 2.55rem; }
-
-/* ---------------------------------------------------------------------------
-   18. Adattamenti smartphone verticale
-   --------------------------------------------------------------------------- */
-@media (max-width: 640px) {
-  .section-toolbar,
-  .operation-toolbar,
-  .table-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .section-toolbar .toolbar-left,
-  .section-toolbar .toolbar-right,
-  .operation-toolbar .toolbar-left,
-  .operation-toolbar .toolbar-right,
-  .table-toolbar .toolbar-left,
-  .table-toolbar .toolbar-right {
-    justify-content: stretch;
-    width: 100%;
-  }
-
-  .quick-filter,
-  .filter-quick,
-  .quick-filter-box {
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-  }
-
-  .form-grid,
-  .form-grid-inline,
-  .inline-form-grid,
-  .responsive-form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .form-submit,
-  .form-submit-inline,
-  .form-submit .btn,
-  .form-submit-inline .btn {
-    width: 100%;
-  }
-
-  .form-actions,
-  .page-actions,
-  .action-row,
-  .table-actions {
-    align-items: stretch;
-  }
-
-  .form-actions .btn,
-  .page-actions .btn,
-  .action-row .btn {
-    width: 100%;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   19. Consolidamento finale: toolbar, filtri e layout legacy
-   --------------------------------------------------------------------------- */
-.page-content,
-.main-content,
-.container,
-.content-wrapper {
-  min-width: 0;
-}
-
-.page-card,
-.module-card,
-.content-card,
-.admin-card {
-  min-width: 0;
-}
-
-.section-toolbar,
-.operation-toolbar,
-.table-toolbar,
-.form-toolbar,
-.admin-toolbar,
-.list-toolbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.85rem;
-}
-
-.toolbar-left,
-.toolbar-right,
-.toolbar-actions {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.55rem;
-  flex-wrap: wrap;
-}
-
-.toolbar-right,
-.toolbar-actions {
-  margin-left: auto;
-  justify-content: flex-end;
-}
-
-.quick-filter input,
-.quick-filter-input,
-.filter-quick input,
-.quick-filter-box input,
-.filtro-rapido input {
-  height: 40px;
-  padding: 0.55rem 0.75rem;
-  font-size: 0.95rem;
-  color: var(--rav-gray-900);
-}
-
-.quick-filter input::placeholder,
-.quick-filter-input::placeholder,
-.filter-quick input::placeholder,
-.quick-filter-box input::placeholder,
-.filtro-rapido input::placeholder {
-  color: var(--rav-gray-500);
-}
-
-.admin-tabs,
-.section-tabs,
-.nav-pills,
-.pill-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
-.admin-tabs a,
-.section-tabs a,
-.nav-pills a,
-.pill-tabs a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  min-height: 34px;
-  padding: 0.42rem 0.72rem;
-  border: 1px solid var(--rav-gray-300);
-  border-radius: 999px;
-  background: #ffffff;
-  color: var(--rav-gray-900);
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.admin-tabs a.active,
-.section-tabs a.active,
-.nav-pills a.active,
-.pill-tabs a.active {
-  background: var(--rav-yellow);
-  border-color: var(--rav-blue);
-  color: var(--rav-blue);
-}
-
-.admin-tabs a:hover,
-.section-tabs a:hover,
-.nav-pills a:hover,
-.pill-tabs a:hover {
-  border-color: var(--rav-blue);
-  color: var(--rav-blue);
-  text-decoration: none;
-}
-
-/* Evita tagli dei form su mobile: solo le tabelle devono scorrere orizzontalmente. */
-.form-grid,
-.form-grid-inline,
-.inline-form-grid,
-.responsive-form-grid,
-.desktop-inline,
-.form-inline-desktop,
-.responsive-form-row {
-  min-width: 0;
-}
-
-.form-grid > *,
-.form-grid-inline > *,
-.inline-form-grid > *,
-.responsive-form-grid > *,
-.desktop-inline > *,
-.form-inline-desktop > *,
-.responsive-form-row > * {
-  min-width: 0;
-}
-
-@media (min-width: 901px) {
-  .toolbar-right .quick-filter,
-  .toolbar-right .filter-quick,
-  .toolbar-right .quick-filter-box,
-  .toolbar-right .filtro-rapido,
-  .toolbar-actions .quick-filter,
-  .toolbar-actions .filter-quick,
-  .toolbar-actions .quick-filter-box,
-  .toolbar-actions .filtro-rapido {
-    width: min(100%, 380px);
-  }
+@media (min-width: 769px) {
+    .hr-page-header,
+    .hr-card,
+    .hr-standard-card {
+        padding: 1.25rem 1.35rem;
+    }
 }
 
 @media (max-width: 768px) {
-  .section-toolbar,
-  .operation-toolbar,
-  .table-toolbar,
-  .form-toolbar,
-  .admin-toolbar,
-  .list-toolbar {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
+    .hr-page-header,
+    .hr-section-header,
+    .hr-section-tools {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        justify-content: stretch;
+        gap: 0.75rem;
+    }
 
-  .toolbar-left,
-  .toolbar-right,
-  .toolbar-actions {
-    width: 100%;
-    margin-left: 0;
-    justify-content: stretch;
-  }
+    .hr-section-tools {
+        margin-left: 0;
+    }
 
-  .toolbar-left .btn,
-  .toolbar-right .btn,
-  .toolbar-actions .btn {
-    width: 100%;
-  }
-
-  .admin-tabs,
-  .section-tabs,
-  .nav-pills,
-  .pill-tabs {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-
-  .admin-tabs a,
-  .section-tabs a,
-  .nav-pills a,
-  .pill-tabs a {
-    width: 100%;
-  }
+    .hr-section-tools .quick-filter,
+    .hr-section-tools .quick-filter-box,
+    .hr-section-tools .filtro-rapido,
+    .hr-section-tools .btn,
+    .hr-section-tools a.btn,
+    .hr-section-tools button.btn {
+        width: 100%;
+    }
 }

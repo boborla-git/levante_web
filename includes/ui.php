@@ -92,36 +92,95 @@ if (!function_exists('renderHrAlert')) {
     /**
      * Renderizza un messaggio operativo standard.
      * Tipi supportati: success, danger, warning, info.
-     * Alias supportati: error => danger.
      */
-    function renderHrAlert(string $message, string $type = 'info', string $icon = ''): void
+    function renderHrAlert(string $message, string $type = 'info'): void
     {
         $message = trim($message);
         if ($message === '') {
             return;
         }
 
-        if ($type === 'error') {
-            $type = 'danger';
-        }
-
         $allowed = ['success', 'danger', 'warning', 'info'];
         if (!in_array($type, $allowed, true)) {
             $type = 'info';
         }
-
-        $defaultIcons = [
-            'success' => 'la la-check-circle',
-            'danger' => 'la la-exclamation-triangle',
-            'warning' => 'la la-exclamation-circle',
-            'info' => 'la la-info-circle',
-        ];
-        $icon = trim($icon !== '' ? $icon : ($defaultIcons[$type] ?? ''));
         ?>
-        <div class="alert alert-<?= hrUiEscape($type) ?>" role="status">
-            <?php if ($icon !== ''): ?><i class="<?= hrUiEscape($icon) ?>" aria-hidden="true"></i> <?php endif; ?><?= hrUiEscape($message) ?>
+        <div class="alert alert-<?= hrUiEscape($type) ?>" role="status"><?= hrUiEscape($message) ?></div>
+        <?php
+    }
+}
+
+
+if (!function_exists('renderHrSectionHeader')) {
+    /**
+     * Renderizza un'intestazione standard per card/sezioni operative.
+     *
+     * Configurazione attesa:
+     * - title: string
+     * - subtitle: string|null
+     * - icon: string|null
+     * - class: string|null
+     * - actions: array[] href,label,icon,class
+     * - filter_html: string|null
+     */
+    function renderHrSectionHeader(array $config): void
+    {
+        $title = (string)($config['title'] ?? '');
+        $subtitle = (string)($config['subtitle'] ?? '');
+        $icon = trim((string)($config['icon'] ?? ''));
+        $class = trim((string)($config['class'] ?? 'hr-section-header'));
+        $actions = is_array($config['actions'] ?? null) ? $config['actions'] : [];
+        $filterHtml = (string)($config['filter_html'] ?? '');
+        ?>
+        <div class="<?= hrUiEscape($class) ?>">
+            <div class="hr-section-title">
+                <h2><?php if ($icon !== ''): ?><i class="<?= hrUiEscape($icon) ?>" aria-hidden="true"></i> <?php endif; ?><?= hrUiEscape($title) ?></h2>
+                <?php if ($subtitle !== ''): ?>
+                    <p class="text-muted meta"><?= hrUiEscape($subtitle) ?></p>
+                <?php endif; ?>
+            </div>
+
+            <?php if (count($actions) > 0 || trim($filterHtml) !== ''): ?>
+                <div class="hr-section-tools">
+                    <?php if (count($actions) > 0): ?>
+                        <div class="section-head-actions">
+                            <?php foreach ($actions as $action): ?>
+                                <?php
+                                $href = (string)($action['href'] ?? '#');
+                                $label = (string)($action['label'] ?? '');
+                                $actionIcon = trim((string)($action['icon'] ?? ''));
+                                $actionClass = trim((string)($action['class'] ?? 'btn btn-light'));
+                                ?>
+                                <a class="<?= hrUiEscape($actionClass) ?>" href="<?= hrUiEscape($href) ?>">
+                                    <?php if ($actionIcon !== ''): ?><i class="<?= hrUiEscape($actionIcon) ?>" aria-hidden="true"></i> <?php endif; ?><?= hrUiEscape($label) ?>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?= $filterHtml ?>
+                </div>
+            <?php endif; ?>
         </div>
         <?php
     }
 }
 
+if (!function_exists('renderHrCardOpen')) {
+    /** Apre una card standard del modulo HR. */
+    function renderHrCardOpen(string $class = 'card hr-card'): void
+    {
+        ?>
+        <section class="<?= hrUiEscape($class) ?>">
+        <?php
+    }
+}
+
+if (!function_exists('renderHrCardClose')) {
+    /** Chiude una card standard del modulo HR. */
+    function renderHrCardClose(): void
+    {
+        ?>
+        </section>
+        <?php
+    }
+}
