@@ -28,6 +28,15 @@ function hrNomeMese(int $mese, int $anno): string
     return ($nomi[$mese] ?? (string)$mese) . ' ' . $anno;
 }
 
+function hrNomeGiornoBreve(DateTimeInterface $data): string
+{
+    $nomi = [
+        1 => 'Lun', 2 => 'Mar', 3 => 'Mer', 4 => 'Gio', 5 => 'Ven', 6 => 'Sab', 7 => 'Dom',
+    ];
+
+    return $nomi[(int)$data->format('N')] ?? '';
+}
+
 function hrNomeUtente(array $row): string
 {
     $nome = trim((string)($row['nome'] ?? ''));
@@ -215,6 +224,8 @@ $inizioGriglia = $primoDelMese->modify('-' . ((int)$primoDelMese->format('N') - 
 $fineGriglia = $ultimoDelMese->modify('+' . (7 - (int)$ultimoDelMese->format('N')) . ' days');
 $prev = $primoDelMese->modify('-1 month');
 $next = $primoDelMese->modify('+1 month');
+$annoDa = max(2020, $anno - 2);
+$annoA = min(2100, $anno + 2);
 
 $scopeUtenti = hrScopeUtentiCalendario($pdo, $idUtente, $puoConfigurare);
 $scopeMap = [];
@@ -358,16 +369,6 @@ foreach ($eventsByDay as $dayKey => $events) {
 }
 
 ksort($legendMap);
-
-$richiesteVisibili = [];
-foreach ($eventsByDay as $events) {
-    foreach ($events as $event) {
-        $richiesteVisibili[(int)$event['id_richiesta']] = true;
-    }
-}
-$totalRichiesteVisibili = count($richiesteVisibili);
-$giorniConAssenze = count($daysWithEvents);
-
 $dayDetailsJsonEncoded = json_encode($dayDetailsJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 if ($dayDetailsJsonEncoded === false) {
     $dayDetailsJsonEncoded = '{}';
@@ -392,35 +393,6 @@ layoutHeader('Calendario assenze');
 <div class="hr-cal-page">
 <?php renderHrAlert($error, 'danger'); ?>
 
-<section class="card hr-cal-summary-card" aria-label="Riepilogo calendario assenze">
-    <div class="hr-cal-summary-main">
-        <div>
-            <div class="hr-cal-summary-label">Utenti visibili</div>
-            <div class="hr-cal-summary-value"><?= (int)$totalUsers ?></div>
-        </div>
-        <div>
-            <div class="hr-cal-summary-label">Richieste nel periodo</div>
-            <div class="hr-cal-summary-value"><?= (int)$totalRichiesteVisibili ?></div>
-        </div>
-        <div>
-            <div class="hr-cal-summary-label">Giorni con assenze</div>
-            <div class="hr-cal-summary-value"><?= (int)$giorniConAssenze ?></div>
-        </div>
-    </div>
-    <?php if ($legendMap !== []): ?>
-        <div class="hr-cal-legend" aria-label="Legenda calendario">
-            <?php foreach ($legendMap as $label => $color): ?>
-                <span class="hr-cal-legend-item">
-                    <span class="hr-dot" style="--dot-color: <?= h($color) ?>"></span>
-                    <span><?= h($label) ?></span>
-                </span>
-            <?php endforeach; ?>
-        </div>
-    <?php else: ?>
-        <div class="hr-cal-summary-empty">Nessuna assenza visibile nel periodo selezionato.</div>
-    <?php endif; ?>
-</section>
-
 <section class="hr-cal-layout">
     <aside class="card hr-day-panel" aria-live="polite">
         <div class="hr-day-panel-head">
@@ -442,8 +414,21 @@ layoutHeader('Calendario assenze');
             </div>
             <div class="hr-cal-toolbar" aria-label="Navigazione mese">
                 <a class="btn hr-icon-btn hr-icon-btn-primary" href="calendario_assenze.php?mese=<?= (int)$prev->format('n') ?>&anno=<?= (int)$prev->format('Y') ?>" title="Mese precedente" aria-label="Mese precedente"><i class="la la-angle-left" aria-hidden="true"></i></a>
-                <a class="btn hr-icon-btn hr-icon-btn-secondary" href="calendario_assenze.php" title="Oggi" aria-label="Oggi"><i class="la la-calendar" aria-hidden="true"></i></a>
+                <a class="btn hr-cal-today-btn" href="calendario_assenze.php" title="Torna al mese corrente" aria-label="Torna al mese corrente"><i class="la la-calendar" aria-hidden="true"></i><span>Oggi</span></a>
                 <a class="btn hr-icon-btn hr-icon-btn-primary" href="calendario_assenze.php?mese=<?= (int)$next->format('n') ?>&anno=<?= (int)$next->format('Y') ?>" title="Mese successivo" aria-label="Mese successivo"><i class="la la-angle-right" aria-hidden="true"></i></a>
+                <form class="hr-month-jump" method="get" action="calendario_assenze.php" aria-label="Vai a un mese specifico">
+                    <select name="mese" aria-label="Mese">
+                        <?php for ($m = 1; $m <= 12; $m++): ?>
+                            <option value="<?= $m ?>" <?= $m === $mese ? 'selected' : '' ?>><?= h(hrNomeMese($m, $anno)) ?></option>
+                        <?php endfor; ?>
+                    </select>
+                    <select name="anno" aria-label="Anno">
+                        <?php for ($a = $annoDa; $a <= $annoA; $a++): ?>
+                            <option value="<?= $a ?>" <?= $a === $anno ? 'selected' : '' ?>><?= $a ?></option>
+                        <?php endfor; ?>
+                    </select>
+                    <button type="submit" class="btn">Vai</button>
+                </form>
             </div>
         </div>
         <div class="hr-cal-grid" aria-label="Calendario mensile">
@@ -457,10 +442,15 @@ layoutHeader('Calendario assenze');
                 $isToday = $key === date('Y-m-d');
                 $summaries = $daySummaries[$key] ?? [];
                 $hasEvents = count($summaries) > 0;
-                $classes = 'hr-cal-day' . (!$isCurrentMonth ? ' is-muted' : '') . ($isToday ? ' is-today' : '') . ($key === $selectedDay ? ' is-selected' : '') . ($hasEvents ? ' has-events' : '');
+                $isWeekend = (int)$day->format('N') >= 6;
+                $classes = 'hr-cal-day' . (!$isCurrentMonth ? ' is-muted' : '') . ($isWeekend ? ' is-weekend' : '') . ($isToday ? ' is-today' : '') . ($key === $selectedDay ? ' is-selected' : '') . ($hasEvents ? ' has-events' : '');
                 ?>
-                <div class="<?= h($classes) ?>" data-day="<?= h($key) ?>" role="button" tabindex="0">
-                    <span class="hr-cal-day-number"><?= h($day->format('j')) ?></span>
+                <div class="<?= h($classes) ?>" data-day="<?= h($key) ?>" role="button" tabindex="0" aria-label="<?= h(hrNomeGiornoBreve($day) . ' ' . $day->format('d/m/Y')) ?>">
+                    <span class="hr-cal-date-line">
+                        <span class="hr-cal-day-number"><?= h($day->format('j')) ?></span>
+                        <span class="hr-cal-mobile-weekday"><?= h(hrNomeGiornoBreve($day)) ?></span>
+                        <?php if ($isToday): ?><span class="hr-cal-today-badge">Oggi</span><?php endif; ?>
+                    </span>
                     <?php foreach ($summaries as $label => $summary): ?>
                         <span class="hr-cal-event-line">
                             <span class="hr-dot" style="--dot-color: <?= h($summary['color']) ?>"></span>
