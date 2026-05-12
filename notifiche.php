@@ -20,6 +20,24 @@ function h(?string $valore): string
     return htmlspecialchars((string)$valore, ENT_QUOTES, 'UTF-8');
 }
 
+function normalizzaLinkNotifica(?string $link): string
+{
+    $link = trim((string)$link);
+    if ($link === '') {
+        return '';
+    }
+
+    if (strpos($link, '/') === 0) {
+        return $link;
+    }
+
+    if (preg_match('/^[a-zA-Z0-9_\-\/\.]+\.php(\?.*)?$/', $link) === 1) {
+        return '/' . ltrim($link, '/');
+    }
+
+    return '';
+}
+
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $azione = trim((string)($_POST['azione'] ?? ''));
@@ -57,6 +75,46 @@ try {
             $stmt->execute(['id_utente' => $idUtente]);
 
             header('Location: notifiche.php?tutte_lette=1');
+            exit;
+        }
+
+        if ($azione === 'apri_notifica') {
+            $idDestinatario = (int)($_POST['id_notifica_destinatario'] ?? 0);
+            if ($idDestinatario <= 0) {
+                throw new RuntimeException('Notifica non valida.');
+            }
+
+            $stmt = $pdo->prepare(
+                'SELECT n.link
+                 FROM hr_notifiche_destinatari nd
+                 INNER JOIN hr_notifiche n ON n.id_notifica = nd.id_notifica
+                 WHERE nd.id_notifica_destinatario = :id_notifica_destinatario
+                   AND nd.id_utente = :id_utente
+                 LIMIT 1'
+            );
+            $stmt->execute([
+                'id_notifica_destinatario' => $idDestinatario,
+                'id_utente' => $idUtente,
+            ]);
+            $linkDestinazione = normalizzaLinkNotifica($stmt->fetchColumn() ?: '');
+
+            if ($linkDestinazione === '') {
+                throw new RuntimeException('La notifica non contiene un collegamento valido.');
+            }
+
+            $stmt = $pdo->prepare(
+                'UPDATE hr_notifiche_destinatari
+                 SET letta = 1,
+                     data_lettura = COALESCE(data_lettura, NOW())
+                 WHERE id_notifica_destinatario = :id_notifica_destinatario
+                   AND id_utente = :id_utente'
+            );
+            $stmt->execute([
+                'id_notifica_destinatario' => $idDestinatario,
+                'id_utente' => $idUtente,
+            ]);
+
+            header('Location: ' . $linkDestinazione);
             exit;
         }
 
@@ -161,15 +219,7 @@ layoutHeader('Notifiche');
             <?php foreach ($notifiche as $notifica): ?>
                 <?php
                 $letta = (int)($notifica['letta'] ?? 0) === 1;
-                $link = trim((string)($notifica['link'] ?? ''));
-                $linkSicuro = '';
-                if ($link !== '') {
-                    if (strpos($link, '/') === 0) {
-                        $linkSicuro = $link;
-                    } elseif (preg_match('/^[a-zA-Z0-9_\-\/\.]+\.php(\?.*)?$/', $link) === 1) {
-                        $linkSicuro = '/' . ltrim($link, '/');
-                    }
-                }
+                $linkSicuro = normalizzaLinkNotifica($notifica['link'] ?? '');
                 ?>
                 <article class="notification-item <?= $letta ? 'is-read' : 'is-unread' ?>">
                     <div class="notification-icon" aria-hidden="true">
@@ -191,7 +241,11 @@ layoutHeader('Notifiche');
                         <p><?= nl2br(h((string)$notifica['messaggio'])) ?></p>
                         <div class="notification-actions">
                             <?php if ($linkSicuro !== ''): ?>
-                                <a href="<?= h($linkSicuro) ?>" class="btn btn-sm btn-outline-primary"><i class="la la-external-link-alt"></i> Apri</a>
+                                <form method="post" class="inline-form">
+                                    <input type="hidden" name="azione" value="apri_notifica">
+                                    <input type="hidden" name="id_notifica_destinatario" value="<?= (int)$notifica['id_notifica_destinatario'] ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="la la-external-link-alt"></i> Apri</button>
+                                </form>
                             <?php endif; ?>
                             <?php if (!$letta): ?>
                                 <form method="post" class="inline-form">
