@@ -28,6 +28,14 @@ $filtriAttivi = $filtroStato !== 'IN_ATTESA'
     || $filtroTipologia !== ''
     || $filtroUtente !== '';
 
+$redirectFiltri = http_build_query(array_filter([
+    'stato' => $filtroStato !== 'IN_ATTESA' ? $filtroStato : null,
+    'data_da' => $filtroDataDa !== '' ? $filtroDataDa : null,
+    'data_a' => $filtroDataA !== '' ? $filtroDataA : null,
+    'tipologia' => $filtroTipologia !== '' ? $filtroTipologia : null,
+    'utente' => $filtroUtente !== '' ? $filtroUtente : null,
+], static fn ($v): bool => $v !== null));
+
 $riepilogo = [
     'visualizzate' => 0,
     'pendenti' => 0,
@@ -162,6 +170,25 @@ function hrPeriodoRichiesta(array $r): string
     return $periodo;
 }
 
+function hrRedirectApprovazioniConFiltri(string $queryFiltri, string $esito): string
+{
+    parse_str($queryFiltri, $params);
+
+    $ammessi = ['stato', 'data_da', 'data_a', 'tipologia', 'utente'];
+    $puliti = [];
+
+    foreach ($ammessi as $chiave) {
+        if (array_key_exists($chiave, $params) && is_scalar($params[$chiave])) {
+            $puliti[$chiave] = trim((string)$params[$chiave]);
+        }
+    }
+
+    $puliti[$esito] = '1';
+    $query = http_build_query($puliti);
+
+    return 'approvazioni_assenze.php' . ($query !== '' ? '?' . $query : '');
+}
+
 try {
     $filtroApprovatore = $puoConfigurare
         ? '1 = 1'
@@ -261,7 +288,11 @@ try {
 
         $pdo->commit();
 
-        header('Location: approvazioni_assenze.php?' . ($azione === 'approva_richiesta' ? 'approvata=1' : 'rifiutata=1'));
+        $redirectQuery = trim((string)($_POST['redirect_query'] ?? ''));
+        header('Location: ' . hrRedirectApprovazioniConFiltri(
+            $redirectQuery,
+            $azione === 'approva_richiesta' ? 'approvata' : 'rifiutata'
+        ));
         exit;
     }
 
@@ -505,6 +536,7 @@ layoutHeader('Approvazioni assenze');
                                             <form method="post" class="approvals-action-form">
                                                 <input type="hidden" name="azione" value="approva_richiesta">
                                                 <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
+                                                <input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>">
                                                 <input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione">
                                                 <button type="submit" class="btn btn-sm btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>
                                                     <i class="la la-check"></i> Approva
@@ -514,6 +546,7 @@ layoutHeader('Approvazioni assenze');
                                             <form method="post" class="approvals-action-form">
                                                 <input type="hidden" name="azione" value="rifiuta_richiesta">
                                                 <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
+                                                <input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>">
                                                 <input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required>
                                                 <button type="submit" class="btn btn-sm btn-outline-danger" <?= $puoScrivere ? '' : 'disabled' ?>>
                                                     <i class="la la-times"></i> Rifiuta
