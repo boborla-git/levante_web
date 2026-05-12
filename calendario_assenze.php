@@ -445,7 +445,7 @@ layoutHeader('Calendario assenze');
                 $isWeekend = (int)$day->format('N') >= 6;
                 $classes = 'hr-cal-day' . (!$isCurrentMonth ? ' is-muted' : '') . ($isWeekend ? ' is-weekend' : '') . ($isToday ? ' is-today' : '') . ($key === $selectedDay ? ' is-selected' : '') . ($hasEvents ? ' has-events' : '');
                 ?>
-                <div class="<?= h($classes) ?>" data-day="<?= h($key) ?>" role="button" tabindex="0" aria-label="<?= h(hrNomeGiornoBreve($day) . ' ' . $day->format('d/m/Y')) ?>">
+                <div class="<?= h($classes) ?>" data-day="<?= h($key) ?>" role="button" tabindex="0" aria-pressed="<?= $key === $selectedDay ? 'true' : 'false' ?>" aria-label="<?= h(hrNomeGiornoBreve($day) . ' ' . $day->format('d/m/Y')) ?>">
                     <span class="hr-cal-date-line">
                         <span class="hr-cal-day-number"><?= h($day->format('j')) ?></span>
                         <span class="hr-cal-mobile-weekday"><?= h(hrNomeGiornoBreve($day)) ?></span>
@@ -528,16 +528,32 @@ layoutHeader('Calendario assenze');
 
     let currentDay = selectedInitialDay || new Date().toISOString().slice(0, 10);
 
-    function selectDay(day) {
+    function updateDayUrl(day) {
+        if (!window.history || !window.history.replaceState) {
+            return;
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.set('mese', '<?= (int)$mese ?>');
+        url.searchParams.set('anno', '<?= (int)$anno ?>');
+        url.searchParams.set('giorno', day);
+        window.history.replaceState({}, '', url.toString());
+    }
+
+    function selectDay(day, updateUrl) {
         currentDay = day;
         document.querySelectorAll('.hr-cal-day.is-selected').forEach(function (cell) {
             cell.classList.remove('is-selected');
+            cell.setAttribute('aria-pressed', 'false');
         });
         const cell = document.querySelector('.hr-cal-day[data-day="' + day + '"]');
         if (cell) {
             cell.classList.add('is-selected');
+            cell.setAttribute('aria-pressed', 'true');
         }
         renderDay(day);
+        if (updateUrl) {
+            updateDayUrl(day);
+        }
     }
 
     function goToDay(day) {
@@ -546,7 +562,7 @@ layoutHeader('Calendario assenze');
             window.location.href = monthUrlForDay(day);
             return;
         }
-        selectDay(day);
+        selectDay(day, true);
     }
 
     const prevDayButton = document.getElementById('hrPrevDay');
@@ -558,17 +574,17 @@ layoutHeader('Calendario assenze');
 
     document.querySelectorAll('.hr-cal-day').forEach(function (cell) {
         cell.addEventListener('click', function () {
-            selectDay(cell.getAttribute('data-day'));
+            selectDay(cell.getAttribute('data-day'), true);
         });
         cell.addEventListener('keydown', function (event) {
             if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
-                selectDay(cell.getAttribute('data-day'));
+                selectDay(cell.getAttribute('data-day'), true);
             }
         });
     });
 
-    selectDay(selectedInitialDay || new Date().toISOString().slice(0, 10));
+    selectDay(selectedInitialDay || new Date().toISOString().slice(0, 10), false);
 }());
 </script>
 
