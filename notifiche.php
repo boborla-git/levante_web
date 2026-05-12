@@ -5,8 +5,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
-require_once __DIR__ . '/includes/ui.php';
-require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('notifiche');
 
@@ -28,14 +26,18 @@ function normalizzaLinkNotifica(?string $link): string
     }
 
     if (strpos($link, '/') === 0) {
-        return $link;
+        $link = '/' . ltrim($link, '/');
+    } elseif (preg_match('/^[a-zA-Z0-9_\-\/\.]+\.php(\?.*)?$/', $link) === 1) {
+        $link = '/' . ltrim($link, '/');
+    } else {
+        return '';
     }
 
-    if (preg_match('/^[a-zA-Z0-9_\-\/\.]+\.php(\?.*)?$/', $link) === 1) {
-        return '/' . ltrim($link, '/');
+    if (strpos($link, '//') === 0 || preg_match('/^[a-z][a-z0-9+.-]*:/i', $link) === 1) {
+        return '';
     }
 
-    return '';
+    return $link;
 }
 
 try {
@@ -96,8 +98,8 @@ try {
                 'id_notifica_destinatario' => $idDestinatario,
                 'id_utente' => $idUtente,
             ]);
-            $linkDestinazione = normalizzaLinkNotifica($stmt->fetchColumn() ?: '');
 
+            $linkDestinazione = normalizzaLinkNotifica($stmt->fetchColumn() ?: '');
             if ($linkDestinazione === '') {
                 throw new RuntimeException('La notifica non contiene un collegamento valido.');
             }
@@ -129,9 +131,9 @@ try {
 
     $stmtRiepilogo = $pdo->prepare(
         'SELECT
-            COUNT(*) AS totale,
-            SUM(CASE WHEN letta = 0 THEN 1 ELSE 0 END) AS non_lette,
-            SUM(CASE WHEN letta = 1 THEN 1 ELSE 0 END) AS lette
+             COUNT(*) AS totale,
+             SUM(CASE WHEN letta = 0 THEN 1 ELSE 0 END) AS non_lette,
+             SUM(CASE WHEN letta = 1 THEN 1 ELSE 0 END) AS lette
          FROM hr_notifiche_destinatari
          WHERE id_utente = :id_utente'
     );
@@ -140,19 +142,19 @@ try {
 
     $stmtNotifiche = $pdo->prepare(
         "SELECT
-            nd.id_notifica_destinatario,
-            nd.letta,
-            nd.data_invio,
-            nd.data_lettura,
-            nd.errore_invio,
-            cn.codice AS canale_codice,
-            n.tipo_evento,
-            n.titolo,
-            n.messaggio,
-            n.link,
-            n.id_richiesta,
-            n.data_creazione,
-            DATE_FORMAT(n.data_creazione, '%d/%m/%Y %H:%i') AS data_creazione_fmt
+             nd.id_notifica_destinatario,
+             nd.letta,
+             nd.data_invio,
+             nd.data_lettura,
+             nd.errore_invio,
+             cn.codice AS canale_codice,
+             n.tipo_evento,
+             n.titolo,
+             n.messaggio,
+             n.link,
+             n.id_richiesta,
+             n.data_creazione,
+             DATE_FORMAT(n.data_creazione, '%d/%m/%Y %H:%i') AS data_creazione_fmt
          FROM hr_notifiche_destinatari nd
          INNER JOIN hr_notifiche n ON n.id_notifica = nd.id_notifica
          LEFT JOIN hr_canali_notifica cn ON cn.id_canale_notifica = nd.id_canale_notifica
@@ -187,8 +189,13 @@ layoutHeader('Notifiche');
     </div>
 </div>
 
-<?php renderHrAlert($messaggio, 'success'); ?>
-<?php renderHrAlert($errore, 'danger'); ?>
+<?php if ($messaggio !== ''): ?>
+    <div class="alert alert-success"><i class="la la-check-circle"></i> <?= h($messaggio) ?></div>
+<?php endif; ?>
+
+<?php if ($errore !== ''): ?>
+    <div class="alert alert-danger"><i class="la la-exclamation-triangle"></i> <?= h($errore) ?></div>
+<?php endif; ?>
 
 <div class="summary-grid">
     <div class="summary-card">
@@ -206,12 +213,7 @@ layoutHeader('Notifiche');
 </div>
 
 <div class="card">
-    <div class="section-head">
-        <div>
-            <h2>Ultime notifiche</h2>
-        </div>
-    </div>
-
+    <h2>Ultime notifiche</h2>
     <?php if (count($notifiche) === 0): ?>
         <p class="empty-state"><i class="la la-inbox"></i> Non hai notifiche.</p>
     <?php else: ?>
@@ -219,7 +221,7 @@ layoutHeader('Notifiche');
             <?php foreach ($notifiche as $notifica): ?>
                 <?php
                 $letta = (int)($notifica['letta'] ?? 0) === 1;
-                $linkSicuro = normalizzaLinkNotifica($notifica['link'] ?? '');
+                $linkSicuro = normalizzaLinkNotifica((string)($notifica['link'] ?? ''));
                 ?>
                 <article class="notification-item <?= $letta ? 'is-read' : 'is-unread' ?>">
                     <div class="notification-icon" aria-hidden="true">
@@ -228,7 +230,7 @@ layoutHeader('Notifiche');
                     <div class="notification-body">
                         <div class="notification-title-row">
                             <h3><?= h((string)$notifica['titolo']) ?></h3>
-                            <span class="status-badge <?= $letta ? 'status-ok' : 'status-wait' ?>">
+                            <span class="status-badge <?= $letta ? 'badge-success' : 'badge-warning' ?>">
                                 <?= $letta ? 'Letta' : 'Nuova' ?>
                             </span>
                         </div>
@@ -247,6 +249,7 @@ layoutHeader('Notifiche');
                                     <button type="submit" class="btn btn-sm btn-outline-primary"><i class="la la-external-link-alt"></i> Apri</button>
                                 </form>
                             <?php endif; ?>
+
                             <?php if (!$letta): ?>
                                 <form method="post" class="inline-form">
                                     <input type="hidden" name="azione" value="segna_letta">
