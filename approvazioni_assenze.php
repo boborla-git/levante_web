@@ -154,8 +154,10 @@ try {
             throw new RuntimeException('Per rifiutare una richiesta devi indicare una motivazione.');
         }
 
+        $pdo->beginTransaction();
+
         $filtroPost = $puoConfigurare ? '' : ' AND a.id_approvatore_assegnato = :id_utente ';
-        $stmtRichiesta = $pdo->prepare("\n            SELECT\n                r.id_richiesta,\n                r.id_utente_richiedente,\n                a.id_richiesta_approvazione,\n                a.id_approvatore_assegnato,\n                te.descrizione AS tipologia,\n                CONCAT(COALESCE(au.nome, ''), ' ', COALESCE(au.cognome, '')) AS richiedente_nome\n            FROM hr_richieste r\n            INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta\n            INNER JOIN hr_richieste_approvazioni a ON a.id_richiesta = r.id_richiesta\n            INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento\n            INNER JOIN aut_utenti au ON au.id_utente = r.id_utente_richiedente\n            WHERE r.id_richiesta = :id_richiesta\n              AND sr.codice = 'IN_ATTESA'\n              AND a.stato_approvazione = 'IN_ATTESA'\n              {$filtroPost}\n            ORDER BY a.livello_approvazione ASC, a.id_richiesta_approvazione ASC\n            LIMIT 1\n        ");
+        $stmtRichiesta = $pdo->prepare("\n            SELECT\n                r.id_richiesta,\n                r.id_utente_richiedente,\n                a.id_richiesta_approvazione,\n                a.id_approvatore_assegnato,\n                te.descrizione AS tipologia,\n                CONCAT(COALESCE(au.nome, ''), ' ', COALESCE(au.cognome, '')) AS richiedente_nome\n            FROM hr_richieste r\n            INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta\n            INNER JOIN hr_richieste_approvazioni a ON a.id_richiesta = r.id_richiesta\n            INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento\n            INNER JOIN aut_utenti au ON au.id_utente = r.id_utente_richiedente\n            WHERE r.id_richiesta = :id_richiesta\n              AND sr.codice = 'IN_ATTESA'\n              AND a.stato_approvazione = 'IN_ATTESA'\n              {$filtroPost}\n            ORDER BY a.livello_approvazione ASC, a.id_richiesta_approvazione ASC\n            LIMIT 1\n            FOR UPDATE\n        ");
 
         $paramsRichiesta = ['id_richiesta' => $idRichiesta];
         if (!$puoConfigurare) {
@@ -174,9 +176,13 @@ try {
         $idStato = hrIdStatoRichiesta($pdo, $codiceStato);
         $azioneStorico = $azione === 'approva_richiesta' ? 'APPROVAZIONE' : 'RIFIUTO';
 
-        $pdo->beginTransaction();
-
-        $stmtUpdApp = $pdo->prepare("\n            UPDATE hr_richieste_approvazioni\n            SET stato_approvazione = :stato_approvazione,\n                data_risposta = NOW(),\n                esito = :esito,\n                note_approvatore = :note_approvatore,\n                gestita_da_hr = :gestita_da_hr\n            WHERE id_richiesta_approvazione = :id_richiesta_approvazione\n        ");
+        /*
+         * Contratto funzionale: una richiesta gia gestita non deve poter essere
+         * approvata/rifiutata una seconda volta, neppure con doppio click o due
+         * sessioni aperte. Il SELECT precedente blocca la riga in transazione;
+         * gli UPDATE sotto verificano comunque lo stato atteso prima di scrivere.
+         */
+        $stmtUpdApp = $pdo->prepare("\n            UPDATE hr_richieste_approvazioni\n            SET stato_approvazione = :stato_approvazione,\n                data_risposta = NOW(),\n                esito = :esito,\n                note_approvatore = :note_approvatore,\n                gestita_da_hr = :gestita_da_hr\n            WHERE id_richiesta_approvazione = :id_richiesta_approvazione\n              AND stato_approvazione = 'IN_ATTESA'\n        ");
         $stmtUpdApp->execute([
             'stato_approvazione' => $codiceStato,
             'esito' => $codiceStato,
@@ -185,11 +191,22 @@ try {
             'id_richiesta_approvazione' => (int)$richiesta['id_richiesta_approvazione'],
         ]);
 
-        $stmtUpdRich = $pdo->prepare("\n            UPDATE hr_richieste\n            SET id_stato_richiesta = :id_stato_richiesta,\n                data_chiusura = NOW(),\n                data_aggiornamento = NOW()\n            WHERE id_richiesta = :id_richiesta\n        ");
+        if ($stmtUpdApp->rowCount() !== 1) {
+            throw new RuntimeException('Richiesta gia gestita da un altro utente o da un altro invio. Aggiorna la pagina.');
+        }
+
+        $idStatoInAttesa = hrIdStatoRichiesta($pdo, 'IN_ATTESA');
+
+        $stmtUpdRich = $pdo->prepare("\n            UPDATE hr_richieste\n            SET id_stato_richiesta = :id_stato_richiesta,\n                data_chiusura = NOW(),\n                data_aggiornamento = NOW()\n            WHERE id_richiesta = :id_richiesta\n              AND id_stato_richiesta = :id_stato_in_attesa\n        ");
         $stmtUpdRich->execute([
             'id_stato_richiesta' => $idStato,
             'id_richiesta' => $idRichiesta,
+            'id_stato_in_attesa' => $idStatoInAttesa,
         ]);
+
+        if ($stmtUpdRich->rowCount() !== 1) {
+            throw new RuntimeException('Richiesta gia chiusa o non piu in attesa. Aggiorna la pagina.');
+        }
 
         $dettagliStorico = $notaApprovatore !== '' ? $notaApprovatore : 'Richiesta approvata.';
         if ($gestioneHr) {
@@ -505,6 +522,26 @@ layoutHeader('Approvazioni assenze');
     </section>
 </div>
 
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.approvals-action-form').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (form.dataset.submitting === '1') {
+                event.preventDefault();
+                return;
+            }
+
+            form.dataset.submitting = '1';
+            form.querySelectorAll('button[type="submit"]').forEach(function (button) {
+                button.disabled = true;
+                button.dataset.originalText = button.innerHTML;
+                button.innerHTML = '<i class="la la-hourglass-half"></i> Elaboro...';
+            });
+        });
+    });
+});
+</script>
 
 
 <?php layoutFooter(); ?>
