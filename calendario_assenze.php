@@ -358,6 +358,16 @@ foreach ($eventsByDay as $dayKey => $events) {
 }
 
 ksort($legendMap);
+
+$richiesteVisibili = [];
+foreach ($eventsByDay as $events) {
+    foreach ($events as $event) {
+        $richiesteVisibili[(int)$event['id_richiesta']] = true;
+    }
+}
+$totalRichiesteVisibili = count($richiesteVisibili);
+$giorniConAssenze = count($daysWithEvents);
+
 $dayDetailsJsonEncoded = json_encode($dayDetailsJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 if ($dayDetailsJsonEncoded === false) {
     $dayDetailsJsonEncoded = '{}';
@@ -381,6 +391,35 @@ layoutHeader('Calendario assenze');
 
 <div class="hr-cal-page">
 <?php renderHrAlert($error, 'danger'); ?>
+
+<section class="card hr-cal-summary-card" aria-label="Riepilogo calendario assenze">
+    <div class="hr-cal-summary-main">
+        <div>
+            <div class="hr-cal-summary-label">Utenti visibili</div>
+            <div class="hr-cal-summary-value"><?= (int)$totalUsers ?></div>
+        </div>
+        <div>
+            <div class="hr-cal-summary-label">Richieste nel periodo</div>
+            <div class="hr-cal-summary-value"><?= (int)$totalRichiesteVisibili ?></div>
+        </div>
+        <div>
+            <div class="hr-cal-summary-label">Giorni con assenze</div>
+            <div class="hr-cal-summary-value"><?= (int)$giorniConAssenze ?></div>
+        </div>
+    </div>
+    <?php if ($legendMap !== []): ?>
+        <div class="hr-cal-legend" aria-label="Legenda calendario">
+            <?php foreach ($legendMap as $label => $color): ?>
+                <span class="hr-cal-legend-item">
+                    <span class="hr-dot" style="--dot-color: <?= h($color) ?>"></span>
+                    <span><?= h($label) ?></span>
+                </span>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <div class="hr-cal-summary-empty">Nessuna assenza visibile nel periodo selezionato.</div>
+    <?php endif; ?>
+</section>
 
 <section class="hr-cal-layout">
     <aside class="card hr-day-panel" aria-live="polite">
