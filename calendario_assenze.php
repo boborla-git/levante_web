@@ -494,6 +494,35 @@ layoutHeader('Calendario assenze');
             return;
         }
 
+        let totalItems = 0;
+        let utenti = {};
+        let eventiOre = 0;
+        let eventiGiornata = 0;
+
+        labels.forEach(function (label) {
+            const group = groups[label];
+            const items = group.items || [];
+            totalItems += items.length;
+            items.forEach(function (item) {
+                const nome = String(item.nome || '');
+                if (nome !== '') {
+                    utenti[nome] = true;
+                }
+                if (item.tipo_periodo === 'ORE' && item.ora_da && item.ora_a) {
+                    eventiOre++;
+                } else {
+                    eventiGiornata++;
+                }
+            });
+        });
+
+        html += '<div class="hr-day-kpi" aria-label="Riepilogo giorno selezionato">';
+        html += '<span><strong>' + totalItems + '</strong> eventi visibili</span>';
+        html += '<span><strong>' + Object.keys(utenti).length + '</strong> persone</span>';
+        html += '<span><strong>' + eventiGiornata + '</strong> giornata</span>';
+        html += '<span><strong>' + eventiOre + '</strong> a ore</span>';
+        html += '</div>';
+
         labels.forEach(function (label) {
             const group = groups[label];
             const color = group.color || '#6c757d';
