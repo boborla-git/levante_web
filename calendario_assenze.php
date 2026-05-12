@@ -148,6 +148,44 @@ function hrColoreValido(?string $colore): string
     return preg_match('/^#[0-9a-fA-F]{6}$/', $colore) ? $colore : '#6c757d';
 }
 
+
+function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare): bool
+{
+    $idRichiedente = (int)($row['id_utente_richiedente'] ?? 0);
+
+    if ($idRichiedente === $idUtenteCorrente) {
+        return true;
+    }
+
+    if ($puoConfigurare) {
+        return (int)($row['mostra_dettaglio_hr'] ?? 1) === 1;
+    }
+
+    $scope = $scopeMap[$idRichiedente] ?? ['gerarchia' => false, 'gruppo' => false];
+
+    if (!empty($scope['gerarchia'])) {
+        return (int)($row['mostra_dettaglio_responsabili'] ?? 1) === 1;
+    }
+
+    if (!empty($scope['gruppo'])) {
+        return (int)($row['mostra_dettaglio_colleghi'] ?? 0) === 1;
+    }
+
+    return false;
+}
+
+function hrEtichettaCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare): string
+{
+    $statoPresenza = trim((string)($row['stato_presenza_breve'] ?: $row['stato_presenza'] ?: 'Assente'));
+    $dettaglio = trim((string)($row['descrizione_calendario'] ?: $row['tipologia'] ?: 'Assenza'));
+
+    if (hrMostraDettaglioCalendario($row, $scopeMap, $idUtenteCorrente, $puoConfigurare)) {
+        return $dettaglio !== '' ? $dettaglio : $statoPresenza;
+    }
+
+    return $statoPresenza !== '' ? $statoPresenza : 'Assente';
+}
+
 function hrPeriodoEvento(array $event): string
 {
     $tipo = strtoupper((string)($event['tipo_periodo'] ?? ''));
@@ -215,6 +253,9 @@ try {
                 te.descrizione_calendario,
                 te.colore_calendario,
                 te.disturbabile,
+                te.mostra_dettaglio_colleghi,
+                te.mostra_dettaglio_responsabili,
+                te.mostra_dettaglio_hr,
                 sp.descrizione_breve AS stato_presenza_breve,
                 sp.descrizione AS stato_presenza,
                 u.nome,
@@ -251,7 +292,7 @@ try {
         foreach ($rows as $row) {
             $start = new DateTimeImmutable((string)$row['data_da']);
             $end = new DateTimeImmutable((string)$row['data_a']);
-            $label = trim((string)($row['descrizione_calendario'] ?: $row['tipologia'] ?: 'Assenza'));
+            $label = hrEtichettaCalendario($row, $scopeMap, $idUtente, $puoConfigurare);
             $color = hrColoreValido((string)($row['colore_calendario'] ?? ''));
 
             $legendMap[$label] = $color;
