@@ -243,6 +243,27 @@ try {
 
         $pdo->commit();
 
+        /*
+         * Email workflow HR: l'invio reale resta protetto da
+         * HR_EMAIL_WORKFLOW_ATTIVO = 1 dentro hrCreaNotificaEmailPerUtenti().
+         * Questa chiamata avviene solo dopo il commit: l'approvazione/rifiuto
+         * resta consolidato anche se il canale email non e' attivo o fallisce.
+         */
+        try {
+            hrCreaNotificaEmailPerUtenti(
+                $pdo,
+                $azione === 'approva_richiesta' ? 'RICHIESTA_ASSENZA_APPROVATA_EMAIL' : 'RICHIESTA_ASSENZA_RIFIUTATA_EMAIL',
+                $azione === 'approva_richiesta' ? 'Richiesta approvata' : 'Richiesta rifiutata',
+                $testoNotifica,
+                '/assenze.php',
+                $idRichiesta,
+                $idUtente,
+                [(int)$richiesta['id_utente_richiedente']]
+            );
+        } catch (Throwable $emailException) {
+            // L'esito email non deve bloccare un'approvazione/rifiuto gia registrato.
+        }
+
         $redirectQuery = trim((string)($_POST['redirect_query'] ?? ''));
         header('Location: ' . hrRedirectApprovazioniConFiltri(
             $redirectQuery,
