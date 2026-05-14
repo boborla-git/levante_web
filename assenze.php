@@ -27,6 +27,7 @@ $riepilogo = [
 ];
 $utentiGestibili = [];
 $utenteSelezionato = null;
+$emailHrDaInviare = [];
 
 $form = [
     'id_utente' => '',
@@ -268,6 +269,45 @@ function hrClasseStato(string $codice): string
         return 'status-ko';
     }
     return 'status-neutral';
+}
+
+
+function hrAccodaEmailWorkflow(array &$coda, string $tipoEvento, string $titolo, string $messaggio, ?string $link, ?int $idRichiesta, ?int $creatoDa, array $destinatari): void
+{
+    $destinatari = array_values(array_unique(array_filter(
+        array_map('intval', $destinatari),
+        static fn (int $id): bool => $id > 0
+    )));
+
+    if (count($destinatari) === 0) {
+        return;
+    }
+
+    $coda[] = [
+        'tipo_evento' => $tipoEvento,
+        'titolo' => $titolo,
+        'messaggio' => $messaggio,
+        'link' => $link,
+        'id_richiesta' => $idRichiesta,
+        'creato_da' => $creatoDa,
+        'destinatari' => $destinatari,
+    ];
+}
+
+function hrInviaEmailWorkflowAccodate(PDO $pdo, array $coda): void
+{
+    foreach ($coda as $email) {
+        hrCreaNotificaEmailPerUtenti(
+            $pdo,
+            (string)$email['tipo_evento'],
+            (string)$email['titolo'],
+            (string)$email['messaggio'],
+            $email['link'] !== null ? (string)$email['link'] : null,
+            $email['id_richiesta'] !== null ? (int)$email['id_richiesta'] : null,
+            $email['creato_da'] !== null ? (int)$email['creato_da'] : null,
+            is_array($email['destinatari']) ? $email['destinatari'] : []
+        );
+    }
 }
 
 try {
@@ -536,7 +576,30 @@ try {
                     [$idUtenteTarget]
                 );
 
+                hrAccodaEmailWorkflow(
+                    $emailHrDaInviare,
+                    'RICHIESTA_ASSENZA_DA_APPROVARE',
+                    'Nuova richiesta da approvare',
+                    'Hai una nuova richiesta di assenza o permesso da valutare.',
+                    '/approvazioni_assenze.php',
+                    $idRichiesta,
+                    $idUtenteLoggato,
+                    [$idResponsabile]
+                );
+
+                hrAccodaEmailWorkflow(
+                    $emailHrDaInviare,
+                    'RICHIESTA_ASSENZA_REGISTRATA',
+                    'Richiesta registrata',
+                    'La tua richiesta è stata registrata correttamente ed è in attesa di approvazione.',
+                    '/assenze.php',
+                    $idRichiesta,
+                    $idUtenteLoggato,
+                    [$idUtenteTarget]
+                );
+
                 $pdo->commit();
+                hrInviaEmailWorkflowAccodate($pdo, $emailHrDaInviare);
                 header('Location: assenze.php?ok=1&id_utente=' . $idUtenteTarget);
                 exit;
             }
@@ -564,7 +627,21 @@ try {
                 [$idUtenteTarget]
             );
 
+            hrAccodaEmailWorkflow(
+                $emailHrDaInviare,
+                'RICHIESTA_ASSENZA_REGISTRATA',
+                $isDelegato ? 'Richiesta registrata e approvata' : 'Richiesta registrata',
+                $isDelegato
+                    ? 'È stata registrata per te una richiesta già approvata.'
+                    : 'La tua richiesta è stata registrata correttamente.',
+                '/assenze.php',
+                $idRichiesta,
+                $idUtenteLoggato,
+                [$idUtenteTarget]
+            );
+
             $pdo->commit();
+            hrInviaEmailWorkflowAccodate($pdo, $emailHrDaInviare);
             header('Location: assenze.php?ok=2&id_utente=' . $idUtenteTarget);
             exit;
         }
@@ -640,7 +717,19 @@ try {
                 $destinatariAnnullamento
             );
 
+            hrAccodaEmailWorkflow(
+                $emailHrDaInviare,
+                'RICHIESTA_ASSENZA_ANNULLATA',
+                'Richiesta annullata',
+                'Una richiesta di assenza o permesso è stata annullata.',
+                '/assenze.php?id_utente=' . $idUtenteTarget,
+                $idRichiesta,
+                $idUtenteLoggato,
+                $destinatariAnnullamento
+            );
+
             $pdo->commit();
+            hrInviaEmailWorkflowAccodate($pdo, $emailHrDaInviare);
             header('Location: assenze.php?annullata=1&id_utente=' . $idUtenteTarget);
             exit;
         }
