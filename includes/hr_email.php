@@ -4,14 +4,21 @@ declare(strict_types=1);
 /**
  * Helper email HR.
  *
- * Le email HR devono mantenere il template HTML consolidato:
+ * Regola di progetto:
+ * le email HR sono un "golden master" UX e non devono degradare a testo plain.
+ *
+ * Il template HTML deve mantenere:
  * - intestazione "Portale HR Ravioli S.p.A."
  * - saluto personalizzato
- * - dettaglio richiesta in tabella
+ * - dettaglio richiesta tabellare
  * - badge stato
- * - CTA "Apri richiesta nel portale"
+ * - pulsante/CTA "Apri richiesta nel portale"
+ * - eventuale sezione "Assenze/richieste già presenti nel periodo" per l'approvatore
  * - footer con codice richiesta
- * - eventuale sezione sovrapposizioni per il responsabile
+ *
+ * Nota tecnica:
+ * il markup usa tabelle e stili inline per compatibilita' con Outlook, Aruba Webmail,
+ * Gmail e client che ignorano CSS moderni.
  */
 
 if (!function_exists('hrEmailConfig')) {
@@ -61,7 +68,7 @@ if (!function_exists('hrEmailConfig')) {
         $cache = [
             'attiva' => ($valori['HR_NOTIFICA_EMAIL_ATTIVA'] ?? '0') === '1',
             'from_email' => $fromEmail,
-            'from_name' => $fromName !== '' ? $fromName : 'Portale HR',
+            'from_name' => $fromName !== '' ? $fromName : 'Ravioli S.p.A. - Portale HR',
             'base_url' => $baseUrl,
         ];
 
@@ -99,10 +106,10 @@ if (!function_exists('hrEmailValida')) {
     }
 }
 
-if (!function_exists('hrEmailHtml')) {
-    function hrEmailHtml(?string $valore): string
+if (!function_exists('hrEmailH')) {
+    function hrEmailH(?string $valore): string
     {
-        return htmlspecialchars((string)$valore, ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars((string)$valore, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 }
 
@@ -201,65 +208,130 @@ if (!function_exists('hrEmailDestinatariUtenti')) {
     }
 }
 
-if (!function_exists('hrEmailNominativoUtente')) {
-    function hrEmailNominativoUtente(PDO $pdo, ?int $idUtente): string
+if (!function_exists('hrEmailNomeUtente')) {
+    function hrEmailNomeUtente(PDO $pdo, int $idUtente): string
     {
-        if ($idUtente === null || $idUtente <= 0) {
+        if ($idUtente <= 0) {
             return '';
         }
 
         $stmt = $pdo->prepare(
-            "SELECT nome, cognome, username
+            "SELECT TRIM(CONCAT(COALESCE(nome, ''), ' ', COALESCE(cognome, ''))) AS nominativo
              FROM aut_utenti
              WHERE id_utente = :id_utente
              LIMIT 1"
         );
         $stmt->execute(['id_utente' => $idUtente]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$row) {
+        return trim((string)($stmt->fetchColumn() ?: ''));
+    }
+}
+
+if (!function_exists('hrEmailDataIt')) {
+    function hrEmailDataIt(?string $data): string
+    {
+        $data = trim((string)$data);
+
+        if ($data === '' || $data === '0000-00-00') {
             return '';
         }
 
-        $nome = trim((string)($row['nome'] ?? ''));
-        $cognome = trim((string)($row['cognome'] ?? ''));
-        $nominativo = trim($nome . ' ' . $cognome);
-
-        if ($nominativo !== '') {
-            return $nominativo;
+        $ts = strtotime($data);
+        if ($ts === false) {
+            return $data;
         }
 
-        return trim((string)($row['username'] ?? ''));
+        return date('d/m/Y', $ts);
     }
 }
 
-if (!function_exists('hrEmailPeriodoRichiesta')) {
-    function hrEmailPeriodoRichiesta(array $row): string
+if (!function_exists('hrEmailOraIt')) {
+    function hrEmailOraIt(?string $ora): string
     {
-        $dataDa = (string)($row['data_da_fmt'] ?? '');
-        $dataA = (string)($row['data_a_fmt'] ?? '');
-        $tipoPeriodo = strtoupper((string)($row['tipo_periodo'] ?? ''));
-        $oraDa = (string)($row['ora_da_fmt'] ?? '');
-        $oraA = (string)($row['ora_a_fmt'] ?? '');
+        $ora = trim((string)$ora);
 
-        if ($dataA === '' || $dataA === $dataDa) {
-            $periodo = $dataDa;
-        } else {
-            $periodo = $dataDa . ' - ' . $dataA;
+        if ($ora === '') {
+            return '';
         }
 
-        if ($tipoPeriodo === 'ORE' && $oraDa !== '' && $oraA !== '') {
-            $periodo .= ' - ' . $oraDa . ' / ' . $oraA;
-        } else {
-            $periodo .= ' - giornata intera';
+        if (preg_match('/^\d{2}:\d{2}/', $ora, $m) === 1) {
+            return $m[0];
         }
 
-        return $periodo;
+        return $ora;
     }
 }
 
-if (!function_exists('hrEmailDettaglioRichiesta')) {
-    function hrEmailDettaglioRichiesta(PDO $pdo, ?int $idRichiesta): ?array
+if (!function_exists('hrEmailPeriodoTesto')) {
+    function hrEmailPeriodoTesto(array $periodi): string
+    {
+        $righe = [];
+
+        foreach ($periodi as $periodo) {
+            $tipo = strtoupper((string)($periodo['tipo_periodo'] ?? ''));
+            $dataDa = hrEmailDataIt($periodo['data_da'] ?? '');
+            $dataA = hrEmailDataIt($periodo['data_a'] ?? '');
+
+            if ($tipo === 'ORE') {
+                $oraDa = hrEmailOraIt($periodo['ora_da'] ?? '');
+                $oraA = hrEmailOraIt($periodo['ora_a'] ?? '');
+
+                if ($dataDa !== '' && $oraDa !== '' && $oraA !== '') {
+                    $righe[] = $dataDa . ' · ' . $oraDa . ' / ' . $oraA;
+                } elseif ($dataDa !== '') {
+                    $righe[] = $dataDa;
+                }
+
+                continue;
+            }
+
+            if ($dataDa !== '' && $dataA !== '' && $dataA !== $dataDa) {
+                $righe[] = $dataDa . ' - ' . $dataA . ' · giornata intera';
+            } elseif ($dataDa !== '') {
+                $righe[] = $dataDa . ' · giornata intera';
+            }
+        }
+
+        return implode('<br>', array_map('hrEmailH', $righe));
+    }
+}
+
+if (!function_exists('hrEmailStatoBadge')) {
+    function hrEmailStatoBadge(string $statoCodice, string $statoDescrizione): string
+    {
+        $codice = strtoupper(trim($statoCodice));
+        $descrizione = trim($statoDescrizione) !== '' ? trim($statoDescrizione) : $codice;
+
+        $bg = '#e5e7eb';
+        $fg = '#374151';
+        $border = '#d1d5db';
+
+        if ($codice === 'IN_ATTESA') {
+            $bg = '#fff3cd';
+            $fg = '#9a6700';
+            $border = '#ffe08a';
+        } elseif ($codice === 'APPROVATA') {
+            $bg = '#d1f5df';
+            $fg = '#137333';
+            $border = '#a8e6bd';
+        } elseif ($codice === 'RIFIUTATA') {
+            $bg = '#fde2e2';
+            $fg = '#b42318';
+            $border = '#fac5c5';
+        } elseif ($codice === 'ANNULLATA') {
+            $bg = '#eef2f7';
+            $fg = '#475569';
+            $border = '#d8dee9';
+        }
+
+        return '<span style="display:inline-block; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:16px; font-weight:700; padding:3px 10px; border-radius:999px; background:' . $bg . '; color:' . $fg . '; border:1px solid ' . $border . ';">'
+            . hrEmailH($descrizione)
+            . '</span>';
+    }
+}
+
+if (!function_exists('hrEmailRichiestaDettaglio')) {
+    function hrEmailRichiestaDettaglio(PDO $pdo, ?int $idRichiesta): ?array
     {
         if ($idRichiesta === null || $idRichiesta <= 0) {
             return null;
@@ -272,221 +344,318 @@ if (!function_exists('hrEmailDettaglioRichiesta')) {
                 r.oggetto,
                 r.note_richiedente,
                 r.id_utente_richiedente,
+                TRIM(CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, ''))) AS richiedente,
+                te.codice AS tipologia_codice,
                 te.descrizione AS tipologia,
-                sr.codice AS codice_stato,
-                sr.descrizione AS stato,
-                CONCAT(TRIM(COALESCE(u.nome, '')), CASE WHEN TRIM(COALESCE(u.cognome, '')) <> '' THEN CONCAT(' ', TRIM(u.cognome)) ELSE '' END) AS richiedente,
-                p.tipo_periodo,
-                DATE_FORMAT(p.data_da, '%d/%m/%Y') AS data_da_fmt,
-                DATE_FORMAT(p.data_a, '%d/%m/%Y') AS data_a_fmt,
-                p.data_da,
-                p.data_a,
-                TIME_FORMAT(p.ora_da, '%H:%i') AS ora_da_fmt,
-                TIME_FORMAT(p.ora_a, '%H:%i') AS ora_a_fmt
+                sr.codice AS stato_codice,
+                sr.descrizione AS stato
              FROM hr_richieste r
-             INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
-             INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
-             INNER JOIN aut_utenti u ON u.id_utente = r.id_utente_richiedente
-             LEFT JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta
+             INNER JOIN aut_utenti u
+                ON u.id_utente = r.id_utente_richiedente
+             INNER JOIN hr_tipologie_evento te
+                ON te.id_tipologia_evento = r.id_tipologia_evento
+             INNER JOIN hr_stati_richiesta sr
+                ON sr.id_stato_richiesta = r.id_stato_richiesta
              WHERE r.id_richiesta = :id_richiesta
-             ORDER BY p.ordinamento ASC, p.id_richiesta_periodo ASC
              LIMIT 1"
         );
         $stmt->execute(['id_richiesta' => $idRichiesta]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $richiesta = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        if (!$richiesta) {
+            return null;
+        }
+
+        $stmtPeriodi = $pdo->prepare(
+            "SELECT tipo_periodo, data_da, data_a, ora_da, ora_a, giornata_intera
+             FROM hr_richieste_periodi
+             WHERE id_richiesta = :id_richiesta
+             ORDER BY data_da ASC, ora_da ASC, id_richiesta_periodo ASC"
+        );
+        $stmtPeriodi->execute(['id_richiesta' => $idRichiesta]);
+        $richiesta['periodi'] = $stmtPeriodi->fetchAll(PDO::FETCH_ASSOC);
+
+        return $richiesta;
     }
 }
 
 if (!function_exists('hrEmailRichiestePresentiNelPeriodo')) {
-    function hrEmailRichiestePresentiNelPeriodo(PDO $pdo, array $richiesta): array
+    function hrEmailRichiestePresentiNelPeriodo(PDO $pdo, ?int $idRichiesta): array
     {
-        $idRichiesta = (int)($richiesta['id_richiesta'] ?? 0);
-        $dataDa = (string)($richiesta['data_da'] ?? '');
-        $dataA = (string)($richiesta['data_a'] ?? '');
+        if ($idRichiesta === null || $idRichiesta <= 0) {
+            return [];
+        }
 
-        if ($idRichiesta <= 0 || $dataDa === '' || $dataA === '') {
+        $stmtRange = $pdo->prepare(
+            "SELECT MIN(data_da) AS data_da_min, MAX(data_a) AS data_a_max
+             FROM hr_richieste_periodi
+             WHERE id_richiesta = :id_richiesta"
+        );
+        $stmtRange->execute(['id_richiesta' => $idRichiesta]);
+        $range = $stmtRange->fetch(PDO::FETCH_ASSOC);
+
+        if (!$range || empty($range['data_da_min']) || empty($range['data_a_max'])) {
             return [];
         }
 
         $stmt = $pdo->prepare(
             "SELECT
-                CONCAT(TRIM(COALESCE(u.nome, '')), CASE WHEN TRIM(COALESCE(u.cognome, '')) <> '' THEN CONCAT(' ', TRIM(u.cognome)) ELSE '' END) AS persona,
+                r.id_richiesta,
+                TRIM(CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, ''))) AS persona,
                 te.descrizione AS tipologia,
                 sr.descrizione AS stato,
-                p.tipo_periodo,
-                DATE_FORMAT(p.data_da, '%d/%m/%Y') AS data_da_fmt,
-                DATE_FORMAT(p.data_a, '%d/%m/%Y') AS data_a_fmt,
-                TIME_FORMAT(p.ora_da, '%H:%i') AS ora_da_fmt,
-                TIME_FORMAT(p.ora_a, '%H:%i') AS ora_a_fmt
+                sr.codice AS stato_codice,
+                MIN(p.data_da) AS data_da,
+                MAX(p.data_a) AS data_a,
+                MIN(p.ora_da) AS ora_da,
+                MAX(p.ora_a) AS ora_a,
+                MAX(CASE WHEN p.tipo_periodo = 'ORE' THEN 1 ELSE 0 END) AS ha_ore
              FROM hr_richieste r
-             INNER JOIN aut_utenti u ON u.id_utente = r.id_utente_richiedente
-             INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
-             INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
-             INNER JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta
+             INNER JOIN aut_utenti u
+                ON u.id_utente = r.id_utente_richiedente
+             INNER JOIN hr_tipologie_evento te
+                ON te.id_tipologia_evento = r.id_tipologia_evento
+             INNER JOIN hr_stati_richiesta sr
+                ON sr.id_stato_richiesta = r.id_stato_richiesta
+             INNER JOIN hr_richieste_periodi p
+                ON p.id_richiesta = r.id_richiesta
              WHERE r.id_richiesta <> :id_richiesta
                AND sr.codice IN ('IN_ATTESA', 'APPROVATA')
                AND p.data_da <= :data_a
                AND p.data_a >= :data_da
-             ORDER BY p.data_da ASC, p.ora_da ASC, persona ASC
+             GROUP BY
+                r.id_richiesta,
+                persona,
+                te.descrizione,
+                sr.descrizione,
+                sr.codice
+             ORDER BY MIN(p.data_da) ASC, persona ASC
              LIMIT 10"
         );
+
         $stmt->execute([
             'id_richiesta' => $idRichiesta,
-            'data_da' => $dataDa,
-            'data_a' => $dataA,
+            'data_da' => $range['data_da_min'],
+            'data_a' => $range['data_a_max'],
         ]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 
-if (!function_exists('hrEmailBadgeStatoHtml')) {
-    function hrEmailBadgeStatoHtml(string $codiceStato, string $stato): string
+if (!function_exists('hrEmailRigaTabella')) {
+    function hrEmailRigaTabella(string $label, string $valoreHtml): string
     {
-        $colore = '#b45309';
-        $sfondo = '#fef3c7';
-
-        if ($codiceStato === 'APPROVATA') {
-            $colore = '#15803d';
-            $sfondo = '#dcfce7';
-        } elseif ($codiceStato === 'RIFIUTATA') {
-            $colore = '#b91c1c';
-            $sfondo = '#fee2e2';
-        } elseif ($codiceStato === 'ANNULLATA') {
-            $colore = '#475569';
-            $sfondo = '#e2e8f0';
+        if (trim(strip_tags($valoreHtml)) === '') {
+            return '';
         }
 
-        return '<span style="display:inline-block;padding:3px 8px;border-radius:999px;font-weight:700;font-size:12px;color:' . $colore . ';background:' . $sfondo . ';">'
-            . hrEmailHtml($stato)
-            . '</span>';
-    }
-}
-
-if (!function_exists('hrEmailRigaDettaglioHtml')) {
-    function hrEmailRigaDettaglioHtml(string $etichetta, string $valoreHtml): string
-    {
         return '<tr>'
-            . '<td style="width:150px;padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;font-weight:700;font-size:13px;">' . hrEmailHtml($etichetta) . '</td>'
-            . '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#111827;font-size:13px;">' . $valoreHtml . '</td>'
+            . '<td width="170" valign="top" style="width:170px; padding:9px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#475569; font-weight:700;">' . hrEmailH($label) . '</td>'
+            . '<td valign="top" style="padding:9px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a;">' . $valoreHtml . '</td>'
             . '</tr>';
     }
 }
 
-if (!function_exists('hrEmailCreaCorpoRichiesta')) {
-    function hrEmailCreaCorpoRichiesta(
+if (!function_exists('hrEmailDettaglioHtml')) {
+    function hrEmailDettaglioHtml(?array $richiesta): string
+    {
+        if ($richiesta === null) {
+            return '';
+        }
+
+        $periodo = hrEmailPeriodoTesto($richiesta['periodi'] ?? []);
+        $statoBadge = hrEmailStatoBadge(
+            (string)($richiesta['stato_codice'] ?? ''),
+            (string)($richiesta['stato'] ?? '')
+        );
+
+        $righe = '';
+        $righe .= hrEmailRigaTabella('Richiedente', hrEmailH((string)($richiesta['richiedente'] ?? '')));
+        $righe .= hrEmailRigaTabella('Tipologia', hrEmailH((string)($richiesta['tipologia'] ?? '')));
+        $righe .= hrEmailRigaTabella('Periodo', $periodo);
+        $righe .= hrEmailRigaTabella('Stato attuale', $statoBadge);
+        $righe .= hrEmailRigaTabella('Oggetto', nl2br(hrEmailH((string)($richiesta['oggetto'] ?? ''))));
+        $righe .= hrEmailRigaTabella('Note richiedente', nl2br(hrEmailH((string)($richiesta['note_richiedente'] ?? ''))));
+
+        if ($righe === '') {
+            return '';
+        }
+
+        return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; table-layout:fixed; width:100%;">'
+            . $righe
+            . '</table>';
+    }
+}
+
+if (!function_exists('hrEmailRichiestePresentiHtml')) {
+    function hrEmailRichiestePresentiHtml(array $righe): string
+    {
+        if (count($righe) === 0) {
+            return '';
+        }
+
+        $html = ''
+            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; table-layout:fixed; width:100%; margin-top:6px;">'
+            . '<tr>'
+            . '<th align="left" width="28%" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:16px; color:#475569; font-weight:700;">Persona</th>'
+            . '<th align="left" width="22%" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:16px; color:#475569; font-weight:700;">Tipologia</th>'
+            . '<th align="left" width="30%" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:16px; color:#475569; font-weight:700;">Periodo</th>'
+            . '<th align="left" width="20%" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:16px; color:#475569; font-weight:700;">Stato</th>'
+            . '</tr>';
+
+        foreach ($righe as $riga) {
+            $periodo = hrEmailDataIt($riga['data_da'] ?? '');
+            $dataA = hrEmailDataIt($riga['data_a'] ?? '');
+
+            if ($dataA !== '' && $dataA !== $periodo) {
+                $periodo .= ' - ' . $dataA;
+            }
+
+            if ((int)($riga['ha_ore'] ?? 0) === 1) {
+                $oraDa = hrEmailOraIt($riga['ora_da'] ?? '');
+                $oraA = hrEmailOraIt($riga['ora_a'] ?? '');
+                if ($oraDa !== '' && $oraA !== '') {
+                    $periodo .= ' · ' . $oraDa . ' / ' . $oraA;
+                }
+            } else {
+                $periodo .= ' · giornata intera';
+            }
+
+            $html .= '<tr>'
+                . '<td valign="top" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a; font-weight:700;">' . hrEmailH((string)($riga['persona'] ?? '')) . '</td>'
+                . '<td valign="top" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a;">' . hrEmailH((string)($riga['tipologia'] ?? '')) . '</td>'
+                . '<td valign="top" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a;">' . hrEmailH($periodo) . '</td>'
+                . '<td valign="top" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a;">' . hrEmailStatoBadge((string)($riga['stato_codice'] ?? ''), (string)($riga['stato'] ?? '')) . '</td>'
+                . '</tr>';
+        }
+
+        return $html . '</table>';
+    }
+}
+
+if (!function_exists('hrEmailTestoPrincipale')) {
+    function hrEmailTestoPrincipale(string $messaggio): string
+    {
+        $messaggio = trim($messaggio);
+
+        if ($messaggio === '') {
+            return '';
+        }
+
+        return '<p style="margin:0 0 18px 0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#0f172a;">'
+            . nl2br(hrEmailH($messaggio))
+            . '</p>';
+    }
+}
+
+if (!function_exists('hrEmailHtml')) {
+    function hrEmailHtml(
         PDO $pdo,
-        string $tipoEvento,
         string $titolo,
         string $messaggio,
-        ?string $link,
-        ?int $idRichiesta,
-        ?int $idDestinatario
-    ): array {
-        $dettaglio = hrEmailDettaglioRichiesta($pdo, $idRichiesta);
-        $saluto = hrEmailNominativoUtente($pdo, $idDestinatario);
-        $url = hrUrlAssoluto($pdo, $link);
+        ?string $link = null,
+        ?int $idRichiesta = null,
+        ?string $tipoEvento = null,
+        ?int $idDestinatario = null
+    ): string {
         $config = hrEmailConfig($pdo);
+        $url = hrUrlAssoluto($pdo, $link);
+        $richiesta = hrEmailRichiestaDettaglio($pdo, $idRichiesta);
+        $nomeDestinatario = $idDestinatario !== null ? hrEmailNomeUtente($pdo, $idDestinatario) : '';
 
-        if ($saluto === '') {
-            $saluto = 'utente';
+        if ($nomeDestinatario === '' && $richiesta !== null && !empty($richiesta['richiedente'])) {
+            $nomeDestinatario = (string)$richiesta['richiedente'];
         }
 
-        $testo = "Portale HR Ravioli S.p.A.\n\n";
-        $testo .= 'Buongiorno ' . $saluto . ",\n\n";
-        $testo .= trim($messaggio) . "\n";
+        $saluto = $nomeDestinatario !== ''
+            ? 'Buongiorno <strong>' . hrEmailH($nomeDestinatario) . '</strong>,'
+            : 'Buongiorno,';
 
-        $html = '<!doctype html><html><head><meta charset="UTF-8"><title>' . hrEmailHtml($titolo) . '</title></head>';
-        $html .= '<body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111827;">';
-        $html .= '<div style="max-width:900px;margin:0 auto;padding:24px 28px;">';
-        $html .= '<h2 style="margin:0 0 18px 0;font-size:20px;line-height:1.3;color:#111827;">Portale HR Ravioli S.p.A.</h2>';
-        $html .= '<p style="margin:0 0 12px 0;font-size:14px;line-height:1.5;">Buongiorno <strong>' . hrEmailHtml($saluto) . '</strong>,</p>';
-        $html .= '<p style="margin:0 0 20px 0;font-size:14px;line-height:1.5;">' . nl2br(hrEmailHtml(trim($messaggio))) . '</p>';
+        $titoloPulito = trim($titolo) !== '' ? trim($titolo) : 'Notifica HR';
+        $tipoEvento = strtoupper(trim((string)$tipoEvento));
+        $mostraPresenti = str_contains($tipoEvento, 'DA_APPROVARE');
 
-        if ($dettaglio !== null) {
-            $periodo = hrEmailPeriodoRichiesta($dettaglio);
-            $testo .= "\nDettaglio richiesta\n";
-            $testo .= 'Richiedente: ' . (string)$dettaglio['richiedente'] . "\n";
-            $testo .= 'Tipologia: ' . (string)$dettaglio['tipologia'] . "\n";
-            $testo .= 'Periodo: ' . $periodo . "\n";
-            $testo .= 'Stato attuale: ' . (string)$dettaglio['stato'] . "\n";
-
-            $html .= '<h3 style="margin:18px 0 10px 0;font-size:17px;line-height:1.3;color:#0057d8;">Dettaglio richiesta</h3>';
-            $html .= '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:0 0 20px 0;">';
-            $html .= hrEmailRigaDettaglioHtml('Richiedente', hrEmailHtml((string)$dettaglio['richiedente']));
-            $html .= hrEmailRigaDettaglioHtml('Tipologia', hrEmailHtml((string)$dettaglio['tipologia']));
-            $html .= hrEmailRigaDettaglioHtml('Periodo', hrEmailHtml($periodo));
-            $html .= hrEmailRigaDettaglioHtml('Stato attuale', hrEmailBadgeStatoHtml((string)$dettaglio['codice_stato'], (string)$dettaglio['stato']));
-
-            if (trim((string)($dettaglio['oggetto'] ?? '')) !== '') {
-                $testo .= 'Oggetto: ' . (string)$dettaglio['oggetto'] . "\n";
-                $html .= hrEmailRigaDettaglioHtml('Oggetto', hrEmailHtml((string)$dettaglio['oggetto']));
-            }
-
-            if (trim((string)($dettaglio['note_richiedente'] ?? '')) !== '') {
-                $testo .= 'Note richiedente: ' . (string)$dettaglio['note_richiedente'] . "\n";
-                $html .= hrEmailRigaDettaglioHtml('Note richiedente', nl2br(hrEmailHtml((string)$dettaglio['note_richiedente'])));
-            }
-
-            $html .= '</table>';
-
-            if (str_contains($tipoEvento, 'DA_APPROVARE')) {
-                $sovrapposizioni = hrEmailRichiestePresentiNelPeriodo($pdo, $dettaglio);
-
-                if (count($sovrapposizioni) > 0) {
-                    $html .= '<h3 style="margin:18px 0 10px 0;font-size:17px;line-height:1.3;color:#0057d8;">Assenze/richieste già presenti nel periodo</h3>';
-                    $html .= '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:0 0 20px 0;">';
-                    $html .= '<tr>';
-                    foreach (['Persona', 'Tipologia', 'Periodo', 'Stato'] as $testata) {
-                        $html .= '<th align="left" style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#475569;font-weight:700;font-size:13px;">' . hrEmailHtml($testata) . '</th>';
-                    }
-                    $html .= '</tr>';
-
-                    $testo .= "\nAssenze/richieste già presenti nel periodo\n";
-                    foreach ($sovrapposizioni as $sovrapposizione) {
-                        $periodoSovrapposto = hrEmailPeriodoRichiesta($sovrapposizione);
-                        $testo .= '- ' . (string)$sovrapposizione['persona'] . ' | ' . (string)$sovrapposizione['tipologia'] . ' | ' . $periodoSovrapposto . ' | ' . (string)$sovrapposizione['stato'] . "\n";
-                        $html .= '<tr>';
-                        $html .= '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;"><strong>' . hrEmailHtml((string)$sovrapposizione['persona']) . '</strong></td>';
-                        $html .= '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;">' . hrEmailHtml((string)$sovrapposizione['tipologia']) . '</td>';
-                        $html .= '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;">' . hrEmailHtml($periodoSovrapposto) . '</td>';
-                        $html .= '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;">' . hrEmailHtml((string)$sovrapposizione['stato']) . '</td>';
-                        $html .= '</tr>';
-                    }
-                    $html .= '</table>';
-                }
-            }
-
-            if (trim((string)$dettaglio['codice_richiesta']) !== '') {
-                $testo .= 'Codice: ' . (string)$dettaglio['codice_richiesta'] . "\n";
+        $presentiHtml = '';
+        if ($mostraPresenti && $idRichiesta !== null) {
+            $presenti = hrEmailRichiestePresentiNelPeriodo($pdo, $idRichiesta);
+            if (count($presenti) > 0) {
+                $presentiHtml = ''
+                    . '<tr><td style="padding:18px 0 6px 0; font-family:Arial,Helvetica,sans-serif;">'
+                    . '<h3 style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:18px; line-height:24px; color:#005bd3; font-weight:700;">Assenze/richieste già presenti nel periodo</h3>'
+                    . '</td></tr>'
+                    . '<tr><td style="padding:0 0 18px 0;">'
+                    . hrEmailRichiestePresentiHtml($presenti)
+                    . '</td></tr>';
             }
         }
+
+        $codice = '';
+        if ($richiesta !== null && !empty($richiesta['codice_richiesta'])) {
+            $codice = (string)$richiesta['codice_richiesta'];
+        }
+
+        $ctaHtml = '';
+        if ($url !== '') {
+            $ctaHtml = ''
+                . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; margin:18px 0 0 0;">'
+                . '<tr>'
+                . '<td bgcolor="#005bd3" style="border-radius:4px; background:#005bd3;">'
+                . '<a href="' . hrEmailH($url) . '" style="display:inline-block; padding:10px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#ffffff; text-decoration:none; font-weight:700;">↗ Apri richiesta nel portale</a>'
+                . '</td>'
+                . '</tr>'
+                . '</table>';
+        }
+
+        $footerCodice = $codice !== ''
+            ? '<br>Codice: ' . hrEmailH($codice)
+            : '';
+
+        return '<!doctype html>'
+            . '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>' . hrEmailH($titoloPulito) . '</title></head>'
+            . '<body style="margin:0; padding:0; background:#ffffff; font-family:Arial,Helvetica,sans-serif; color:#0f172a;">'
+            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; width:100%; background:#ffffff;">'
+            . '<tr>'
+            . '<td align="center" style="padding:36px 16px; font-family:Arial,Helvetica,sans-serif;">'
+            . '<table role="presentation" width="760" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; width:760px; max-width:760px;">'
+            . '<tr><td style="padding:0 0 18px 0; font-family:Arial,Helvetica,sans-serif;">'
+            . '<h1 style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:22px; line-height:28px; color:#0f172a; font-weight:700;">Portale HR Ravioli S.p.A.</h1>'
+            . '</td></tr>'
+            . '<tr><td style="padding:0 0 12px 0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#0f172a;">' . $saluto . '</td></tr>'
+            . '<tr><td style="padding:0 0 4px 0;">' . hrEmailTestoPrincipale($messaggio) . '</td></tr>'
+            . '<tr><td style="padding:4px 0 8px 0; font-family:Arial,Helvetica,sans-serif;">'
+            . '<h2 style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:18px; line-height:24px; color:#005bd3; font-weight:700;">Dettaglio richiesta</h2>'
+            . '</td></tr>'
+            . '<tr><td style="padding:0 0 0 0;">' . hrEmailDettaglioHtml($richiesta) . '</td></tr>'
+            . $presentiHtml
+            . '<tr><td style="padding:0 0 18px 0;">' . $ctaHtml . '</td></tr>'
+            . '<tr><td style="padding:0; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:18px; color:#64748b;">'
+            . 'Messaggio automatico del portale HR Ravioli S.p.A.' . $footerCodice
+            . '</td></tr>'
+            . '</table>'
+            . '</td>'
+            . '</tr>'
+            . '</table>'
+            . '</body></html>';
+    }
+}
+
+if (!function_exists('hrEmailTestoPlain')) {
+    function hrEmailTestoPlain(PDO $pdo, string $messaggio, ?string $link = null, ?int $idRichiesta = null): string
+    {
+        $testo = trim($messaggio);
+        $url = hrUrlAssoluto($pdo, $link);
 
         if ($url !== '') {
-            $testo .= "\nApri richiesta nel portale:\n" . $url . "\n";
-            $html .= '<p style="margin:16px 0 20px 0;">';
-            $html .= '<a href="' . hrEmailHtml($url) . '" style="display:inline-block;background:#0057d8;color:#ffffff;text-decoration:none;font-weight:700;font-size:13px;padding:9px 14px;border-radius:4px;">↗ Apri richiesta nel portale</a>';
-            $html .= '</p>';
+            $testo .= "\n\nApri richiesta nel portale:\n" . $url;
         }
 
-        $html .= '<p style="margin:22px 0 4px 0;font-size:12px;line-height:1.5;color:#64748b;">Messaggio automatico del portale HR Ravioli S.p.A.</p>';
-
-        if ($dettaglio !== null && trim((string)($dettaglio['codice_richiesta'] ?? '')) !== '') {
-            $html .= '<p style="margin:0;font-size:12px;line-height:1.5;color:#64748b;">Codice: ' . hrEmailHtml((string)$dettaglio['codice_richiesta']) . '</p>';
-        } else {
-            $html .= '<p style="margin:0;font-size:12px;line-height:1.5;color:#64748b;">' . hrEmailHtml((string)$config['from_name']) . '</p>';
+        $richiesta = hrEmailRichiestaDettaglio($pdo, $idRichiesta);
+        if ($richiesta !== null && !empty($richiesta['codice_richiesta'])) {
+            $testo .= "\n\nCodice: " . (string)$richiesta['codice_richiesta'];
         }
 
-        $html .= '</div></body></html>';
-
-        $testo .= "\n--\n" . (string)$config['from_name'];
-
-        return [
-            'testo' => $testo,
-            'html' => $html,
-        ];
+        return $testo;
     }
 }
 
@@ -497,7 +666,9 @@ if (!function_exists('hrInviaEmail')) {
         string $oggetto,
         string $messaggioTesto,
         ?string $link = null,
-        ?string $messaggioHtml = null
+        ?int $idRichiesta = null,
+        ?string $tipoEvento = null,
+        ?int $idDestinatario = null
     ): array {
         $config = hrEmailConfig($pdo);
 
@@ -525,30 +696,19 @@ if (!function_exists('hrInviaEmail')) {
         }
 
         $oggetto = trim($oggetto);
-        $messaggioTesto = trim($messaggioTesto);
-        $url = hrUrlAssoluto($pdo, $link);
-
-        if ($messaggioHtml === null) {
-            if ($url !== '') {
-                $messaggioTesto .= "\n\nApri nel portale:\n" . $url;
-            }
-
-            $messaggioTesto .= "\n\n--\n" . (string)$config['from_name'];
-        }
-
         $fromName = hrEmailEncodeHeader((string)$config['from_name']);
         $subject = hrEmailEncodeHeader($oggetto);
 
+        $html = hrEmailHtml($pdo, $oggetto, $messaggioTesto, $link, $idRichiesta, $tipoEvento, $idDestinatario);
+
         $headers = [
             'MIME-Version: 1.0',
-            $messaggioHtml !== null ? 'Content-Type: text/html; charset=UTF-8' : 'Content-Type: text/plain; charset=UTF-8',
+            'Content-Type: text/html; charset=UTF-8',
             'Content-Transfer-Encoding: 8bit',
             'From: ' . $fromName . ' <' . $fromEmail . '>',
             'Reply-To: ' . $fromEmail,
             'X-Mailer: Ravioli Portale HR',
         ];
-
-        $corpo = $messaggioHtml !== null ? $messaggioHtml : $messaggioTesto;
 
         $parametri = '';
         if ($fromEmail !== '') {
@@ -556,8 +716,8 @@ if (!function_exists('hrInviaEmail')) {
         }
 
         $ok = $parametri !== ''
-            ? @mail($to, $subject, $corpo, implode("\r\n", $headers), $parametri)
-            : @mail($to, $subject, $corpo, implode("\r\n", $headers));
+            ? @mail($to, $subject, $html, implode("\r\n", $headers), $parametri)
+            : @mail($to, $subject, $html, implode("\r\n", $headers));
 
         return [
             'inviata' => (bool)$ok,

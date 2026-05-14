@@ -38,11 +38,9 @@ if (!function_exists('hrEmailWorkflowAttivo')) {
     /**
      * Interruttore specifico per gli invii email automatici del workflow HR.
      *
-     * Motivo:
-     * HR_NOTIFICA_EMAIL_ATTIVA nel database reale puo essere gia attiva per
-     * configurazioni generali. Prima di collegare email automatiche a richieste
-     * e approvazioni usiamo un secondo consenso esplicito:
-     * HR_EMAIL_WORKFLOW_ATTIVO = 1.
+     * L'invio reale avviene solo se sono attive entrambe:
+     * - HR_NOTIFICA_EMAIL_ATTIVA = 1
+     * - HR_EMAIL_WORKFLOW_ATTIVO = 1
      */
     function hrEmailWorkflowAttivo(PDO $pdo): bool
     {
@@ -69,6 +67,7 @@ if (!function_exists('hrEmailWorkflowAttivo')) {
         $stmt->execute();
 
         $cache = trim((string)($stmt->fetchColumn() ?: '0')) === '1';
+
         return $cache;
     }
 }
@@ -138,10 +137,8 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
     /**
      * Crea e invia notifiche email HR per una lista di utenti.
      *
-     * Sicurezza:
-     * l'invio reale avviene solo se sono attive entrambe le configurazioni:
-     * - HR_NOTIFICA_EMAIL_ATTIVA = 1
-     * - HR_EMAIL_WORKFLOW_ATTIVO = 1
+     * Il template HTML e' un golden master:
+     * non deve degradare a plain text e non deve perdere tabella dettagli, badge, CTA e footer.
      *
      * Restituisce un riepilogo:
      * - tentate
@@ -234,9 +231,16 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
                 continue;
             }
 
-            $corpoEmail = hrEmailCreaCorpoRichiesta($pdo, $tipoEvento, $titolo, $messaggio, $link, $idRichiesta, $idUtenteDest);
-
-            $esito = hrInviaEmail($pdo, $email, $titolo, $corpoEmail['testo'], $link, $corpoEmail['html']);
+            $esito = hrInviaEmail(
+                $pdo,
+                $email,
+                $titolo,
+                $messaggio,
+                $link,
+                $idRichiesta,
+                $tipoEvento,
+                $idUtenteDest
+            );
 
             $stmtNotifica->execute([
                 'tipo_evento' => $tipoEvento,
