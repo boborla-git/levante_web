@@ -90,6 +90,116 @@ function classificaTipoNotifica(?string $tipoEvento): array
     ];
 }
 
+function formattaDataNotifica(?string $data): string
+{
+    $data = trim((string)$data);
+    if ($data === '' || $data === '0000-00-00') {
+        return '';
+    }
+
+    $ts = strtotime($data);
+    return $ts === false ? $data : date('d/m/Y', $ts);
+}
+
+function formattaOraNotifica(?string $ora): string
+{
+    $ora = trim((string)$ora);
+    if ($ora === '') {
+        return '';
+    }
+
+    return substr($ora, 0, 5);
+}
+
+function periodoNotificaTesto(array $periodi): string
+{
+    $righe = [];
+
+    foreach ($periodi as $periodo) {
+        $tipo = strtoupper((string)($periodo['tipo_periodo'] ?? ''));
+        $dataDa = formattaDataNotifica($periodo['data_da'] ?? '');
+        $dataA = formattaDataNotifica($periodo['data_a'] ?? '');
+
+        if ($tipo === 'ORE') {
+            $oraDa = formattaOraNotifica($periodo['ora_da'] ?? '');
+            $oraA = formattaOraNotifica($periodo['ora_a'] ?? '');
+            $righe[] = trim($dataDa . ' · ' . $oraDa . ' - ' . $oraA);
+            continue;
+        }
+
+        if ($dataDa !== '' && $dataA !== '' && $dataA !== $dataDa) {
+            $righe[] = $dataDa . ' - ' . $dataA . ' · giornata intera';
+        } elseif ($dataDa !== '') {
+            $righe[] = $dataDa . ' · giornata intera';
+        }
+    }
+
+    return implode("\n", array_filter($righe));
+}
+
+function caricaDettagliRichiesteNotifiche(PDO $pdo, array $notifiche): array
+{
+    $ids = [];
+    foreach ($notifiche as $notifica) {
+        $idRichiesta = (int)($notifica['id_richiesta'] ?? 0);
+        if ($idRichiesta > 0) {
+            $ids[$idRichiesta] = $idRichiesta;
+        }
+    }
+
+    if (count($ids) === 0) {
+        return [];
+    }
+
+    $ids = array_values($ids);
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+    $stmt = $pdo->prepare(
+        "SELECT
+            r.id_richiesta,
+            r.codice_richiesta,
+            r.oggetto,
+            r.note_richiedente,
+            TRIM(CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, ''))) AS richiedente,
+            te.descrizione AS tipologia,
+            sr.codice AS stato_codice,
+            sr.descrizione AS stato
+         FROM hr_richieste r
+         INNER JOIN aut_utenti u ON u.id_utente = r.id_utente_richiedente
+         INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
+         INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
+         WHERE r.id_richiesta IN ($placeholders)"
+    );
+    $stmt->execute($ids);
+
+    $dettagli = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $row['periodi'] = [];
+        $dettagli[(int)$row['id_richiesta']] = $row;
+    }
+
+    $stmtPeriodi = $pdo->prepare(
+        "SELECT id_richiesta, tipo_periodo, data_da, data_a, ora_da, ora_a
+         FROM hr_richieste_periodi
+         WHERE id_richiesta IN ($placeholders)
+         ORDER BY data_da ASC, ora_da ASC, id_richiesta_periodo ASC"
+    );
+    $stmtPeriodi->execute($ids);
+
+    foreach ($stmtPeriodi->fetchAll(PDO::FETCH_ASSOC) as $periodo) {
+        $idRichiesta = (int)$periodo['id_richiesta'];
+        if (isset($dettagli[$idRichiesta])) {
+            $dettagli[$idRichiesta]['periodi'][] = $periodo;
+        }
+    }
+
+    foreach ($dettagli as $idRichiesta => $dettaglio) {
+        $dettagli[$idRichiesta]['periodo_testo'] = periodoNotificaTesto($dettaglio['periodi']);
+    }
+
+    return $dettagli;
+}
+
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $azione = trim((string)($_POST['azione'] ?? ''));
@@ -214,10 +324,12 @@ try {
     );
     $stmtNotifiche->execute(['id_utente' => $idUtente]);
     $notifiche = $stmtNotifiche->fetchAll(PDO::FETCH_ASSOC);
+    $dettagliRichieste = caricaDettagliRichiesteNotifiche($pdo, $notifiche);
 } catch (Throwable $e) {
     $errore = $e->getMessage();
     $riepilogo = $riepilogo ?? ['totale' => 0, 'non_lette' => 0, 'lette' => 0];
     $notifiche = $notifiche ?? [];
+    $dettagliRichieste = $dettagliRichieste ?? [];
 }
 
 layoutHeader('Notifiche');
@@ -273,6 +385,7 @@ layoutHeader('Notifiche');
                 $letta = (int)($notifica['letta'] ?? 0) === 1;
                 $linkSicuro = normalizzaLinkNotifica($notifica['link'] ?? '');
                 $tipoNotifica = classificaTipoNotifica($notifica['tipo_evento'] ?? '');
+                $dettaglioRichiesta = $dettagliRichieste[(int)($notifica['id_richiesta'] ?? 0)] ?? null;
                 ?>
                 <article class="notification-item <?= $letta ? 'is-read' : 'is-unread' ?> <?= h($tipoNotifica['class']) ?>">
                     <div class="notification-icon" aria-hidden="true">
@@ -296,6 +409,32 @@ layoutHeader('Notifiche');
                             <?php endif; ?>
                         </div>
                         <p><?= nl2br(h((string)$notifica['messaggio'])) ?></p>
+                        <?php if (is_array($dettaglioRichiesta)): ?>
+                            <dl class="notification-detail-grid" aria-label="Dettaglio richiesta HR">
+                                <div>
+                                    <dt>Richiedente</dt>
+                                    <dd><?= h((string)($dettaglioRichiesta['richiedente'] ?? '')) ?></dd>
+                                </div>
+                                <div>
+                                    <dt>Tipologia</dt>
+                                    <dd><?= h((string)($dettaglioRichiesta['tipologia'] ?? '')) ?></dd>
+                                </div>
+                                <div>
+                                    <dt>Periodo</dt>
+                                    <dd><?= nl2br(h((string)($dettaglioRichiesta['periodo_testo'] ?? ''))) ?></dd>
+                                </div>
+                                <div>
+                                    <dt>Stato</dt>
+                                    <dd><?= renderHrStatusBadge((string)($dettaglioRichiesta['stato_codice'] ?? ''), (string)($dettaglioRichiesta['stato'] ?? '')) ?></dd>
+                                </div>
+                                <?php if (trim((string)($dettaglioRichiesta['oggetto'] ?? '')) !== ''): ?>
+                                    <div class="notification-detail-wide">
+                                        <dt>Oggetto</dt>
+                                        <dd><?= nl2br(h((string)$dettaglioRichiesta['oggetto'])) ?></dd>
+                                    </div>
+                                <?php endif; ?>
+                            </dl>
+                        <?php endif; ?>
                         <div class="notification-actions">
                             <?php if ($linkSicuro !== ''): ?>
                                 <form method="post" class="inline-form">

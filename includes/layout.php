@@ -63,8 +63,17 @@ function layoutRenderIcon(array $node): void
 function layoutRenderLabel(array $node): void
 {
     layoutRenderIcon($node);
+    $codiceNodo = (string)($node['codice_risorsa'] ?? '');
+    $labelNodo = (string)($node['descrizione'] ?? '');
+
+    if ($codiceNodo === 'menu.profilo') {
+        $nomeUtenteMenu = trim((string)($GLOBALS['layout_nome_utente'] ?? ''));
+        if ($nomeUtenteMenu !== '') {
+            $labelNodo = $nomeUtenteMenu;
+        }
+    }
     ?>
-    <span class="menu-text"><?= htmlspecialchars((string)($node['descrizione'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+    <span class="menu-text"><?= htmlspecialchars($labelNodo, ENT_QUOTES, 'UTF-8') ?></span>
     <?php
     if (in_array((string)($node['codice_risorsa'] ?? ''), ['pagina.notifiche', 'menu.profilo'], true)) {
         $numeroNotifiche = isset($GLOBALS['layout_notifiche_non_lette']) ? (int)$GLOBALS['layout_notifiche_non_lette'] : 0;
@@ -105,6 +114,42 @@ function layoutRenderNotificationBadge(int $numero): void
     ?>
     <span class="notification-badge" aria-label="<?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?> notifiche non lette"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></span>
     <?php
+}
+
+function layoutUserDisplayName(int $idUtente): string
+{
+    if ($idUtente <= 0) {
+        return '';
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare(
+            "SELECT nome, cognome, username
+             FROM aut_utenti
+             WHERE id_utente = :id_utente
+             LIMIT 1"
+        );
+        $stmt->execute(['id_utente' => $idUtente]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return '';
+        }
+
+        $nome = trim((string)($row['nome'] ?? ''));
+        $cognome = trim((string)($row['cognome'] ?? ''));
+        $username = trim((string)($row['username'] ?? ''));
+        $nominativo = trim($nome . ' ' . $cognome);
+
+        if ($nominativo !== '') {
+            return $nominativo;
+        }
+
+        return $username;
+    } catch (Throwable $e) {
+        return '';
+    }
 }
 
 function layoutNodeCanOpen(array $node): bool
@@ -360,6 +405,7 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
     $idUtenteLoggato = $utenteLoggato ? (int)$_SESSION['utente_id'] : 0;
     $notificheNonLette = $utenteLoggato ? layoutUnreadNotificationsCount($idUtenteLoggato) : 0;
     $GLOBALS['layout_notifiche_non_lette'] = $notificheNonLette;
+    $GLOBALS['layout_nome_utente'] = $utenteLoggato ? layoutUserDisplayName($idUtenteLoggato) : '';
     $paginaCorrente = basename($_SERVER['PHP_SELF'] ?? '');
     $menuTree = [];
     $menuChildrenMap = [];
