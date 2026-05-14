@@ -234,7 +234,9 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
                 continue;
             }
 
-            $esito = hrInviaEmail($pdo, $email, $titolo, $messaggio, $link);
+            $corpoEmail = hrEmailCreaCorpoRichiesta($pdo, $tipoEvento, $titolo, $messaggio, $link, $idRichiesta, $idUtenteDest);
+
+            $esito = hrInviaEmail($pdo, $email, $titolo, $corpoEmail['testo'], $link, $corpoEmail['html']);
 
             $stmtNotifica->execute([
                 'tipo_evento' => $tipoEvento,
