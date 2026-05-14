@@ -11,6 +11,9 @@ richiediPermessoLettura('calendario_assenze');
 $pdo = db();
 $idUtente = (int)($_SESSION['id_utente'] ?? $_SESSION['utente_id'] ?? 0);
 $puoConfigurare = haPermessoScrittura('configurazione_assenze');
+$puoVedereTutteAssenze = $puoConfigurare || haPermesso('azione.hr.assenze.visualizza_tutte', 'read');
+$puoVedereTipologieAssenze = $puoConfigurare || haPermesso('azione.hr.assenze.visualizza_tipologie', 'read');
+$puoVederePendentiGlobali = $puoConfigurare || haPermesso('azione.hr.assenze.visualizza_pendenti_globali', 'read');
 
 function h(?string $v): string
 {
@@ -92,9 +95,9 @@ function hrIdsGruppoCalendario(PDO $pdo, int $idUtente): array
     return array_values(array_unique(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN))));
 }
 
-function hrScopeUtentiCalendario(PDO $pdo, int $idUtente, bool $puoConfigurare): array
+function hrScopeUtentiCalendario(PDO $pdo, int $idUtente, bool $puoVedereTutteAssenze): array
 {
-    if ($puoConfigurare) {
+    if ($puoVedereTutteAssenze) {
         $stmt = $pdo->query(
             "SELECT id_utente, nome, cognome, username, 0 AS scope_gerarchia, 0 AS scope_gruppo
              FROM aut_utenti
@@ -158,7 +161,7 @@ function hrColoreValido(?string $colore): string
 }
 
 
-function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare): bool
+function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare, bool $puoVedereTipologieAssenze): bool
 {
     $idRichiedente = (int)($row['id_utente_richiedente'] ?? 0);
 
@@ -166,7 +169,7 @@ function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteC
         return true;
     }
 
-    if ($puoConfigurare) {
+    if ($puoConfigurare || $puoVedereTipologieAssenze) {
         return (int)($row['mostra_dettaglio_hr'] ?? 1) === 1;
     }
 
@@ -183,12 +186,12 @@ function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteC
     return false;
 }
 
-function hrEtichettaCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare): string
+function hrEtichettaCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare, bool $puoVedereTipologieAssenze): string
 {
     $statoPresenza = trim((string)($row['stato_presenza_breve'] ?: $row['stato_presenza'] ?: 'Assente'));
     $dettaglio = trim((string)($row['descrizione_calendario'] ?: $row['tipologia'] ?: 'Assenza'));
 
-    if (hrMostraDettaglioCalendario($row, $scopeMap, $idUtenteCorrente, $puoConfigurare)) {
+    if (hrMostraDettaglioCalendario($row, $scopeMap, $idUtenteCorrente, $puoConfigurare, $puoVedereTipologieAssenze)) {
         return $dettaglio !== '' ? $dettaglio : $statoPresenza;
     }
 
@@ -227,7 +230,7 @@ $next = $primoDelMese->modify('+1 month');
 $annoDa = max(2020, $anno - 2);
 $annoA = min(2100, $anno + 2);
 
-$scopeUtenti = hrScopeUtentiCalendario($pdo, $idUtente, $puoConfigurare);
+$scopeUtenti = hrScopeUtentiCalendario($pdo, $idUtente, $puoVedereTutteAssenze);
 $scopeMap = [];
 $scopeIds = [];
 
@@ -267,6 +270,9 @@ try {
                 te.mostra_dettaglio_colleghi,
                 te.mostra_dettaglio_responsabili,
                 te.mostra_dettaglio_hr,
+                sr.codice AS codice_stato_richiesta,
+                sr.descrizione AS stato_richiesta,
+                sr.colore AS colore_stato_richiesta,
                 sp.descrizione_breve AS stato_presenza_breve,
                 sp.descrizione AS stato_presenza,
                 u.nome,
@@ -275,7 +281,11 @@ try {
             FROM hr_richieste r
             INNER JOIN hr_stati_richiesta sr
                 ON sr.id_stato_richiesta = r.id_stato_richiesta
-               AND sr.codice = 'APPROVATA'
+               AND sr.codice IN ('APPROVATA', 'IN_ATTESA')
+            LEFT JOIN hr_richieste_approvazioni ra
+                ON ra.id_richiesta = r.id_richiesta
+               AND ra.id_approvatore_assegnato = ?
+               AND ra.stato_approvazione = 'IN_ATTESA'
             INNER JOIN hr_richieste_periodi p
                 ON p.id_richiesta = r.id_richiesta
             INNER JOIN hr_tipologie_evento te
@@ -289,12 +299,26 @@ try {
             WHERE r.id_utente_richiedente IN ($placeholders)
               AND p.data_da <= ?
               AND p.data_a >= ?
+              AND (
+                    sr.codice = 'APPROVATA'
+                    OR (
+                        sr.codice = 'IN_ATTESA'
+                        AND (
+                            r.id_utente_richiedente = ?
+                            OR ? = 1
+                            OR ra.id_richiesta_approvazione IS NOT NULL
+                        )
+                    )
+                  )
             ORDER BY p.data_da, p.ora_da, u.nome, u.cognome, u.username
         ";
 
-        $params = $scopeIds;
+        $params = [$idUtente];
+        $params = array_merge($params, $scopeIds);
         $params[] = $fineGriglia->format('Y-m-d');
         $params[] = $inizioGriglia->format('Y-m-d');
+        $params[] = $idUtente;
+        $params[] = $puoVederePendentiGlobali ? 1 : 0;
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -303,7 +327,7 @@ try {
         foreach ($rows as $row) {
             $start = new DateTimeImmutable((string)$row['data_da']);
             $end = new DateTimeImmutable((string)$row['data_a']);
-            $label = hrEtichettaCalendario($row, $scopeMap, $idUtente, $puoConfigurare);
+            $label = hrEtichettaCalendario($row, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologieAssenze);
             $color = hrColoreValido((string)($row['colore_calendario'] ?? ''));
 
             $legendMap[$label] = $color;
@@ -316,6 +340,9 @@ try {
                 'colore' => $color,
                 'stato_presenza' => (string)($row['stato_presenza_breve'] ?: $row['stato_presenza']),
                 'disturbabile' => (int)$row['disturbabile'] === 1,
+                'codice_stato' => (string)$row['codice_stato_richiesta'],
+                'stato' => (string)$row['stato_richiesta'],
+                'colore_stato' => hrColoreValido((string)($row['colore_stato_richiesta'] ?? '')),
                 'tipo_periodo' => (string)$row['tipo_periodo'],
                 'ora_da' => $row['ora_da'] ? substr((string)$row['ora_da'], 0, 5) : '',
                 'ora_a' => $row['ora_a'] ? substr((string)$row['ora_a'], 0, 5) : '',
@@ -349,9 +376,14 @@ foreach ($eventsByDay as $dayKey => $events) {
         }
 
         if (!isset($summaryMap[$label])) {
-            $summaryMap[$label] = ['count' => 0, 'color' => $event['colore']];
+            $summaryMap[$label] = ['count' => 0, 'pending' => 0, 'approved' => 0, 'color' => $event['colore']];
         }
         $summaryMap[$label]['count']++;
+        if (($event['codice_stato'] ?? '') === 'IN_ATTESA') {
+            $summaryMap[$label]['pending']++;
+        } elseif (($event['codice_stato'] ?? '') === 'APPROVATA') {
+            $summaryMap[$label]['approved']++;
+        }
 
         if (!isset($detailMap[$label])) {
             $detailMap[$label] = [
@@ -454,7 +486,7 @@ layoutHeader('Calendario assenze');
                     <?php foreach ($summaries as $label => $summary): ?>
                         <span class="hr-cal-event-line">
                             <span class="hr-dot" style="--dot-color: <?= h($summary['color']) ?>"></span>
-                            <span><?= h(mb_strtolower((string)$label, 'UTF-8')) ?>: <strong><?= (int)$summary['count'] ?></strong></span>
+                            <span><?= h(mb_strtolower((string)$label, 'UTF-8')) ?>: <strong><?= (int)$summary['count'] ?></strong><?php if (!empty($summary['pending'])): ?> · <?= (int)$summary['pending'] ?> in attesa<?php endif; ?></span>
                         </span>
                     <?php endforeach; ?>
                 </div>
@@ -536,7 +568,8 @@ layoutHeader('Calendario assenze');
                 } else {
                     meta = 'Giornata';
                 }
-                html += '<div class="hr-detail-row"><div class="hr-detail-name">' + escapeHtml(item.nome || '') + '</div><div class="hr-detail-meta">' + meta + '</div></div>';
+                const stato = item.stato ? ' · ' + escapeHtml(item.stato) : '';
+                html += '<div class="hr-detail-row"><div class="hr-detail-name">' + escapeHtml(item.nome || '') + '</div><div class="hr-detail-meta">' + meta + stato + '</div></div>';
             });
             html += '</div>';
         });
