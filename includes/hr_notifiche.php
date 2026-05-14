@@ -34,6 +34,45 @@ if (!function_exists('hrIdCanaleNotifica')) {
     }
 }
 
+if (!function_exists('hrEmailWorkflowAttivo')) {
+    /**
+     * Interruttore specifico per gli invii email automatici del workflow HR.
+     *
+     * Motivo:
+     * HR_NOTIFICA_EMAIL_ATTIVA nel database reale puo essere gia attiva per
+     * configurazioni generali. Prima di collegare email automatiche a richieste
+     * e approvazioni usiamo un secondo consenso esplicito:
+     * HR_EMAIL_WORKFLOW_ATTIVO = 1.
+     */
+    function hrEmailWorkflowAttivo(PDO $pdo): bool
+    {
+        static $cache = null;
+
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $config = hrEmailConfig($pdo);
+
+        if (!$config['attiva']) {
+            $cache = false;
+            return false;
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT valore
+             FROM hr_configurazioni
+             WHERE codice = 'HR_EMAIL_WORKFLOW_ATTIVO'
+               AND attivo = 1
+             LIMIT 1"
+        );
+        $stmt->execute();
+
+        $cache = trim((string)($stmt->fetchColumn() ?: '0')) === '1';
+        return $cache;
+    }
+}
+
 if (!function_exists('hrCreaNotificaWeb')) {
     function hrCreaNotificaWeb(
         PDO $pdo,
@@ -99,10 +138,10 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
     /**
      * Crea e invia notifiche email HR per una lista di utenti.
      *
-     * Nota importante:
-     * questa funzione NON viene richiamata automaticamente da questo file.
-     * Le pagine HR la useranno solo quando decideremo insieme di attivare
-     * il canale email sui singoli eventi.
+     * Sicurezza:
+     * l'invio reale avviene solo se sono attive entrambe le configurazioni:
+     * - HR_NOTIFICA_EMAIL_ATTIVA = 1
+     * - HR_EMAIL_WORKFLOW_ATTIVO = 1
      *
      * Restituisce un riepilogo:
      * - tentate
@@ -133,6 +172,13 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
         )));
 
         if (count($destinatari) === 0) {
+            return $riepilogo;
+        }
+
+        if (!hrEmailWorkflowAttivo($pdo)) {
+            $riepilogo['tentate'] = count($destinatari);
+            $riepilogo['saltate'] = count($destinatari);
+            $riepilogo['errori'][] = 'Invio email workflow HR non attivo.';
             return $riepilogo;
         }
 
