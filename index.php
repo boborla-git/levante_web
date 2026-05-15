@@ -16,7 +16,6 @@ $puoLeggereAssenze = haPermessoLettura('assenze');
 $puoLeggereApprovazioniAssenze = haPermessoLettura('approvazioni_assenze');
 $puoLeggereCalendarioAssenze = haPermessoLettura('calendario_assenze');
 $puoLeggereConfigurazioneAssenze = haPermessoLettura('configurazione_assenze');
-$puoLeggereWorkflow = haPermessoLettura('workflow');
 $utenteSenzaRuolo = utenteSenzaRuolo();
 
 $accessiRapidi = [];
@@ -72,15 +71,6 @@ if ($puoLeggereConfigurazioneAssenze) {
         'href' => 'configurazione_assenze.php',
         'kicker' => 'HR',
         'descrizione' => 'Tipologie, gruppi di lavoro e relazioni organizzative.'
-    ];
-}
-
-if ($puoLeggereWorkflow) {
-    $accessiRapidi[] = [
-        'label' => 'Workflow',
-        'href' => 'workflow.php',
-        'kicker' => 'Processi',
-        'descrizione' => 'Struttura di processo e logica operativa futura.'
     ];
 }
 
