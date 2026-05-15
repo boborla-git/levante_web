@@ -32,6 +32,23 @@ Stato: nessun riferimento residuo certo trovato nella prima ricerca.
 - Nessun nuovo riferimento applicativo affidabile a `workflow.php`.
 - Nessun riferimento residuo affidabile a `dashboard.php`.
 
+### Verifica `includes/layout.php`
+
+Stato: verificato, nessuna modifica applicativa.
+
+- `layoutLoadMenuResources()` carica da `aut_risorse` solo risorse attive di tipo `menu` e `pagina`.
+- Il menu viene filtrato usando `visibile_menu`, permessi di lettura e gerarchia padre/figlio.
+- Il badge notifiche e' gestito su `pagina.notifiche` e `menu.profilo` tramite conteggio da `hr_notifiche_destinatari`.
+- Menu desktop e drawer mobile condividono lo stesso albero risorse.
+- Il CSS inline presente in `layoutHeader()` contiene variabili e override Ravioli globali: non e' CSS locale di pagina e non va spostato senza test dedicato.
+- Il JavaScript in `layoutFooter()` gestisce il filtro rapido comune tramite `data-table-filter` e `data-quick-filter`.
+
+Decisione:
+
+- non modificare `includes/layout.php` in questa fase;
+- considerarlo area centrale ad alto rischio regressione;
+- eventuali interventi futuri devono preservare menu, badge notifiche, drawer mobile, filtri rapidi e colori/pulsanti Ravioli.
+
 ## Pagine principali rilevate nella prima passata
 
 ### Area base
@@ -89,6 +106,6 @@ Stato: nessun riferimento residuo certo trovato nella prima ricerca.
 
 ## Prossimi passi possibili
 
-1. Se serve, fare una seconda passata mirata file per file su `includes/layout.php` e `includes/ui.php`.
+1. Se serve, fare una seconda passata mirata file per file su `includes/ui.php`.
 2. Se emergono link rotti certi, correggere solo il file sorgente interessato.
 3. Mantenere questa mappa aggiornata dopo ogni pulizia strutturale.
