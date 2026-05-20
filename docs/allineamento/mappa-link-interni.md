@@ -93,6 +93,21 @@ Decisione:
 - non usarlo forzatamente dove esiste gia' il filtro rapido consolidato;
 - usarlo solo per pagine con filtri multipli/strutturati e dopo test visivo.
 
+### Verifica `includes/table.php`
+
+Stato: verificato, nessuna modifica applicativa.
+
+- Contiene il componente `renderHrTableSection()` per sezioni tabellari standard.
+- Gestisce titolo, sottotitolo, righe, colonne configurabili, renderer riga tramite callback, messaggio vuoto e classi personalizzabili.
+- Non risulta un duplicato obsoleto: e' utile per tabelle semplici o pagine nuove.
+- Non e' adatto come sostituzione automatica di tabelle con form inline, `details`, pulsanti specifici o logiche gia' approvate.
+
+Decisione:
+
+- non eliminare `includes/table.php`;
+- non applicarlo forzatamente alle pagine consolidate;
+- usarlo solo su pagine nuove o refactoring a basso rischio con test visivo.
+
 ## Pagine principali rilevate nella prima passata
 
 ### Area base
@@ -140,6 +155,7 @@ Decisione:
 - `includes/ui.php` contiene helper di rendering UI: verificare prima di modificare link o componenti.
 - `includes/admin.php` contiene helper specifici Admin: non fondere senza test dedicato.
 - `includes/filtri.php` contiene filtri strutturati: non sostituisce automaticamente il filtro rapido.
+- `includes/table.php` contiene rendering tabellare generico: non sostituisce automaticamente tabelle con form o azioni complesse.
 - `notifiche.php` puo' contenere link contestuali a richieste HR: verificare sempre con casi reali.
 - Le pagine HR approvate sono contratti consolidati: non rimuovere automatismi o filtri rapidi gia' validati.
 
@@ -153,5 +169,5 @@ Decisione:
 ## Prossimi passi possibili
 
 1. Se emergono link rotti certi, correggere solo il file sorgente interessato.
-2. Valutare `includes/table.php` solo in lettura/inventario prima di ogni refactoring.
+2. Usare i componenti comuni solo su pagine nuove o refactoring a basso rischio.
 3. Mantenere questa mappa aggiornata dopo ogni pulizia strutturale.
