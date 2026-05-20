@@ -515,6 +515,7 @@ layoutHeader('Ordini fornitori aperti');
                             } elseif ((int)$row['progr_1'] === 2) {
                                 $classeColore = 'ofa-green';
                             }
+                            $formId = 'form_note_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string)$row['n_ordine'] . '_' . (string)$row['n_riga']);
                             ?>
                             <tr>
                                 <td class="<?= $classeColore ?>"><?= htmlspecialchars((string)$row['n_ordine']) ?></td>
@@ -525,46 +526,44 @@ layoutHeader('Ordini fornitori aperti');
                                 <td class="<?= $classeColore ?>" style="text-align:right;"><?= number_format((float)$row['q_ordinata'], 0, ',', '.') ?></td>
                                 <td class="<?= $classeColore ?>" style="text-align:right;"><?= number_format((float)$row['q_residua'], 0, ',', '.') ?></td>
                                 <td class="<?= $classeColore ?>"><?= htmlspecialchars((string)($row['nota'] ?? '')) ?></td>
-
-                                <form method="post">
-                                    <input type="hidden" name="azione" value="salva_note">
-                                    <input type="hidden" name="n_ordine" value="<?= htmlspecialchars((string)$row['n_ordine']) ?>">
-                                    <input type="hidden" name="n_riga" value="<?= htmlspecialchars((string)$row['n_riga']) ?>">
-                                    <input type="hidden" name="fornitore" value="<?= htmlspecialchars((string)($row['fornitore'] ?? '')) ?>">
-                                    <input type="hidden" name="articolo" value="<?= htmlspecialchars((string)($row['articolo'] ?? '')) ?>">
-
-                                    <td>
-                                        <input
-                                            type="text"
-                                            name="nota_ravioli"
-                                            value="<?= htmlspecialchars((string)($row['nota_ravioli'] ?? '')) ?>"
-                                            class="ofa-note-input"
-                                        >
-                                    </td>
-
-                                    <td>
-                                        <input
-                                            type="text"
-                                            name="nota_fornitore"
-                                            value="<?= htmlspecialchars((string)($row['nota_fornitore'] ?? '')) ?>"
-                                            class="ofa-note-input"
-                                        >
-                                        <div class="ofa-mini">
-                                            <?= !empty($row['data_evento']) ? 'Ultimo evento: ' . htmlspecialchars((string)$row['data_evento']) : '' ?>
-                                            <?php if (!empty($row['utente_modifica'])): ?>
-                                                <br>Utente: <?= htmlspecialchars((string)$row['utente_modifica']) ?>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-
-                                    <td style="white-space:nowrap;">
+                                <td>
+                                    <input
+                                        form="<?= htmlspecialchars($formId) ?>"
+                                        type="text"
+                                        name="nota_ravioli"
+                                        value="<?= htmlspecialchars((string)($row['nota_ravioli'] ?? '')) ?>"
+                                        class="ofa-note-input"
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        form="<?= htmlspecialchars($formId) ?>"
+                                        type="text"
+                                        name="nota_fornitore"
+                                        value="<?= htmlspecialchars((string)($row['nota_fornitore'] ?? '')) ?>"
+                                        class="ofa-note-input"
+                                    >
+                                    <div class="ofa-mini">
+                                        <?= !empty($row['data_evento']) ? 'Ultimo evento: ' . htmlspecialchars((string)$row['data_evento']) : '' ?>
+                                        <?php if (!empty($row['utente_modifica'])): ?>
+                                            <br>Utente: <?= htmlspecialchars((string)$row['utente_modifica']) ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td style="white-space:nowrap;">
+                                    <form method="post" id="<?= htmlspecialchars($formId) ?>">
+                                        <input type="hidden" name="azione" value="salva_note">
+                                        <input type="hidden" name="n_ordine" value="<?= htmlspecialchars((string)$row['n_ordine']) ?>">
+                                        <input type="hidden" name="n_riga" value="<?= htmlspecialchars((string)$row['n_riga']) ?>">
+                                        <input type="hidden" name="fornitore" value="<?= htmlspecialchars((string)($row['fornitore'] ?? '')) ?>">
+                                        <input type="hidden" name="articolo" value="<?= htmlspecialchars((string)($row['articolo'] ?? '')) ?>">
                                         <?php if ($puoScrivere): ?>
                                             <button type="submit">Salva</button>
                                         <?php else: ?>
                                             -
                                         <?php endif; ?>
-                                    </td>
-                                </form>
+                                    </form>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
