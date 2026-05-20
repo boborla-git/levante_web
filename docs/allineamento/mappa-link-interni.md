@@ -63,6 +63,21 @@ Decisione:
 - non applicarlo forzatamente alle pagine gia' approvate;
 - usarlo con gradualita' solo su pagine nuove o su refactoring a basso rischio.
 
+### Verifica `includes/admin.php`
+
+Stato: verificato, nessuna modifica applicativa.
+
+- Contiene helper specifici per l'area Admin.
+- Le funzioni principali sono `renderAdminTabs()`, `renderAdminQuickFilter()`, `renderAdminAlert()` e `renderAdminSaveActions()`.
+- Il filtro rapido Admin usa `data-table-filter`, quindi si integra con il JavaScript globale di `includes/layout.php`.
+- Non risulta un duplicato obsoleto: separa correttamente i componenti Admin dagli helper UI piu' generici.
+
+Decisione:
+
+- non eliminare `includes/admin.php`;
+- non fonderlo ora con `includes/ui.php`;
+- preservare la separazione Admin/HR-generico salvo refactoring dedicato e test visivo.
+
 ## Pagine principali rilevate nella prima passata
 
 ### Area base
@@ -108,6 +123,7 @@ Decisione:
 
 - `includes/layout.php` genera il menu e contiene logica/stile globale: area ad alto rischio regressione.
 - `includes/ui.php` contiene helper di rendering UI: verificare prima di modificare link o componenti.
+- `includes/admin.php` contiene helper specifici Admin: non fondere senza test dedicato.
 - `notifiche.php` puo' contenere link contestuali a richieste HR: verificare sempre con casi reali.
 - Le pagine HR approvate sono contratti consolidati: non rimuovere automatismi o filtri rapidi gia' validati.
 
@@ -121,5 +137,5 @@ Decisione:
 ## Prossimi passi possibili
 
 1. Se emergono link rotti certi, correggere solo il file sorgente interessato.
-2. Valutare `includes/admin.php`, `includes/filtri.php` e `includes/table.php` solo in lettura/inventario prima di ogni refactoring.
+2. Valutare `includes/filtri.php` e `includes/table.php` solo in lettura/inventario prima di ogni refactoring.
 3. Mantenere questa mappa aggiornata dopo ogni pulizia strutturale.
