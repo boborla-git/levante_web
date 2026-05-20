@@ -49,6 +49,20 @@ Decisione:
 - considerarlo area centrale ad alto rischio regressione;
 - eventuali interventi futuri devono preservare menu, badge notifiche, drawer mobile, filtri rapidi e colori/pulsanti Ravioli.
 
+### Verifica `includes/ui.php`
+
+Stato: verificato, nessuna modifica applicativa.
+
+- Contiene helper UI comuni per intestazioni pagina, riepiloghi, alert, sezioni/card, toolbar e azioni.
+- Le funzioni principali sono `renderHrPageHeader()`, `renderHrSummaryLine()`, `renderHrAlert()`, `renderHrSectionHeader()`, `renderHrCardOpen()`, `renderHrCardClose()`, `renderHrToolbar()` e `renderHrAction()`.
+- Non risulta un duplicato obsoleto: e' un componente comune utile.
+
+Decisione:
+
+- non eliminare `includes/ui.php`;
+- non applicarlo forzatamente alle pagine gia' approvate;
+- usarlo con gradualita' solo su pagine nuove o su refactoring a basso rischio.
+
 ## Pagine principali rilevate nella prima passata
 
 ### Area base
@@ -106,6 +120,6 @@ Decisione:
 
 ## Prossimi passi possibili
 
-1. Se serve, fare una seconda passata mirata file per file su `includes/ui.php`.
-2. Se emergono link rotti certi, correggere solo il file sorgente interessato.
+1. Se emergono link rotti certi, correggere solo il file sorgente interessato.
+2. Valutare `includes/admin.php`, `includes/filtri.php` e `includes/table.php` solo in lettura/inventario prima di ogni refactoring.
 3. Mantenere questa mappa aggiornata dopo ogni pulizia strutturale.
