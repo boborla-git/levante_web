@@ -78,6 +78,21 @@ Decisione:
 - non fonderlo ora con `includes/ui.php`;
 - preservare la separazione Admin/HR-generico salvo refactoring dedicato e test visivo.
 
+### Verifica `includes/filtri.php`
+
+Stato: verificato, nessuna modifica applicativa.
+
+- Contiene il componente `renderHrFiltri()` per box filtri strutturati.
+- Gestisce action, method, campi configurabili, campi hidden, select/input, reset URL, pulsanti Applica/Pulisci e badge filtri attivi.
+- Non coincide con il filtro rapido semplice basato su `data-table-filter`.
+- Non risulta un duplicato obsoleto: e' utile per pagine con filtri strutturati veri.
+
+Decisione:
+
+- non eliminare `includes/filtri.php`;
+- non usarlo forzatamente dove esiste gia' il filtro rapido consolidato;
+- usarlo solo per pagine con filtri multipli/strutturati e dopo test visivo.
+
 ## Pagine principali rilevate nella prima passata
 
 ### Area base
@@ -124,6 +139,7 @@ Decisione:
 - `includes/layout.php` genera il menu e contiene logica/stile globale: area ad alto rischio regressione.
 - `includes/ui.php` contiene helper di rendering UI: verificare prima di modificare link o componenti.
 - `includes/admin.php` contiene helper specifici Admin: non fondere senza test dedicato.
+- `includes/filtri.php` contiene filtri strutturati: non sostituisce automaticamente il filtro rapido.
 - `notifiche.php` puo' contenere link contestuali a richieste HR: verificare sempre con casi reali.
 - Le pagine HR approvate sono contratti consolidati: non rimuovere automatismi o filtri rapidi gia' validati.
 
@@ -137,5 +153,5 @@ Decisione:
 ## Prossimi passi possibili
 
 1. Se emergono link rotti certi, correggere solo il file sorgente interessato.
-2. Valutare `includes/filtri.php` e `includes/table.php` solo in lettura/inventario prima di ogni refactoring.
+2. Valutare `includes/table.php` solo in lettura/inventario prima di ogni refactoring.
 3. Mantenere questa mappa aggiornata dopo ogni pulizia strutturale.
