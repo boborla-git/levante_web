@@ -108,6 +108,23 @@ Decisione:
 - non applicarlo forzatamente alle pagine consolidate;
 - usarlo solo su pagine nuove o refactoring a basso rischio con test visivo.
 
+### Verifica `notifiche.php`
+
+Stato: verificato, nessuna modifica applicativa.
+
+- Usa `includes/ui.php` e `includes/badge.php`, quindi sfrutta gia' helper comuni.
+- Normalizza i link notifica con `normalizzaLinkNotifica()`.
+- Accetta solo link interni sicuri o percorsi `.php` compatibili.
+- Quando l'utente apre una notifica, la segna come letta e reindirizza solo verso il link normalizzato.
+- Carica dettagli HR e periodi richiesta per mostrare una scheda contestuale.
+- Non sono emersi link rotti certi o duplicazioni da correggere.
+
+Decisione:
+
+- non modificare `notifiche.php` in questa fase;
+- preservare la normalizzazione dei link notifica;
+- verificare sempre con casi reali prima di cambiare link, redirect o dettaglio richiesta.
+
 ## Pagine principali rilevate nella prima passata
 
 ### Area base
@@ -156,7 +173,7 @@ Decisione:
 - `includes/admin.php` contiene helper specifici Admin: non fondere senza test dedicato.
 - `includes/filtri.php` contiene filtri strutturati: non sostituisce automaticamente il filtro rapido.
 - `includes/table.php` contiene rendering tabellare generico: non sostituisce automaticamente tabelle con form o azioni complesse.
-- `notifiche.php` puo' contenere link contestuali a richieste HR: verificare sempre con casi reali.
+- `notifiche.php` contiene link contestuali e redirect: preservare `normalizzaLinkNotifica()` e verificare con casi reali.
 - Le pagine HR approvate sono contratti consolidati: non rimuovere automatismi o filtri rapidi gia' validati.
 
 ## Cosa non fare automaticamente
