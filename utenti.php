@@ -10,8 +10,60 @@ require_once __DIR__ . '/includes/badge.php';
 
 richiediPermessoLettura('utenti');
 
-$stmt = $pdo->query("
-    SELECT
+$pdo = db();
+
+function h(?string $valore): string
+{
+    return htmlspecialchars((string)$valore, ENT_QUOTES, 'UTF-8');
+}
+
+function adminUserDisplayName(array $utente): string
+{
+    $nome = trim((string)($utente['nome'] ?? ''));
+    $cognome = trim((string)($utente['cognome'] ?? ''));
+    $username = trim((string)($utente['username'] ?? ''));
+    $nominativo = trim($nome . ' ' . $cognome);
+
+    return $nominativo !== '' ? $nominativo : $username;
+}
+
+function adminUserInitials(array $utente): string
+{
+    $nome = trim((string)($utente['nome'] ?? ''));
+    $cognome = trim((string)($utente['cognome'] ?? ''));
+    $username = trim((string)($utente['username'] ?? ''));
+
+    $iniziali = '';
+    if ($nome !== '') {
+        $iniziali .= mb_substr($nome, 0, 1, 'UTF-8');
+    }
+    if ($cognome !== '') {
+        $iniziali .= mb_substr($cognome, 0, 1, 'UTF-8');
+    }
+
+    if ($iniziali === '' && $username !== '') {
+        $iniziali = mb_substr($username, 0, 2, 'UTF-8');
+    }
+
+    return mb_strtoupper($iniziali !== '' ? $iniziali : '?', 'UTF-8');
+}
+
+function adminFormatDate(?string $valore): string
+{
+    $valore = trim((string)$valore);
+    if ($valore === '') {
+        return 'N/D';
+    }
+
+    try {
+        return (new DateTime($valore))->format('d/m/Y H:i');
+    } catch (Throwable $e) {
+        return $valore;
+    }
+}
+
+$stmt = $pdo->query(
+    "SELECT
         u.id_utente,
         u.username,
         u.nome,
@@ -20,7 +72,7 @@ $stmt = $pdo->query("
         u.deve_cambiare_password,
         u.data_creazione,
         u.data_aggiornamento,
-        ar.codice_ruolo AS ruolo_attivo
+        GROUP_CONCAT(DISTINCT ar.codice_ruolo ORDER BY ar.ordinamento, ar.codice_ruolo SEPARATOR ', ') AS ruoli_attivi
     FROM aut_utenti u
     LEFT JOIN aut_utenti_ruoli aur
         ON aur.id_utente = u.id_utente
@@ -29,98 +81,367 @@ $stmt = $pdo->query("
     LEFT JOIN aut_ruoli ar
         ON ar.id_ruolo = aur.id_ruolo
         AND ar.attivo = 1
-    ORDER BY u.username
-");
+    GROUP BY
+        u.id_utente,
+        u.username,
+        u.nome,
+        u.cognome,
+        u.attivo,
+        u.deve_cambiare_password,
+        u.data_creazione,
+        u.data_aggiornamento
+    ORDER BY u.attivo DESC, u.username"
+);
 
-$utenti = $stmt->fetchAll();
+$utenti = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$riepilogo = [
+    'totali' => count($utenti),
+    'attivi' => 0,
+    'disattivi' => 0,
+    'senza_ruolo' => 0,
+    'cambio_password' => 0,
+];
+
+foreach ($utenti as $utente) {
+    if ((int)$utente['attivo'] === 1) {
+        $riepilogo['attivi']++;
+    } else {
+        $riepilogo['disattivi']++;
+    }
+
+    if (trim((string)($utente['ruoli_attivi'] ?? '')) === '') {
+        $riepilogo['senza_ruolo']++;
+    }
+
+    if ((int)$utente['deve_cambiare_password'] === 1) {
+        $riepilogo['cambio_password']++;
+    }
+}
+
+$idUtenteCorrente = (int)($_SESSION['utente_id'] ?? 0);
 
 layoutHeader('Gestione utenti');
 ?>
 
-<div class="card card-wide">
-    <h1>Admin</h1>
-
-    <?php renderAdminTabs('utenti'); ?>
-
-    <section class="admin-page-block">
-        <div class="admin-section-heading">
-            <h2>Gestione utenti</h2>
-            <p class="muted">Elenco degli utenti censiti nel portale.</p>
+<div class="card card-compact">
+    <div class="section-head">
+        <div>
+            <h1>Gestione utenti</h1>
+            <div class="meta">Directory amministrativa degli utenti del portale: accessi, ruoli attivi, stato e azioni di sicurezza.</div>
         </div>
-
-        <div class="admin-actions-toolbar">
-            <div class="admin-page-actions">
-                <a class="btn btn-primary" href="utente_nuovo.php"><i class="la la-user-plus" aria-hidden="true"></i> Nuovo utente</a>
-            </div>
-
-            <?php renderAdminQuickFilter('filtroRapidoUtenti', 'tabellaUtenti'); ?>
+        <div class="section-head-actions">
+            <a class="btn btn-primary" href="utente_nuovo.php"><i class="la la-user-plus" aria-hidden="true"></i> Nuovo utente</a>
+            <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Dashboard</a>
         </div>
-    </section>
-
-    <div class="table-wrap">
-    <table id="tabellaUtenti">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Username</th>
-                <th>Nome e cognome</th>
-                <th>Ruolo attivo</th>
-                <th>Stato</th>
-                <th>Cambio password</th>
-                <th>Creato il</th>
-                <th>Aggiornato il</th>
-                <th>Azioni</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($utenti as $utente): ?>
-                <?php $nomeCompleto = trim(((string)$utente['nome']) . ' ' . ((string)$utente['cognome'])); ?>
-                <tr>
-                    <td><?= (int)$utente['id_utente'] ?></td>
-                    <td><?= htmlspecialchars((string)$utente['username']) ?></td>
-                    <td><?= htmlspecialchars($nomeCompleto !== '' ? $nomeCompleto : (string)$utente['username']) ?></td>
-                    <td><?= htmlspecialchars((string)($utente['ruolo_attivo'] ?? 'nessun ruolo')) ?></td>
-                    <td>
-                        <?php if ((int)$utente['attivo'] === 1): ?>
-                            <?= renderHrStatusBadge('ATTIVO', 'Attivo', ['class' => 'user-badge']) ?>
-                        <?php else: ?>
-                            <?= renderHrStatusBadge('DISATTIVO', 'Disattivo', ['class' => 'user-badge']) ?>
-                        <?php endif; ?>
-                    </td>
-                    <td>
-                        <?php if ((int)$utente['deve_cambiare_password'] === 1): ?>
-                            <?= renderHrStatusBadge('OBBLIGATORIO', 'Obbligatorio', ['class' => 'user-badge']) ?>
-                        <?php else: ?>
-                            <?= renderHrStatusBadge('NO', 'No', ['class' => 'user-badge']) ?>
-                        <?php endif; ?>
-                    </td>
-                    <td><?= htmlspecialchars((string)$utente['data_creazione']) ?></td>
-                    <td><?= htmlspecialchars((string)($utente['data_aggiornamento'] ?? '')) ?></td>
-                    <td>
-                        <?php if ((int)$utente['id_utente'] !== (int)($_SESSION['utente_id'] ?? 0)): ?>
-                            <div class="table-actions">
-                                <a class="btn btn-sm btn-light" href="utente_reset_password.php?id=<?= (int)$utente['id_utente'] ?>">
-                                    <i class="la la-key" aria-hidden="true"></i> Reset password
-                                </a>
-                                <a class="btn btn-sm btn-light" href="utente_forza_password.php?id=<?= (int)$utente['id_utente'] ?>"
-                                   onclick="return confirm('Vuoi obbligare questo utente a cambiare la password al prossimo accesso?');">
-                                    <i class="la la-exclamation-circle" aria-hidden="true"></i> Forza cambio password
-                                </a>
-                            </div>
-                        <?php else: ?>
-                            -
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-    </div>
-
-    <div class="links">
-        <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla dashboard</a>
     </div>
 </div>
 
+<div class="card card-compact">
+    <?php renderAdminTabs('utenti'); ?>
+</div>
+
+<section class="hr-config-summary">
+    <span><strong><?= (int)$riepilogo['totali'] ?></strong> utenti</span>
+    <span><strong><?= (int)$riepilogo['attivi'] ?></strong> attivi</span>
+    <span><strong><?= (int)$riepilogo['disattivi'] ?></strong> disattivi</span>
+    <span><strong><?= (int)$riepilogo['senza_ruolo'] ?></strong> senza ruolo</span>
+    <span><strong><?= (int)$riepilogo['cambio_password'] ?></strong> cambio password</span>
+</section>
+
+<div class="card card-wide">
+    <div class="hr-filter-toolbar">
+        <div>
+            <h2>Directory utenti</h2>
+            <div class="meta">Vista compatta per verificare rapidamente utenti, ruoli e azioni principali.</div>
+        </div>
+        <div class="form-group hr-filter-search-group">
+            <label for="utentiSearch">Filtro rapido</label>
+            <input type="search" id="utentiSearch" placeholder="Cerca utente, ruolo, stato..." autocomplete="off">
+        </div>
+    </div>
+
+    <div class="admin-user-grid" id="utentiCards">
+        <?php foreach ($utenti as $utente): ?>
+            <?php
+            $idUtente = (int)$utente['id_utente'];
+            $username = trim((string)$utente['username']);
+            $nomeCompleto = adminUserDisplayName($utente);
+            $ruoli = trim((string)($utente['ruoli_attivi'] ?? ''));
+            $utenteAttivo = (int)$utente['attivo'] === 1;
+            $cambioPassword = (int)$utente['deve_cambiare_password'] === 1;
+            $searchText = trim($username . ' ' . $nomeCompleto . ' ' . $ruoli . ' ' . ($utenteAttivo ? 'attivo' : 'disattivo') . ' ' . ($cambioPassword ? 'cambio password obbligatorio' : 'password ok'));
+            ?>
+            <article class="admin-user-card" data-search="<?= h(mb_strtolower($searchText, 'UTF-8')) ?>">
+                <div class="admin-user-card-main">
+                    <div class="admin-user-avatar" aria-hidden="true"><?= h(adminUserInitials($utente)) ?></div>
+                    <div class="admin-user-identity">
+                        <h3><?= h($nomeCompleto) ?></h3>
+                        <div class="meta">@<?= h($username) ?> · ID <?= $idUtente ?></div>
+                    </div>
+                    <div class="admin-user-status">
+                        <?= $utenteAttivo ? renderHrStatusBadge('ATTIVO', 'Attivo', ['class' => 'user-badge']) : renderHrStatusBadge('DISATTIVO', 'Disattivo', ['class' => 'user-badge']) ?>
+                    </div>
+                </div>
+
+                <div class="admin-user-card-body">
+                    <div class="admin-user-info-box">
+                        <span>Ruoli attivi</span>
+                        <strong><?= h($ruoli !== '' ? $ruoli : 'Nessun ruolo') ?></strong>
+                    </div>
+                    <div class="admin-user-info-box">
+                        <span>Password</span>
+                        <strong><?= $cambioPassword ? 'Cambio obbligatorio' : 'OK' ?></strong>
+                    </div>
+                    <div class="admin-user-info-box">
+                        <span>Creato</span>
+                        <strong><?= h(adminFormatDate((string)$utente['data_creazione'])) ?></strong>
+                    </div>
+                    <div class="admin-user-info-box">
+                        <span>Aggiornato</span>
+                        <strong><?= h(adminFormatDate((string)($utente['data_aggiornamento'] ?? ''))) ?></strong>
+                    </div>
+                </div>
+
+                <div class="admin-user-card-footer">
+                    <?php if ($cambioPassword): ?>
+                        <?= renderHrStatusBadge('OBBLIGATORIO', 'Cambio password richiesto', ['class' => 'user-badge']) ?>
+                    <?php endif; ?>
+
+                    <?php if ($idUtente !== $idUtenteCorrente): ?>
+                        <div class="admin-user-actions">
+                            <a class="btn btn-sm btn-light" href="utente_reset_password.php?id=<?= $idUtente ?>">
+                                <i class="la la-key" aria-hidden="true"></i> Reset
+                            </a>
+                            <a class="btn btn-sm btn-light" href="utente_forza_password.php?id=<?= $idUtente ?>"
+                               onclick="return confirm('Vuoi obbligare questo utente a cambiare la password al prossimo accesso?');">
+                                <i class="la la-exclamation-circle" aria-hidden="true"></i> Forza cambio
+                            </a>
+                        </div>
+                    <?php else: ?>
+                        <span class="meta">Utente corrente</span>
+                    <?php endif; ?>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<div class="card card-wide">
+    <div class="hr-filter-toolbar">
+        <div>
+            <h2>Archivio utenti</h2>
+            <div class="meta">Vista tabellare completa per controlli amministrativi.</div>
+        </div>
+        <?php renderAdminQuickFilter('filtroRapidoUtenti', 'tabellaUtenti'); ?>
+    </div>
+
+    <div class="table-wrap">
+        <table id="tabellaUtenti">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Nome e cognome</th>
+                    <th>Ruoli attivi</th>
+                    <th>Stato</th>
+                    <th>Cambio password</th>
+                    <th>Creato il</th>
+                    <th>Aggiornato il</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($utenti as $utente): ?>
+                    <?php
+                    $idUtente = (int)$utente['id_utente'];
+                    $nomeCompleto = adminUserDisplayName($utente);
+                    $ruoli = trim((string)($utente['ruoli_attivi'] ?? ''));
+                    ?>
+                    <tr>
+                        <td><?= $idUtente ?></td>
+                        <td><?= h((string)$utente['username']) ?></td>
+                        <td><?= h($nomeCompleto) ?></td>
+                        <td><?= h($ruoli !== '' ? $ruoli : 'nessun ruolo') ?></td>
+                        <td>
+                            <?= (int)$utente['attivo'] === 1
+                                ? renderHrStatusBadge('ATTIVO', 'Attivo', ['class' => 'user-badge'])
+                                : renderHrStatusBadge('DISATTIVO', 'Disattivo', ['class' => 'user-badge']) ?>
+                        </td>
+                        <td>
+                            <?= (int)$utente['deve_cambiare_password'] === 1
+                                ? renderHrStatusBadge('OBBLIGATORIO', 'Obbligatorio', ['class' => 'user-badge'])
+                                : renderHrStatusBadge('NO', 'No', ['class' => 'user-badge']) ?>
+                        </td>
+                        <td><?= h(adminFormatDate((string)$utente['data_creazione'])) ?></td>
+                        <td><?= h(adminFormatDate((string)($utente['data_aggiornamento'] ?? ''))) ?></td>
+                        <td>
+                            <?php if ($idUtente !== $idUtenteCorrente): ?>
+                                <div class="table-actions">
+                                    <a class="btn btn-sm btn-light" href="utente_reset_password.php?id=<?= $idUtente ?>">
+                                        <i class="la la-key" aria-hidden="true"></i> Reset password
+                                    </a>
+                                    <a class="btn btn-sm btn-light" href="utente_forza_password.php?id=<?= $idUtente ?>"
+                                       onclick="return confirm('Vuoi obbligare questo utente a cambiare la password al prossimo accesso?');">
+                                        <i class="la la-exclamation-circle" aria-hidden="true"></i> Forza cambio password
+                                    </a>
+                                </div>
+                            <?php else: ?>
+                                <span class="meta">Utente corrente</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.admin-user-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+}
+
+.admin-user-card {
+    background: #fff;
+    border: 1px solid var(--border-color, #d8e2ef);
+    border-radius: 14px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+}
+
+.admin-user-card-main,
+.admin-user-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+}
+
+.admin-user-card-main {
+    border-bottom: 1px solid #edf2f7;
+}
+
+.admin-user-avatar {
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    color: #0755c7;
+    background: #eaf3ff;
+    border: 1px solid #cfe4ff;
+}
+
+.admin-user-identity {
+    min-width: 0;
+    flex: 1;
+}
+
+.admin-user-identity h3 {
+    margin: 0 0 3px;
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+.admin-user-status {
+    flex: 0 0 auto;
+}
+
+.admin-user-card-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 14px;
+}
+
+.admin-user-info-box {
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    padding: 10px;
+    min-height: 66px;
+    background: #fbfdff;
+}
+
+.admin-user-info-box span {
+    display: block;
+    color: #52677f;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.admin-user-info-box strong {
+    display: block;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.admin-user-card-footer {
+    justify-content: space-between;
+    border-top: 1px solid #edf2f7;
+    background: #fbfdff;
+    flex-wrap: wrap;
+}
+
+.admin-user-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+@media (max-width: 720px) {
+    .admin-user-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-user-card-main,
+    .admin-user-card-footer {
+        align-items: flex-start;
+    }
+
+    .admin-user-status {
+        margin-left: auto;
+    }
+
+    .admin-user-card-body {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-user-actions,
+    .admin-user-actions .btn {
+        width: 100%;
+    }
+
+    .admin-user-actions .btn {
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+(function () {
+    var input = document.getElementById('utentiSearch');
+    var cards = Array.prototype.slice.call(document.querySelectorAll('#utentiCards .admin-user-card'));
+    if (!input || cards.length === 0) {
+        return;
+    }
+
+    input.addEventListener('input', function () {
+        var query = input.value.trim().toLowerCase();
+        cards.forEach(function (card) {
+            var text = card.getAttribute('data-search') || '';
+            card.style.display = text.indexOf(query) !== -1 ? '' : 'none';
+        });
+    });
+}());
+</script>
 
 <?php layoutFooter(); ?>
