@@ -56,6 +56,12 @@ function risorsaContenitorePuro(array $risorsa): bool
     return $tipo === 'menu' && $percorso === '';
 }
 
+function risorsaGestibileNelMenu(array $risorsa): bool
+{
+    $tipo = trim((string)($risorsa['tipo_risorsa'] ?? ''));
+    return in_array($tipo, ['menu', 'pagina'], true);
+}
+
 function adminPermissionLevelLabel(string $level): string
 {
     if ($level === 'write') {
@@ -69,38 +75,27 @@ function adminPermissionLevelLabel(string $level): string
     return 'Nessuno';
 }
 
+function caricaRuoli(PDO $pdo): array
+{
+    $stmt = $pdo->query("\n        SELECT id_ruolo, codice_ruolo, descrizione, attivo, ordinamento\n        FROM aut_ruoli\n        WHERE attivo = 1\n        ORDER BY ordinamento, codice_ruolo\n    ");
+
+    return $stmt->fetchAll();
+}
+
+function caricaRisorse(PDO $pdo): array
+{
+    $stmt = $pdo->query("\n        SELECT\n            id_risorsa,\n            codice_risorsa,\n            descrizione,\n            tipo_risorsa,\n            id_risorsa_padre,\n            percorso,\n            visibile_menu,\n            ordinamento,\n            attivo\n        FROM aut_risorse\n        WHERE attivo = 1\n        ORDER BY\n            COALESCE(id_risorsa_padre, 0),\n            ordinamento,\n            codice_risorsa\n    ");
+
+    return $stmt->fetchAll();
+}
+
 try {
-    $stmtRuoli = $pdo->query("
-        SELECT id_ruolo, codice_ruolo, descrizione, attivo, ordinamento
-        FROM aut_ruoli
-        WHERE attivo = 1
-        ORDER BY ordinamento, codice_ruolo
-    ");
-    $ruoli = $stmtRuoli->fetchAll();
+    $ruoli = caricaRuoli($pdo);
+    $risorse = caricaRisorse($pdo);
 
     if (!$ruoli) {
         throw new RuntimeException('Nessun ruolo attivo trovato.');
     }
-
-    $stmtRisorse = $pdo->query("
-        SELECT
-            id_risorsa,
-            codice_risorsa,
-            descrizione,
-            tipo_risorsa,
-            id_risorsa_padre,
-            percorso,
-            visibile_menu,
-            ordinamento,
-            attivo
-        FROM aut_risorse
-        WHERE attivo = 1
-        ORDER BY
-            COALESCE(id_risorsa_padre, 0),
-            ordinamento,
-            codice_risorsa
-    ");
-    $risorse = $stmtRisorse->fetchAll();
 } catch (Throwable $e) {
     http_response_code(500);
     die('Errore nel caricamento di ruoli o risorse.');
@@ -124,12 +119,25 @@ if ($idRuoloSelezionato <= 0 || !isset($ruoliPerId[$idRuoloSelezionato])) {
     $idRuoloSelezionato = (int)$primoRuolo['id_ruolo'];
 }
 
+if (isset($_GET['ok']) && (string)$_GET['ok'] === '1') {
+    $messaggio = 'Permessi del ruolo e impostazioni menu aggiornati correttamente.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salva_permessi'])) {
     try {
         $pdo->beginTransaction();
 
         foreach ($risorse as $risorsa) {
             $idRisorsa = (int)$risorsa['id_risorsa'];
+
+            if (risorsaGestibileNelMenu($risorsa)) {
+                $menuVisibile = isset($_POST['menu_risorsa_' . $idRisorsa]) ? 1 : 0;
+                $stmtMenu = $pdo->prepare("\n                    UPDATE aut_risorse\n                    SET visibile_menu = :visibile_menu\n                    WHERE id_risorsa = :id_risorsa\n                ");
+                $stmtMenu->execute([
+                    'visibile_menu' => $menuVisibile,
+                    'id_risorsa' => $idRisorsa,
+                ]);
+            }
 
             if (risorsaContenitorePuro($risorsa)) {
                 continue;
@@ -145,48 +153,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salva_permessi'])) {
             $viewConsentito = ($livello === 'read' || $livello === 'write') ? 1 : 0;
             $editConsentito = ($livello === 'write') ? 1 : 0;
 
-            $stmtView = $pdo->prepare("
-                INSERT INTO aut_ruoli_permessi
-                (
-                    id_ruolo,
-                    id_risorsa,
-                    permesso,
-                    consentito
-                )
-                VALUES
-                (
-                    :id_ruolo,
-                    :id_risorsa,
-                    'view',
-                    :consentito
-                )
-                ON DUPLICATE KEY UPDATE
-                    consentito = VALUES(consentito)
-            ");
+            $stmtView = $pdo->prepare("\n                INSERT INTO aut_ruoli_permessi\n                (\n                    id_ruolo,\n                    id_risorsa,\n                    permesso,\n                    consentito\n                )\n                VALUES\n                (\n                    :id_ruolo,\n                    :id_risorsa,\n                    'view',\n                    :consentito\n                )\n                ON DUPLICATE KEY UPDATE\n                    consentito = VALUES(consentito)\n            ");
             $stmtView->execute([
                 'id_ruolo' => $idRuoloSelezionato,
                 'id_risorsa' => $idRisorsa,
                 'consentito' => $viewConsentito,
             ]);
 
-            $stmtEdit = $pdo->prepare("
-                INSERT INTO aut_ruoli_permessi
-                (
-                    id_ruolo,
-                    id_risorsa,
-                    permesso,
-                    consentito
-                )
-                VALUES
-                (
-                    :id_ruolo,
-                    :id_risorsa,
-                    'edit',
-                    :consentito
-                )
-                ON DUPLICATE KEY UPDATE
-                    consentito = VALUES(consentito)
-            ");
+            $stmtEdit = $pdo->prepare("\n                INSERT INTO aut_ruoli_permessi\n                (\n                    id_ruolo,\n                    id_risorsa,\n                    permesso,\n                    consentito\n                )\n                VALUES\n                (\n                    :id_ruolo,\n                    :id_risorsa,\n                    'edit',\n                    :consentito\n                )\n                ON DUPLICATE KEY UPDATE\n                    consentito = VALUES(consentito)\n            ");
             $stmtEdit->execute([
                 'id_ruolo' => $idRuoloSelezionato,
                 'id_risorsa' => $idRisorsa,
@@ -195,12 +169,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salva_permessi'])) {
         }
 
         $pdo->commit();
-        $messaggio = 'Permessi del ruolo aggiornati correttamente.';
+        header('Location: permessi_ruoli.php?id_ruolo=' . $idRuoloSelezionato . '&ok=1');
+        exit;
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        $errore = 'Errore durante il salvataggio dei permessi del ruolo.';
+        $errore = 'Errore durante il salvataggio dei permessi o del menu.';
         error_log('permessi_ruoli.php save error: ' . $e->getMessage());
     }
 }
@@ -208,10 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salva_permessi'])) {
 $permessiRuoliMappa = [];
 
 try {
-    $stmtPermessi = $pdo->query("
-        SELECT id_ruolo, id_risorsa, permesso, consentito
-        FROM aut_ruoli_permessi
-    ");
+    $stmtPermessi = $pdo->query("\n        SELECT id_ruolo, id_risorsa, permesso, consentito\n        FROM aut_ruoli_permessi\n    ");
 
     while ($riga = $stmtPermessi->fetch()) {
         $idRuolo = (int)$riga['id_ruolo'];
@@ -267,6 +239,9 @@ $totaleScrittura = 0;
 foreach ($risorseGerarchiche as $risorsaConteggio) {
     if (risorsaContenitorePuro($risorsaConteggio)) {
         $totaleContenitori++;
+        if ((int)($risorsaConteggio['visibile_menu'] ?? 0) === 1) {
+            $totaleVisibiliMenu++;
+        }
         continue;
     }
 
@@ -293,7 +268,7 @@ layoutHeader('Permessi ruoli');
     <div class="section-head">
         <div>
             <h1>Permessi ruoli</h1>
-            <div class="meta">Gestione dei permessi associati ai ruoli del portale: accesso negato, sola lettura o scrittura.</div>
+            <div class="meta">Gestione dei permessi associati ai ruoli del portale: accesso negato, sola lettura, scrittura e presenza nel menu.</div>
         </div>
         <div class="section-head-actions">
             <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Dashboard</a>
@@ -310,6 +285,7 @@ layoutHeader('Permessi ruoli');
     <span><strong><?= (int)$totaleScrittura ?></strong> in scrittura</span>
     <span><strong><?= (int)$totaleLettura ?></strong> in lettura</span>
     <span><strong><?= (int)$totaleNessuno ?></strong> senza accesso</span>
+    <span><strong><?= (int)$totaleVisibiliMenu ?></strong> visibili nel menu</span>
     <span><strong><?= (int)$totaleContenitori ?></strong> contenitori</span>
 </section>
 
@@ -320,7 +296,7 @@ layoutHeader('Permessi ruoli');
     <div class="hr-filter-toolbar admin-section-toolbar">
         <div class="admin-section-title">
             <h2>Ruolo selezionato</h2>
-            <div class="meta">Scegli il ruolo da configurare. Le modifiche vengono salvate solo con il pulsante finale.</div>
+            <div class="meta">Scegli il ruolo da configurare. Le modifiche ai permessi e al menu vengono salvate solo con il pulsante finale.</div>
         </div>
 
         <form method="get" id="formRuolo" class="permissions-role-form">
@@ -338,7 +314,7 @@ layoutHeader('Permessi ruoli');
     <div class="admin-current-role">
         <span><strong>Ruolo corrente:</strong> <?= htmlspecialchars((string)$ruoloSelezionato['descrizione']) ?></span>
         <span><strong>Codice tecnico:</strong> <code><?= htmlspecialchars((string)$ruoloSelezionato['codice_ruolo']) ?></code></span>
-        <span><strong>Risorse visibili nel menu:</strong> <?= (int)$totaleVisibiliMenu ?></span>
+        <span><strong>Voci visibili nel menu:</strong> <?= (int)$totaleVisibiliMenu ?></span>
     </div>
 </div>
 
@@ -349,8 +325,8 @@ layoutHeader('Permessi ruoli');
     <div class="card card-wide admin-permissions-card">
         <div class="hr-filter-toolbar admin-section-toolbar">
             <div class="admin-section-title">
-                <h2>Albero permessi</h2>
-                <div class="meta">Vista gerarchica delle risorse del portale. I contenitori organizzano il menu e non hanno permessi propri.</div>
+                <h2>Albero permessi e menu</h2>
+                <div class="meta">Vista gerarchica delle risorse. La colonna Menu stabilisce se la risorsa compare nella navigazione del portale.</div>
             </div>
 
             <div class="form-group hr-filter-search-group">
@@ -367,9 +343,9 @@ layoutHeader('Permessi ruoli');
                         <th class="permissions-radio-cell">Nessuno</th>
                         <th class="permissions-radio-cell">Lettura</th>
                         <th class="permissions-radio-cell">Scrittura</th>
+                        <th class="permissions-radio-cell">Menu</th>
                         <th>Tipo</th>
                         <th>Percorso</th>
-                        <th>Menu</th>
                         <th>Codice</th>
                     </tr>
                 </thead>
@@ -385,14 +361,15 @@ layoutHeader('Permessi ruoli');
                         $prefisso = $depth > 0 ? str_repeat('↳ ', $depth) : '';
                         $depthClass = 'resource-depth-' . min($depth, 8);
                         $contenitorePuro = risorsaContenitorePuro($risorsa);
+                        $menuGestibile = risorsaGestibileNelMenu($risorsa);
                         $visibileMenu = (int)($risorsa['visibile_menu'] ?? 0) === 1;
-                        $searchText = trim((string)$risorsa['descrizione'] . ' ' . (string)$risorsa['codice_risorsa'] . ' ' . $tipo . ' ' . $percorso . ' ' . adminPermissionLevelLabel($livelloCorrente));
+                        $searchText = trim((string)$risorsa['descrizione'] . ' ' . (string)$risorsa['codice_risorsa'] . ' ' . $tipo . ' ' . $percorso . ' ' . adminPermissionLevelLabel($livelloCorrente) . ' ' . ($visibileMenu ? 'menu si' : 'menu no'));
                         ?>
                         <tr class="<?= $contenitorePuro ? 'permissions-row-container' : 'permissions-row-resource' ?>" data-search="<?= htmlspecialchars(mb_strtolower($searchText, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?>">
                             <td class="permissions-resource-cell <?= htmlspecialchars($depthClass) ?>">
                                 <span class="permissions-tree-prefix"><?= htmlspecialchars($prefisso) ?></span>
                                 <strong><?= htmlspecialchars((string)$risorsa['descrizione']) ?></strong>
-                                <span class="permissions-mobile-meta"><?= htmlspecialchars(adminPermissionLevelLabel($livelloCorrente)) ?></span>
+                                <span class="permissions-mobile-meta"><?= htmlspecialchars(adminPermissionLevelLabel($livelloCorrente)) ?> · Menu <?= $visibileMenu ? 'sì' : 'no' ?></span>
                             </td>
 
                             <?php if ($contenitorePuro): ?>
@@ -415,13 +392,17 @@ layoutHeader('Permessi ruoli');
                                 </td>
                             <?php endif; ?>
 
+                            <td class="permissions-radio-cell">
+                                <?php if ($menuGestibile): ?>
+                                    <label class="permission-choice" title="Mostra nel menu">
+                                        <input type="checkbox" name="menu_risorsa_<?= (int)$idRisorsa ?>" value="1" aria-label="Mostra nel menu <?= htmlspecialchars((string)$risorsa['descrizione']) ?>" <?= $visibileMenu ? 'checked' : '' ?>>
+                                    </label>
+                                <?php else: ?>
+                                    <span class="resource-menu-badge resource-menu-badge-off">No</span>
+                                <?php endif; ?>
+                            </td>
                             <td><?= htmlspecialchars($tipo) ?></td>
                             <td><?= $percorso !== '' ? '<code>' . htmlspecialchars($percorso) . '</code>' : '&mdash;' ?></td>
-                            <td>
-                                <span class="resource-menu-badge <?= $visibileMenu ? 'resource-menu-badge-on' : 'resource-menu-badge-off' ?>">
-                                    <?= $visibileMenu ? 'Sì' : 'No' ?>
-                                </span>
-                            </td>
                             <td><code><?= htmlspecialchars((string)$risorsa['codice_risorsa']) ?></code></td>
                         </tr>
                     <?php endforeach; ?>
@@ -429,7 +410,7 @@ layoutHeader('Permessi ruoli');
             </table>
         </div>
 
-        <?php renderAdminSaveActions('Salva permessi ruolo'); ?>
+        <?php renderAdminSaveActions('Salva permessi e menu'); ?>
     </div>
 </form>
 
