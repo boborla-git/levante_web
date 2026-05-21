@@ -91,10 +91,10 @@ $stmt = $pdo->query(
         u.data_creazione,
         u.data_aggiornamento
     ORDER BY
-        CASE WHEN TRIM(COALESCE(u.cognome, '')) = '' THEN 1 ELSE 0 END,
-        u.cognome ASC,
-        u.nome ASC,
-        u.username ASC"
+        u.attivo DESC,
+        COALESCE(NULLIF(u.cognome, ''), u.username),
+        COALESCE(NULLIF(u.nome, ''), u.username),
+        u.username"
 );
 
 $utenti = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -154,8 +154,8 @@ layoutHeader('Gestione utenti');
 </section>
 
 <div class="card card-wide">
-    <div class="hr-filter-toolbar admin-directory-toolbar">
-        <div>
+    <div class="hr-filter-toolbar admin-section-toolbar">
+        <div class="admin-section-title">
             <h2>Directory utenti</h2>
             <div class="meta">Vista compatta per verificare rapidamente utenti, ruoli e azioni principali.</div>
         </div>
@@ -236,8 +236,8 @@ layoutHeader('Gestione utenti');
 </div>
 
 <div class="card card-wide admin-archive-card">
-    <div class="hr-filter-toolbar">
-        <div>
+    <div class="hr-filter-toolbar admin-section-toolbar">
+        <div class="admin-section-title">
             <h2>Archivio utenti</h2>
             <div class="meta">Vista tabellare completa per controlli amministrativi.</div>
         </div>
@@ -306,6 +306,30 @@ layoutHeader('Gestione utenti');
 </div>
 
 <style>
+.admin-section-toolbar {
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 18px;
+}
+
+.admin-section-toolbar .admin-section-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+}
+
+.admin-section-toolbar .admin-section-title h2 {
+    margin-left: 0;
+    text-align: left;
+}
+
+.admin-section-toolbar .hr-filter-search-group,
+.admin-section-toolbar .admin-list-filter {
+    flex: 0 0 min(360px, 100%);
+    margin-left: auto;
+}
+
 .admin-user-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -435,8 +459,17 @@ layoutHeader('Gestione utenti');
 }
 
 @media (max-width: 720px) {
-    .admin-directory-toolbar {
+    .admin-section-toolbar {
+        display: flex;
+        flex-direction: column;
         align-items: stretch;
+    }
+
+    .admin-section-toolbar .hr-filter-search-group,
+    .admin-section-toolbar .admin-list-filter {
+        flex: 1 1 auto;
+        width: 100%;
+        margin-left: 0;
     }
 
     .admin-user-grid {
