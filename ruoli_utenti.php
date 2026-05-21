@@ -209,8 +209,8 @@ layoutHeader('Ruoli utenti');
 <?php renderAdminAlert($messaggio, 'success'); ?>
 
 <section class="card card-wide">
-    <div class="hr-filter-toolbar">
-        <div>
+    <div class="hr-filter-toolbar admin-section-toolbar">
+        <div class="admin-section-title">
             <h2>Ruoli disponibili</h2>
             <div class="meta">Vista sintetica dei ruoli attivi e del numero di utenti assegnati.</div>
         </div>
@@ -231,8 +231,8 @@ layoutHeader('Ruoli utenti');
 
 <form method="post" id="ruoliUtentiForm">
     <section class="card card-wide">
-        <div class="hr-filter-toolbar">
-            <div>
+        <div class="hr-filter-toolbar admin-section-toolbar">
+            <div class="admin-section-title">
                 <h2>Assegnazione ruoli</h2>
                 <div class="meta">Modifica i ruoli degli utenti e salva tutto con un'unica conferma finale.</div>
             </div>
@@ -288,8 +288,8 @@ layoutHeader('Ruoli utenti');
     </section>
 
     <section class="card card-wide">
-        <div class="hr-filter-toolbar">
-            <div>
+        <div class="hr-filter-toolbar admin-section-toolbar">
+            <div class="admin-section-title">
                 <h2>Archivio assegnazioni</h2>
                 <div class="meta">Vista tabellare completa per controllo amministrativo.</div>
             </div>
@@ -327,6 +327,30 @@ layoutHeader('Ruoli utenti');
 </form>
 
 <style>
+
+.admin-section-toolbar {
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 18px;
+}
+
+.admin-section-toolbar .admin-section-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+}
+
+.admin-section-toolbar .admin-section-title h2 {
+    margin-left: 0;
+    text-align: left;
+}
+
+.admin-section-toolbar .hr-filter-search-group,
+.admin-section-toolbar .admin-list-filter {
+    flex: 0 0 min(360px, 100%);
+    margin-left: auto;
+}
 .admin-role-summary-grid,
 .admin-role-user-grid {
     display: grid;
@@ -462,6 +486,19 @@ layoutHeader('Ruoli utenti');
 }
 
 @media (max-width: 720px) {
+    .admin-section-toolbar {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-section-toolbar .hr-filter-search-group,
+    .admin-section-toolbar .admin-list-filter {
+        flex: 1 1 auto;
+        width: 100%;
+        margin-left: 0;
+    }
+
     .admin-role-summary-grid,
     .admin-role-user-grid {
         grid-template-columns: 1fr;
