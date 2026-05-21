@@ -156,7 +156,7 @@ try {
     $profili = $pdo->query(
         'SELECT *
          FROM v_hr_profili_dipendenti
-         ORDER BY utente_test, cognome, nome, username'
+         ORDER BY cognome, nome, utente_test, username'
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $responsabiliRows = $pdo->query(
@@ -274,7 +274,7 @@ layoutHeader('Profili dipendenti');
             </div>
             <div class="form-group hr-filter-search-group">
                 <label for="profiliSearch">Filtro rapido</label>
-                <input type="search" id="profiliSearch" placeholder="Cerca per nome, reparto, centro di costo, team...">
+                <input type="search" id="profiliSearch" placeholder="Cerca persona, reparto, centro di costo, team...">
             </div>
         </div>
     </section>
@@ -313,7 +313,6 @@ layoutHeader('Profili dipendenti');
                 <div class="hr-profile-card-header">
                     <div class="hr-profile-person">
                         <div class="hr-profile-name"><?= h($nomeUtente) ?></div>
-                        <div class="hr-profile-username"><?= h($usernameLabel) ?></div>
                         <div class="hr-profile-tags">
                             <?= hrProfiloBadgeHtml($reparto, trim((string)($profilo['reparto'] ?? '')) !== '' ? 'primary' : 'warning') ?>
                             <?= hrProfiloBadgeHtml($codiceCentroCosto !== '' ? $codiceCentroCosto : $centroCosto, trim((string)($profilo['centro_costo'] ?? '')) !== '' ? 'muted' : 'warning') ?>
