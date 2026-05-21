@@ -202,56 +202,8 @@ try {
 
 layoutHeader('Team e gruppi di lavoro');
 ?>
+<link rel="stylesheet" href="/assets/hr.css">
 
-<style>
-.hr-team-stack { display: grid; gap: 18px; }
-.hr-team-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
-.hr-team-summary span,
-.hr-team-badge { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #d8e3f0; background: #fff; color: #10233f; border-radius: 999px; padding: 4px 10px; font-size: .88rem; line-height: 1.2; }
-.hr-team-badge-active { border-color: #b7e4c7; background: #eaf8ef; color: #08722f; font-weight: 700; }
-.hr-team-badge-closed { border-color: #d8e3f0; background: #f4f7fb; color: #5c6b82; }
-.hr-team-badge-test { border-color: #ffd37a; background: #fff8e8; color: #8a5a00; font-weight: 700; }
-.hr-team-badge-role { border-color: #cfe0ff; background: #eef5ff; color: #0747a6; }
-.hr-team-badge-soft { border-color: #d8e3f0; background: #f8fafc; color: #42526e; }
-.hr-team-hero { margin-bottom: 0; }
-.hr-team-form-grid { display: grid; grid-template-columns: minmax(140px, .8fr) minmax(180px, 1.2fr) minmax(220px, 2fr) auto; gap: 12px; align-items: end; }
-.hr-team-membership-grid { display: grid; grid-template-columns: minmax(200px, 1.2fr) minmax(220px, 1.4fr) minmax(170px, 1fr) minmax(145px, .8fr) minmax(145px, .8fr) auto; gap: 12px; align-items: end; }
-.hr-team-toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
-.hr-team-toolbar .hr-filter-search-group { min-width: min(330px, 100%); }
-.hr-team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
-.hr-team-card { border: 1px solid #dbe5f0; border-radius: 14px; background: #fff; overflow: hidden; box-shadow: 0 8px 22px rgba(15, 23, 42, .06); }
-.hr-team-card-head { display: flex; justify-content: space-between; gap: 12px; padding: 16px 16px 12px; border-bottom: 1px solid #eef2f7; }
-.hr-team-card-title strong { display: block; font-size: 1.05rem; color: #091e42; }
-.hr-team-card-title .meta { display: block; margin-top: 2px; }
-.hr-team-card-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.hr-team-count { min-width: 58px; min-height: 58px; border-radius: 999px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #b9dcff; background: #eef6ff; color: #0747a6; font-weight: 800; }
-.hr-team-count small { font-size: .68rem; font-weight: 700; color: #42526e; text-transform: uppercase; letter-spacing: .04em; }
-.hr-team-card-body { padding: 14px 16px; }
-.hr-team-desc { color: #42526e; min-height: 22px; margin-bottom: 12px; }
-.hr-team-member-list { display: grid; gap: 10px; }
-.hr-team-member { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid #eef2f7; }
-.hr-team-member:first-child { border-top: 0; padding-top: 0; }
-.hr-team-member-icon { width: 34px; height: 34px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: #eef5ff; color: #0b5fff; }
-.hr-team-member-main strong { display: block; color: #091e42; }
-.hr-team-member-main .meta { display: block; }
-.hr-team-member-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-.hr-team-empty { padding: 14px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #64748b; font-style: italic; }
-.hr-team-card-foot { padding: 12px 16px; border-top: 1px solid #eef2f7; background: #fbfdff; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-.hr-team-archive { margin-top: 18px; }
-@media (max-width: 900px) {
-    .hr-team-form-grid,
-    .hr-team-membership-grid { grid-template-columns: 1fr; }
-    .hr-team-toolbar { display: grid; grid-template-columns: 1fr; }
-    .hr-team-card-head { align-items: flex-start; }
-}
-@media (max-width: 520px) {
-    .hr-team-grid { grid-template-columns: 1fr; }
-    .hr-team-summary span { width: 100%; justify-content: center; }
-    .hr-team-member { grid-template-columns: 30px 1fr; }
-    .hr-team-member form { grid-column: 2; justify-self: start; }
-    .hr-team-count { min-width: 52px; min-height: 52px; }
-}
-</style>
 
 <div class="card card-compact hr-team-hero">
     <div class="section-head">

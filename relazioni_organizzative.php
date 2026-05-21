@@ -193,46 +193,8 @@ try {
 
 layoutHeader('Relazioni organizzative');
 ?>
+<link rel="stylesheet" href="/assets/hr.css">
 
-<style>
-.hr-org-hero { margin-bottom: 1.25rem; }
-.hr-org-summary { display: flex; flex-wrap: wrap; gap: .55rem; margin: .9rem 0 1.15rem; }
-.hr-org-summary span { display: inline-flex; align-items: center; gap: .35rem; padding: .42rem .72rem; border: 1px solid #dbe4f0; border-radius: 999px; background: #fff; font-size: .9rem; color: #24364f; box-shadow: 0 4px 16px rgba(15, 23, 42, .04); }
-.hr-org-summary strong { color: #0f172a; }
-.hr-org-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-.hr-org-search { min-width: min(360px, 100%); }
-.hr-org-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: .95rem; }
-.hr-org-card { border: 1px solid #dbe4f0; border-radius: 16px; background: #fff; box-shadow: 0 12px 34px rgba(15, 23, 42, .06); overflow: hidden; }
-.hr-org-card-head { padding: 1rem 1rem .75rem; display: flex; justify-content: space-between; gap: .9rem; border-bottom: 1px solid #edf2f7; }
-.hr-org-card-title { margin: 0; font-size: 1.02rem; line-height: 1.2; color: #0f172a; }
-.hr-org-card-user { margin-top: .2rem; color: #607086; font-size: .9rem; }
-.hr-org-card-body { padding: .85rem 1rem 1rem; }
-.hr-org-chip-row { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .55rem; }
-.hr-org-chip { display: inline-flex; align-items: center; border-radius: 999px; padding: .18rem .48rem; font-size: .78rem; font-weight: 700; border: 1px solid #d6e4ff; background: #eef5ff; color: #0756c9; }
-.hr-org-chip-real { border-color: #ded5ff; background: #f2efff; color: #5b35c9; }
-.hr-org-chip-test { border-color: #f6d78a; background: #fff8e7; color: #8a5a00; }
-.hr-org-chip-muted { border-color: #dbe4f0; background: #f8fafc; color: #52647a; }
-.hr-org-chip-danger { border-color: #f7c7c7; background: #fff0f0; color: #b42318; }
-.hr-org-relation-line { display: grid; grid-template-columns: 34px 1fr; gap: .6rem; align-items: start; padding: .72rem 0; border-bottom: 1px solid #edf2f7; }
-.hr-org-relation-line:last-child { border-bottom: 0; }
-.hr-org-relation-icon { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; background: #eef5ff; color: #0756c9; }
-.hr-org-small-title { text-transform: uppercase; letter-spacing: .08em; color: #607086; font-size: .72rem; font-weight: 800; margin-bottom: .16rem; }
-.hr-org-person { color: #0f172a; font-weight: 800; }
-.hr-org-meta { color: #607086; font-size: .88rem; margin-top: .12rem; }
-.hr-org-empty { padding: 1.1rem; border: 1px dashed #cbd5e1; border-radius: 16px; color: #607086; background: #f8fafc; }
-.hr-org-details { margin-top: .8rem; border-top: 1px solid #edf2f7; }
-.hr-org-details summary { cursor: pointer; color: #0756c9; font-weight: 800; padding: .8rem 0 0; list-style: none; }
-.hr-org-details summary::-webkit-details-marker { display: none; }
-.hr-org-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: .8rem; margin-top: .9rem; }
-.hr-org-form-actions { display: flex; justify-content: flex-end; margin-top: .85rem; }
-.hr-org-history { margin-top: 1.25rem; }
-@media (max-width: 720px) {
-    .hr-org-toolbar { align-items: stretch; flex-direction: column; }
-    .hr-org-search { min-width: 100%; }
-    .hr-org-grid { grid-template-columns: 1fr; }
-    .hr-org-card-head { flex-direction: column; }
-}
-</style>
 
 <div class="card card-compact hr-org-hero">
     <div class="section-head">
