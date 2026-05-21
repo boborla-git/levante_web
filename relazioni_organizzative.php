@@ -14,19 +14,64 @@ $errore = '';
 $messaggio = '';
 $utenti = [];
 $tipiRelazione = [];
+$relazioni = [];
 $relazioniAttive = [];
+$collaboratoriPerResponsabile = [];
+$relazioniPerUtente = [];
+$riepilogo = [
+    'relazioni_totali' => 0,
+    'relazioni_attive' => 0,
+    'relazioni_chiuse' => 0,
+    'responsabili' => 0,
+    'collaboratori' => 0,
+];
 
 function h(?string $v): string
 {
     return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
 }
 
-
 function descrizioneRelazioneBreve(string $codice, string $fallback): string
 {
-    if ($codice === 'RESPONSABILE_DIRETTO' || $codice === 'RESPONSABILE_FUNZIONALE') { return 'risponde funzionalmente a'; }
-    if ($codice === 'REFERENTE_HR') { return 'referente HR'; }
+    if ($codice === 'RESPONSABILE_DIRETTO' || $codice === 'RESPONSABILE_FUNZIONALE') {
+        return 'risponde funzionalmente a';
+    }
+    if ($codice === 'REFERENTE_HR') {
+        return 'referente HR';
+    }
     return $fallback;
+}
+
+function hrRelazioneNomeUtente(array $r, string $prefix): string
+{
+    $nome = trim((string)($r[$prefix . '_nome'] ?? ''));
+    $cognome = trim((string)($r[$prefix . '_cognome'] ?? ''));
+    $username = trim((string)($r[$prefix . '_username'] ?? ''));
+    $label = trim($nome . ' ' . $cognome);
+    return $label !== '' ? $label : $username;
+}
+
+function hrRelazioneUsername(array $r, string $prefix): string
+{
+    return trim((string)($r[$prefix . '_username'] ?? ''));
+}
+
+function hrRelazioneTestBadge(string $username): string
+{
+    if (strpos($username, 'test_') === 0) {
+        return '<span class="hr-org-chip hr-org-chip-test">Test</span>';
+    }
+    return '<span class="hr-org-chip hr-org-chip-real">Reale</span>';
+}
+
+function hrRelazionePeriodo(array $r): string
+{
+    $inizio = trim((string)($r['data_inizio'] ?? ''));
+    $fine = trim((string)($r['data_fine'] ?? ''));
+    if ($inizio === '' && $fine === '') {
+        return 'Periodo non indicato';
+    }
+    return $fine !== '' ? $inizio . ' - ' . $fine : 'Dal ' . $inizio;
 }
 
 try {
@@ -101,16 +146,47 @@ try {
 
     $tipiRelazione = $pdo->query("SELECT * FROM hr_tipi_relazione_organizzativa WHERE attivo = 1 AND codice IN ('RESPONSABILE_FUNZIONALE','RESPONSABILE_DIRETTO') ORDER BY CASE WHEN codice = 'RESPONSABILE_FUNZIONALE' THEN 0 ELSE 1 END, descrizione")->fetchAll();
 
-    $relazioniAttive = $pdo->query(
+    $relazioni = $pdo->query(
         "SELECT ro.*, tr.codice, tr.descrizione AS tipo_relazione,
+                u.username AS utente_username, u.nome AS utente_nome, u.cognome AS utente_cognome,
+                uc.username AS collegato_username, uc.nome AS collegato_nome, uc.cognome AS collegato_cognome,
                 CONCAT(COALESCE(u.nome,''), ' ', COALESCE(u.cognome,''), ' (', u.username, ')') AS utente,
                 CONCAT(COALESCE(uc.nome,''), ' ', COALESCE(uc.cognome,''), ' (', uc.username, ')') AS utente_collegato
          FROM hr_relazioni_organizzative ro
          INNER JOIN hr_tipi_relazione_organizzativa tr ON tr.id_tipo_relazione = ro.id_tipo_relazione
          INNER JOIN aut_utenti u ON u.id_utente = ro.id_utente
          INNER JOIN aut_utenti uc ON uc.id_utente = ro.id_utente_collegato
-         ORDER BY ro.attiva DESC, ro.data_inizio DESC, ro.id_relazione_organizzativa DESC"
-    )->fetchAll();
+         ORDER BY ro.attiva DESC, uc.cognome, uc.nome, u.cognome, u.nome, ro.data_inizio DESC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($relazioni as $r) {
+        $riepilogo['relazioni_totali']++;
+        if ((int)$r['attiva'] === 1) {
+            $riepilogo['relazioni_attive']++;
+            $relazioniAttive[] = $r;
+            $idResponsabile = (int)$r['id_utente_collegato'];
+            $idCollaboratore = (int)$r['id_utente'];
+            $collaboratoriPerResponsabile[$idResponsabile]['responsabile'] = [
+                'nome' => hrRelazioneNomeUtente($r, 'collegato'),
+                'username' => hrRelazioneUsername($r, 'collegato'),
+            ];
+            $collaboratoriPerResponsabile[$idResponsabile]['collaboratori'][$idCollaboratore] = $r;
+            $relazioniPerUtente[$idCollaboratore][] = $r;
+        } else {
+            $riepilogo['relazioni_chiuse']++;
+        }
+    }
+
+    $riepilogo['responsabili'] = count($collaboratoriPerResponsabile);
+    $collaboratoriUnici = [];
+    foreach ($relazioniAttive as $r) {
+        $collaboratoriUnici[(int)$r['id_utente']] = true;
+    }
+    $riepilogo['collaboratori'] = count($collaboratoriUnici);
+
+    uasort($collaboratoriPerResponsabile, static function (array $a, array $b): int {
+        return strcmp((string)$a['responsabile']['nome'], (string)$b['responsabile']['nome']);
+    });
 } catch (Throwable $e) {
     $errore = $e->getMessage();
 }
@@ -118,11 +194,51 @@ try {
 layoutHeader('Relazioni organizzative');
 ?>
 
-<div class="card card-compact">
+<style>
+.hr-org-hero { margin-bottom: 1.25rem; }
+.hr-org-summary { display: flex; flex-wrap: wrap; gap: .55rem; margin: .9rem 0 1.15rem; }
+.hr-org-summary span { display: inline-flex; align-items: center; gap: .35rem; padding: .42rem .72rem; border: 1px solid #dbe4f0; border-radius: 999px; background: #fff; font-size: .9rem; color: #24364f; box-shadow: 0 4px 16px rgba(15, 23, 42, .04); }
+.hr-org-summary strong { color: #0f172a; }
+.hr-org-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.hr-org-search { min-width: min(360px, 100%); }
+.hr-org-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: .95rem; }
+.hr-org-card { border: 1px solid #dbe4f0; border-radius: 16px; background: #fff; box-shadow: 0 12px 34px rgba(15, 23, 42, .06); overflow: hidden; }
+.hr-org-card-head { padding: 1rem 1rem .75rem; display: flex; justify-content: space-between; gap: .9rem; border-bottom: 1px solid #edf2f7; }
+.hr-org-card-title { margin: 0; font-size: 1.02rem; line-height: 1.2; color: #0f172a; }
+.hr-org-card-user { margin-top: .2rem; color: #607086; font-size: .9rem; }
+.hr-org-card-body { padding: .85rem 1rem 1rem; }
+.hr-org-chip-row { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .55rem; }
+.hr-org-chip { display: inline-flex; align-items: center; border-radius: 999px; padding: .18rem .48rem; font-size: .78rem; font-weight: 700; border: 1px solid #d6e4ff; background: #eef5ff; color: #0756c9; }
+.hr-org-chip-real { border-color: #ded5ff; background: #f2efff; color: #5b35c9; }
+.hr-org-chip-test { border-color: #f6d78a; background: #fff8e7; color: #8a5a00; }
+.hr-org-chip-muted { border-color: #dbe4f0; background: #f8fafc; color: #52647a; }
+.hr-org-chip-danger { border-color: #f7c7c7; background: #fff0f0; color: #b42318; }
+.hr-org-relation-line { display: grid; grid-template-columns: 34px 1fr; gap: .6rem; align-items: start; padding: .72rem 0; border-bottom: 1px solid #edf2f7; }
+.hr-org-relation-line:last-child { border-bottom: 0; }
+.hr-org-relation-icon { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; background: #eef5ff; color: #0756c9; }
+.hr-org-small-title { text-transform: uppercase; letter-spacing: .08em; color: #607086; font-size: .72rem; font-weight: 800; margin-bottom: .16rem; }
+.hr-org-person { color: #0f172a; font-weight: 800; }
+.hr-org-meta { color: #607086; font-size: .88rem; margin-top: .12rem; }
+.hr-org-empty { padding: 1.1rem; border: 1px dashed #cbd5e1; border-radius: 16px; color: #607086; background: #f8fafc; }
+.hr-org-details { margin-top: .8rem; border-top: 1px solid #edf2f7; }
+.hr-org-details summary { cursor: pointer; color: #0756c9; font-weight: 800; padding: .8rem 0 0; list-style: none; }
+.hr-org-details summary::-webkit-details-marker { display: none; }
+.hr-org-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: .8rem; margin-top: .9rem; }
+.hr-org-form-actions { display: flex; justify-content: flex-end; margin-top: .85rem; }
+.hr-org-history { margin-top: 1.25rem; }
+@media (max-width: 720px) {
+    .hr-org-toolbar { align-items: stretch; flex-direction: column; }
+    .hr-org-search { min-width: 100%; }
+    .hr-org-grid { grid-template-columns: 1fr; }
+    .hr-org-card-head { flex-direction: column; }
+}
+</style>
+
+<div class="card card-compact hr-org-hero">
     <div class="section-head">
         <div>
             <h1>Relazioni organizzative</h1>
-            <div class="meta">Qui registri il rapporto tra un utente e un altro utente. Esempio: Mario <strong>risponde funzionalmente a</strong> Paolo. La gerarchia si ferma al primo livello diretto.</div>
+            <div class="meta">Mappa leggibile dei rapporti diretti: chi risponde funzionalmente a chi. La visibilita gerarchica resta al primo livello diretto.</div>
         </div>
         <div class="section-head-actions">
             <a class="btn btn-light" href="configurazione_assenze.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla configurazione</a>
@@ -130,17 +246,24 @@ layoutHeader('Relazioni organizzative');
     </div>
 </div>
 
-<?php if ($errore !== ''): ?><div class="errore"><?= h($errore) ?></div><?php endif; ?>
-<?php if ($messaggio !== ''): ?><div class="ok"><?= h($messaggio) ?></div><?php endif; ?>
+<section class="hr-org-summary">
+    <span><strong><?= (int)$riepilogo['relazioni_attive'] ?></strong> relazioni attive</span>
+    <span><strong><?= (int)$riepilogo['responsabili'] ?></strong> responsabili / referenti</span>
+    <span><strong><?= (int)$riepilogo['collaboratori'] ?></strong> collaboratori collegati</span>
+    <span><strong><?= (int)$riepilogo['relazioni_chiuse'] ?></strong> relazioni chiuse</span>
+</section>
+
+<?php if ($errore !== ''): ?><div class="alert alert-error"><?= h($errore) ?></div><?php endif; ?>
+<?php if ($messaggio !== ''): ?><div class="alert alert-success"><?= h($messaggio) ?></div><?php endif; ?>
 
 <div class="card card-form">
     <h2>Nuova relazione</h2>
     <?php if (!$puoScrivere): ?>
-        <div class="info-box">Il tuo profilo può consultare ma non modificare le relazioni.</div>
+        <div class="info-box">Il tuo profilo puo consultare ma non modificare le relazioni.</div>
     <?php else: ?>
     <form method="post" action="relazioni_organizzative.php">
         <input type="hidden" name="azione" value="nuova_relazione">
-        <div class="info-box">Compila la relazione come una frase: <strong>Utente</strong> → <strong>relazione</strong> → <strong>altro utente</strong>.</div>
+        <div class="info-box">Compila la frase organizzativa: <strong>Utente</strong> → <strong>risponde funzionalmente a</strong> → <strong>responsabile / referente</strong>.</div>
         <div class="hr-wide-form-row hr-relazioni-form-row">
             <div class="form-group">
                 <label for="id_utente">Utente</label>
@@ -169,7 +292,7 @@ layoutHeader('Relazioni organizzative');
                 </select>
             </div>
             <div class="form-group">
-                <label for="id_utente_collegato">Altro utente</label>
+                <label for="id_utente_collegato">Responsabile / referente</label>
                 <select name="id_utente_collegato" id="id_utente_collegato" required>
                     <option value="">Seleziona...</option>
                     <?php foreach ($utenti as $u): ?>
@@ -196,10 +319,69 @@ layoutHeader('Relazioni organizzative');
 </div>
 
 <div class="card card-wide">
-    <div class="hr-filter-toolbar">
+    <div class="hr-org-toolbar">
+        <div>
+            <h2>Mappa responsabili / referenti</h2>
+            <div class="meta">Vista per responsabile: mostra solo i collegamenti attivi e diretti.</div>
+        </div>
+        <div class="form-group hr-org-search">
+            <label for="orgSearch">Filtro rapido</label>
+            <input type="search" id="orgSearch" placeholder="Cerca responsabile, collaboratore, note...">
+        </div>
+    </div>
+
+    <?php if (count($collaboratoriPerResponsabile) === 0): ?>
+        <div class="hr-org-empty">Nessuna relazione attiva presente. Inserisci una relazione per costruire la mappa organizzativa.</div>
+    <?php else: ?>
+        <div class="hr-org-grid" id="orgCards">
+            <?php foreach ($collaboratoriPerResponsabile as $idResponsabile => $gruppo): ?>
+                <?php
+                $responsabile = $gruppo['responsabile'];
+                $collaboratori = $gruppo['collaboratori'] ?? [];
+                $searchText = strtolower((string)$responsabile['nome'] . ' ' . (string)$responsabile['username']);
+                foreach ($collaboratori as $collab) {
+                    $searchText .= ' ' . strtolower(hrRelazioneNomeUtente($collab, 'utente') . ' ' . hrRelazioneUsername($collab, 'utente') . ' ' . (string)($collab['note'] ?? ''));
+                }
+                ?>
+                <article class="hr-org-card" data-org-card data-search="<?= h($searchText) ?>">
+                    <div class="hr-org-card-head">
+                        <div>
+                            <h3 class="hr-org-card-title"><?= h((string)$responsabile['nome']) ?></h3>
+                            <div class="hr-org-card-user">@<?= h((string)$responsabile['username']) ?></div>
+                            <div class="hr-org-chip-row"><?= hrRelazioneTestBadge((string)$responsabile['username']) ?></div>
+                        </div>
+                        <?= renderHrStatusBadge('ATTIVO', 'Attivo') ?>
+                    </div>
+                    <div class="hr-org-card-body">
+                        <div class="hr-org-small-title">Collaboratori diretti</div>
+                        <?php foreach ($collaboratori as $r): ?>
+                            <div class="hr-org-relation-line">
+                                <span class="hr-org-relation-icon"><i class="la la-user-check" aria-hidden="true"></i></span>
+                                <div>
+                                    <div class="hr-org-person"><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></div>
+                                    <div class="hr-org-meta">@<?= h(hrRelazioneUsername($r, 'utente')) ?> · <?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></div>
+                                    <div class="hr-org-chip-row">
+                                        <?= hrRelazioneTestBadge(hrRelazioneUsername($r, 'utente')) ?>
+                                        <span class="hr-org-chip hr-org-chip-muted"><?= h(hrRelazionePeriodo($r)) ?></span>
+                                    </div>
+                                    <?php if (trim((string)($r['note'] ?? '')) !== ''): ?>
+                                        <div class="hr-org-meta">Note: <?= h((string)$r['note']) ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>
+
+<div class="card card-wide hr-org-history">
+    <div class="hr-org-toolbar">
         <div>
             <h2>Relazioni registrate</h2>
-            <div class="meta">Filtra rapidamente per utente, relazione, periodo, stato o note.</div>
+            <div class="meta">Archivio completo: include relazioni attive e chiuse.</div>
         </div>
         <div class="form-group hr-filter-search-group">
             <label for="relazioniSearch">Filtro rapido</label>
@@ -212,7 +394,7 @@ layoutHeader('Relazioni organizzative');
                 <tr>
                     <th>Utente</th>
                     <th>Relazione</th>
-                    <th>Altro utente</th>
+                    <th>Responsabile / referente</th>
                     <th>Periodo</th>
                     <th>Note</th>
                     <th>Stato</th>
@@ -220,12 +402,12 @@ layoutHeader('Relazioni organizzative');
                 </tr>
             </thead>
             <tbody>
-            <?php foreach ($relazioniAttive as $r): ?>
+            <?php foreach ($relazioni as $r): ?>
                 <tr>
-                    <td><?= h((string)$r['utente']) ?></td>
-                    <td><span class="relation-icon"><i class="la la-level-up-alt" aria-hidden="true"></i></span><?= h(descrizioneRelazioneBreve((string)$r['codice'] ?? '', (string)$r['tipo_relazione'])) ?></td>
-                    <td><?= h((string)$r['utente_collegato']) ?></td>
-                    <td><?= h((string)$r['data_inizio']) ?><?= $r['data_fine'] ? ' → ' . h((string)$r['data_fine']) : '' ?></td>
+                    <td><strong><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></strong><br><span class="meta">@<?= h(hrRelazioneUsername($r, 'utente')) ?></span></td>
+                    <td><span class="relation-icon"><i class="la la-level-up-alt" aria-hidden="true"></i></span><?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></td>
+                    <td><strong><?= h(hrRelazioneNomeUtente($r, 'collegato')) ?></strong><br><span class="meta">@<?= h(hrRelazioneUsername($r, 'collegato')) ?></span></td>
+                    <td><?= h(hrRelazionePeriodo($r)) ?></td>
                     <td><?= h((string)$r['note']) ?></td>
                     <td><?= renderHrStatusBadge((int)$r['attiva'] === 1 ? 'ATTIVA' : 'CHIUSA', (int)$r['attiva'] === 1 ? 'Attiva' : 'Chiusa') ?></td>
                     <td>
@@ -243,4 +425,23 @@ layoutHeader('Relazioni organizzative');
         </table>
     </div>
 </div>
+
+<script>
+(function () {
+    var search = document.getElementById('orgSearch');
+    var cards = Array.prototype.slice.call(document.querySelectorAll('[data-org-card]'));
+    if (!search || cards.length === 0) {
+        return;
+    }
+
+    search.addEventListener('input', function () {
+        var value = String(search.value || '').trim().toLowerCase();
+        cards.forEach(function (card) {
+            var text = String(card.getAttribute('data-search') || '').toLowerCase();
+            card.style.display = value === '' || text.indexOf(value) !== -1 ? '' : 'none';
+        });
+    });
+}());
+</script>
+
 <?php layoutFooter(); ?>
