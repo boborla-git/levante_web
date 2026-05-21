@@ -90,7 +90,11 @@ $stmt = $pdo->query(
         u.deve_cambiare_password,
         u.data_creazione,
         u.data_aggiornamento
-    ORDER BY u.attivo DESC, u.username"
+    ORDER BY
+        CASE WHEN TRIM(COALESCE(u.cognome, '')) = '' THEN 1 ELSE 0 END,
+        u.cognome ASC,
+        u.nome ASC,
+        u.username ASC"
 );
 
 $utenti = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -157,7 +161,7 @@ layoutHeader('Gestione utenti');
         </div>
         <div class="form-group hr-filter-search-group">
             <label for="utentiSearch">Filtro rapido</label>
-            <input type="search" id="utentiSearch" placeholder="Cerca utente, ruolo, stato..." autocomplete="off">
+            <input type="search" id="utentiSearch" placeholder="Cerca persona, ruolo, stato..." autocomplete="off">
         </div>
     </div>
 
@@ -177,7 +181,7 @@ layoutHeader('Gestione utenti');
                     <div class="admin-user-avatar" aria-hidden="true"><?= h(adminUserInitials($utente)) ?></div>
                     <div class="admin-user-identity">
                         <h3><?= h($nomeCompleto) ?></h3>
-                        <div class="meta">@<?= h($username) ?> · ID <?= $idUtente ?></div>
+                        <div class="meta"><?= h($username) ?></div>
                     </div>
                     <div class="admin-user-status">
                         <?= $utenteAttivo ? renderHrStatusBadge('ATTIVO', 'Attivo', ['class' => 'user-badge']) : renderHrStatusBadge('DISATTIVO', 'Disattivo', ['class' => 'user-badge']) ?>
