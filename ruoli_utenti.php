@@ -358,7 +358,7 @@ layoutHeader('Ruoli utenti');
 }
 
 .admin-role-summary-grid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 .admin-role-user-grid {
@@ -376,8 +376,16 @@ layoutHeader('Ruoli utenti');
 .admin-role-summary-card {
     display: flex;
     justify-content: space-between;
-    gap: 14px;
+    align-items: center;
+    gap: 12px;
     padding: 14px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.admin-role-summary-card > div:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .admin-role-summary-card h3,
@@ -394,9 +402,10 @@ layoutHeader('Ruoli utenti');
 }
 
 .admin-role-count {
-    flex: 0 0 auto;
-    min-width: 74px;
-    height: 74px;
+    flex: 0 0 62px;
+    width: 62px;
+    min-width: 62px;
+    height: 62px;
     border-radius: 999px;
     display: grid;
     place-items: center;
@@ -408,12 +417,12 @@ layoutHeader('Ruoli utenti');
 }
 
 .admin-role-count strong {
-    font-size: 1.2rem;
+    font-size: 1.05rem;
     line-height: 1;
 }
 
 .admin-role-count span {
-    font-size: 0.72rem;
+    font-size: 0.64rem;
     font-weight: 800;
     text-transform: uppercase;
 }
