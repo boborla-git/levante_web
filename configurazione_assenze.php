@@ -158,158 +158,165 @@ $palette = hrPaletteColori();
 layoutHeader('Configurazione assenze');
 ?>
 
-
 <div class="hr-config-stack">
-<section class="card hr-config-header">
-    <div>
-        <h1>Configurazione assenze</h1>
-        <p>Tipologie, colori, regole principali e impostazioni del modulo HR.</p>
-    </div>
-    <div class="hr-config-actions">
-        <a class="btn" href="relazioni_organizzative.php"><i class="la la-sitemap" aria-hidden="true"></i> Relazioni organizzative</a>
-        <a class="btn" href="gruppi_lavoro.php"><i class="la la-users-cog" aria-hidden="true"></i> Gruppi di lavoro</a>
-        <a class="btn" href="recapiti_utenti.php"><i class="la la-envelope" aria-hidden="true"></i> Recapiti utenti</a>
-        <a class="btn btn-light" href="assenze.php"><i class="la la-calendar" aria-hidden="true"></i> Vai ad assenze</a>
-    </div>
-</section>
+    <section class="card card-compact hr-config-hero">
+        <div class="section-head">
+            <div>
+                <h1>Configurazione assenze</h1>
+                <div class="meta">Tipologie, colori, regole principali e impostazioni del modulo HR.</div>
+            </div>
+            <div class="section-head-actions hr-config-actions">
+                <a class="btn" href="relazioni_organizzative.php"><i class="la la-sitemap" aria-hidden="true"></i> Relazioni</a>
+                <a class="btn" href="gruppi_lavoro.php"><i class="la la-users-cog" aria-hidden="true"></i> Team</a>
+                <a class="btn" href="recapiti_utenti.php"><i class="la la-envelope" aria-hidden="true"></i> Recapiti</a>
+                <a class="btn btn-light" href="assenze.php"><i class="la la-calendar" aria-hidden="true"></i> Vai ad assenze</a>
+            </div>
+        </div>
+    </section>
 
-<section class="hr-config-summary">
-    <span><strong><?= (int)$riepilogo['tipologie_attive'] ?></strong> tipologie attive</span>
-    <span><strong><?= (int)$riepilogo['relazioni_attive'] ?></strong> relazioni attive</span>
-    <span><strong><?= (int)$riepilogo['gruppi_attivi'] ?></strong> gruppi attivi</span>
-    <span><strong><?= (int)$riepilogo['membri_gruppi_attivi'] ?></strong> membri gruppo attivi</span>
-    <span><strong><?= (int)$riepilogo['recapiti_email_attivi'] ?></strong> email attive</span>
-</section>
+    <section class="hr-config-summary">
+        <span><strong><?= (int)$riepilogo['tipologie_attive'] ?></strong> tipologie attive</span>
+        <span><strong><?= (int)$riepilogo['relazioni_attive'] ?></strong> relazioni attive</span>
+        <span><strong><?= (int)$riepilogo['gruppi_attivi'] ?></strong> team attivi</span>
+        <span><strong><?= (int)$riepilogo['membri_gruppi_attivi'] ?></strong> appartenenze attive</span>
+        <span><strong><?= (int)$riepilogo['recapiti_email_attivi'] ?></strong> email attive</span>
+    </section>
 
-<?php if ($messaggio !== ''): ?>
-    <div class="alert alert-success"><?= h($messaggio) ?></div>
-<?php endif; ?>
+    <?php if ($messaggio !== ''): ?>
+        <div class="alert alert-success"><?= h($messaggio) ?></div>
+    <?php endif; ?>
 
-<?php if ($errore !== ''): ?>
-    <div class="alert alert-error"><?= h($errore) ?></div>
-<?php endif; ?>
+    <?php if ($errore !== ''): ?>
+        <div class="alert alert-error"><?= h($errore) ?></div>
+    <?php endif; ?>
 
-<section class="card hr-config-card">
-    <h2>Tipologie evento</h2>
-    <p class="muted">Il pallino selezionato viene usato nel calendario e nel dettaglio giornaliero.</p>
+    <section class="card card-wide hr-config-card">
+        <div class="hr-config-section-head">
+            <div>
+                <h2>Tipologie evento</h2>
+                <div class="meta">Definisci cosa viene mostrato agli utenti e come appare nel calendario.</div>
+            </div>
+        </div>
 
-    <div class="table-responsive">
-        <table class="table hr-config-table">
-            <thead>
-            <tr>
-                <th>Codice</th>
-                <th>Descrizione</th>
-                <th>Nome calendario</th>
-                <th>Presenza</th>
-                <th>Regole</th>
-                <th>Visibilità</th>
-                <th>Ordine</th>
-                <th>Colore</th>
-                <th class="col-actions">Salva</th>
-            </tr>
-            </thead>
-            <tbody>
-            <?php foreach ($tipologie as $tipologia): ?>
-                <?php
-                $idTipologia = (int)$tipologia['id_tipologia_evento'];
-                $selectedColor = hrColoreValido((string)($tipologia['colore_calendario'] ?? ''));
-                ?>
+        <div class="table-wrap hr-config-table-wrap">
+            <table class="hr-config-table">
+                <thead>
                 <tr>
-                    <form method="post">
-                        <td>
-                            <strong><?= h((string)$tipologia['codice']) ?></strong>
-                            <input type="hidden" name="azione" value="salva_tipologia">
-                            <input type="hidden" name="id_tipologia_evento" value="<?= $idTipologia ?>">
-                        </td>
-                        <td>
-                            <input type="text" name="descrizione" value="<?= h((string)$tipologia['descrizione']) ?>" <?= $puoScrivere ? '' : 'readonly' ?> required>
-                        </td>
-                        <td>
-                            <input type="text" name="descrizione_calendario" value="<?= h((string)($tipologia['descrizione_calendario'] ?? '')) ?>" <?= $puoScrivere ? '' : 'readonly' ?>>
-                            <div class="hr-muted-note">Testo mostrato nel calendario.</div>
-                        </td>
-                        <td><?= h((string)$tipologia['stato_presenza']) ?></td>
-                        <td>
-                            <div class="hr-flag-list">
-                                <label><input type="checkbox" name="richiede_approvazione" value="1" <?= (int)$tipologia['richiede_approvazione'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> approvazione</label>
-                                <label><input type="checkbox" name="consente_giorni" value="1" <?= (int)$tipologia['consente_giorni'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> giorni</label>
-                                <label><input type="checkbox" name="consente_ore" value="1" <?= (int)$tipologia['consente_ore'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> ore</label>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="hr-flag-list">
-                                <label><input type="checkbox" name="visibile_calendario" value="1" <?= (int)$tipologia['visibile_calendario'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> calendario</label>
-                                <label><input type="checkbox" name="visibile_ai_colleghi" value="1" <?= (int)$tipologia['visibile_ai_colleghi'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> colleghi</label>
-                                <label><input type="checkbox" name="attivo" value="1" <?= (int)$tipologia['attivo'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> attiva</label>
-                            </div>
-                        </td>
-                        <td>
-                            <input type="number" name="ordinamento" value="<?= (int)$tipologia['ordinamento'] ?>" <?= $puoScrivere ? '' : 'readonly' ?>>
-                        </td>
-                        <td>
-                            <div class="hr-color-palette">
-                                <?php foreach ($palette as $hex => $label): ?>
-                                    <label class="hr-color-option">
-                                        <input type="radio" name="colore_calendario" value="<?= h($hex) ?>" <?= strtolower($selectedColor) === strtolower($hex) ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>>
-                                        <span class="hr-color-chip" title="<?= h($label) ?>" aria-label="<?= h($label) ?>">
-                                            <span class="hr-color-dot" style="--dot-color: <?= h($hex) ?>"></span>
-                                            <span class="hr-color-check">✓</span>
-                                        </span>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                        </td>
-                        <td class="col-actions">
-                            <button type="submit" class="btn btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>Salva</button>
-                        </td>
-                    </form>
+                    <th>Tipologia</th>
+                    <th>Nome calendario</th>
+                    <th>Presenza</th>
+                    <th>Regole</th>
+                    <th>Visibilità</th>
+                    <th>Ordine</th>
+                    <th>Colore</th>
+                    <th class="col-actions">Azioni</th>
                 </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
+                </thead>
+                <tbody>
+                <?php foreach ($tipologie as $tipologia): ?>
+                    <?php
+                    $idTipologia = (int)$tipologia['id_tipologia_evento'];
+                    $selectedColor = hrColoreValido((string)($tipologia['colore_calendario'] ?? ''));
+                    ?>
+                    <tr>
+                        <form method="post">
+                            <td>
+                                <strong><?= h((string)$tipologia['descrizione']) ?></strong>
+                                <div class="hr-muted-note">Codice: <?= h((string)$tipologia['codice']) ?></div>
+                                <input type="hidden" name="azione" value="salva_tipologia">
+                                <input type="hidden" name="id_tipologia_evento" value="<?= $idTipologia ?>">
+                                <input type="hidden" name="descrizione" value="<?= h((string)$tipologia['descrizione']) ?>">
+                            </td>
+                            <td>
+                                <input type="text" name="descrizione_calendario" value="<?= h((string)($tipologia['descrizione_calendario'] ?? '')) ?>" <?= $puoScrivere ? '' : 'readonly' ?>>
+                                <div class="hr-muted-note">Testo mostrato nel calendario.</div>
+                            </td>
+                            <td><?= h((string)$tipologia['stato_presenza']) ?></td>
+                            <td>
+                                <div class="hr-flag-list">
+                                    <label><input type="checkbox" name="richiede_approvazione" value="1" <?= (int)$tipologia['richiede_approvazione'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> approvazione</label>
+                                    <label><input type="checkbox" name="consente_giorni" value="1" <?= (int)$tipologia['consente_giorni'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> giorni</label>
+                                    <label><input type="checkbox" name="consente_ore" value="1" <?= (int)$tipologia['consente_ore'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> ore</label>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="hr-flag-list">
+                                    <label><input type="checkbox" name="visibile_calendario" value="1" <?= (int)$tipologia['visibile_calendario'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> calendario</label>
+                                    <label><input type="checkbox" name="visibile_ai_colleghi" value="1" <?= (int)$tipologia['visibile_ai_colleghi'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> colleghi</label>
+                                    <label><input type="checkbox" name="attivo" value="1" <?= (int)$tipologia['attivo'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> attiva</label>
+                                </div>
+                            </td>
+                            <td>
+                                <input type="number" name="ordinamento" value="<?= (int)$tipologia['ordinamento'] ?>" <?= $puoScrivere ? '' : 'readonly' ?>>
+                            </td>
+                            <td>
+                                <div class="hr-color-palette">
+                                    <?php foreach ($palette as $hex => $label): ?>
+                                        <label class="hr-color-option">
+                                            <input type="radio" name="colore_calendario" value="<?= h($hex) ?>" <?= strtolower($selectedColor) === strtolower($hex) ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>>
+                                            <span class="hr-color-chip" title="<?= h($label) ?>" aria-label="<?= h($label) ?>">
+                                                <span class="hr-color-dot" style="--dot-color: <?= h($hex) ?>"></span>
+                                                <span class="hr-color-check">✓</span>
+                                            </span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </td>
+                            <td class="col-actions">
+                                <button type="submit" class="btn btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>Salva</button>
+                            </td>
+                        </form>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
-<section class="card hr-config-card">
-    <h2>Configurazioni tecniche</h2>
-    <div class="table-responsive">
-        <table class="table hr-config-table">
-            <thead>
-            <tr>
-                <th>Codice</th>
-                <th>Descrizione</th>
-                <th>Valore</th>
-                <th>Attiva</th>
-                <th class="col-actions">Salva</th>
-            </tr>
-            </thead>
-            <tbody>
-            <?php foreach ($configurazioni as $configurazione): ?>
+    <section class="card card-wide hr-config-card">
+        <div class="hr-config-section-head">
+            <div>
+                <h2>Configurazioni tecniche</h2>
+                <div class="meta">Parametri avanzati del modulo: da modificare solo se necessario.</div>
+            </div>
+        </div>
+        <div class="table-wrap hr-config-table-wrap">
+            <table class="hr-config-table">
+                <thead>
                 <tr>
-                    <form method="post">
-                        <td>
-                            <strong><?= h((string)$configurazione['codice']) ?></strong>
-                            <input type="hidden" name="azione" value="salva_configurazione">
-                            <input type="hidden" name="id_configurazione" value="<?= (int)$configurazione['id_configurazione'] ?>">
-                        </td>
-                        <td><?= h((string)$configurazione['descrizione']) ?></td>
-                        <td>
-                            <input type="text" name="valore" value="<?= h((string)$configurazione['valore']) ?>" <?= $puoScrivere ? '' : 'readonly' ?>>
-                        </td>
-                        <td>
-                            <label><input type="checkbox" name="attivo" value="1" <?= (int)$configurazione['attivo'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> sì</label>
-                        </td>
-                        <td class="col-actions">
-                            <button type="submit" class="btn btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>Salva</button>
-                        </td>
-                    </form>
+                    <th>Parametro</th>
+                    <th>Descrizione</th>
+                    <th>Valore</th>
+                    <th>Attiva</th>
+                    <th class="col-actions">Azioni</th>
                 </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
-
+                </thead>
+                <tbody>
+                <?php foreach ($configurazioni as $configurazione): ?>
+                    <tr>
+                        <form method="post">
+                            <td>
+                                <strong><?= h((string)$configurazione['codice']) ?></strong>
+                                <input type="hidden" name="azione" value="salva_configurazione">
+                                <input type="hidden" name="id_configurazione" value="<?= (int)$configurazione['id_configurazione'] ?>">
+                            </td>
+                            <td><?= h((string)$configurazione['descrizione']) ?></td>
+                            <td>
+                                <input type="text" name="valore" value="<?= h((string)$configurazione['valore']) ?>" <?= $puoScrivere ? '' : 'readonly' ?>>
+                            </td>
+                            <td>
+                                <label><input type="checkbox" name="attivo" value="1" <?= (int)$configurazione['attivo'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> sì</label>
+                            </td>
+                            <td class="col-actions">
+                                <button type="submit" class="btn btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>Salva</button>
+                            </td>
+                        </form>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
 <?php layoutFooter(); ?>

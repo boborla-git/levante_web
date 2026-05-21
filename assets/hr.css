@@ -1,6 +1,6 @@
 /* ===== HR organization UI =====
-   Stili comuni centralizzati per pagine HR organizzative.
-   Usato da: profili_dipendenti.php, relazioni_organizzative.php, gruppi_lavoro.php.
+   Stili comuni centralizzati per pagine HR organizzative e configurazione HR.
+   Usato da: profili_dipendenti.php, relazioni_organizzative.php, gruppi_lavoro.php, configurazione_assenze.php.
 */
 
 
@@ -40,19 +40,13 @@
 .hr-org-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: .8rem; margin-top: .9rem; }
 .hr-org-form-actions { display: flex; justify-content: flex-end; margin-top: .85rem; }
 .hr-org-history { margin-top: 1.25rem; }
-@media (max-width: 720px) {
-    .hr-org-toolbar { align-items: stretch; flex-direction: column; }
-    .hr-org-search { min-width: 100%; }
-    .hr-org-grid { grid-template-columns: 1fr; }
-    .hr-org-card-head { flex-direction: column; }
-}
+@media (max-width: 720px) {.hr-org-toolbar { align-items: stretch; flex-direction: column; }.hr-org-search { min-width: 100%; }.hr-org-grid { grid-template-columns: 1fr; }.hr-org-card-head { flex-direction: column; }}
 
 
 /* ===== gruppi_lavoro.php ===== */
 .hr-team-stack { display: grid; gap: 18px; }
 .hr-team-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
-.hr-team-summary span,
-.hr-team-badge { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #d8e3f0; background: #fff; color: #10233f; border-radius: 999px; padding: 4px 10px; font-size: .88rem; line-height: 1.2; }
+.hr-team-summary span,.hr-team-badge { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #d8e3f0; background: #fff; color: #10233f; border-radius: 999px; padding: 4px 10px; font-size: .88rem; line-height: 1.2; }
 .hr-team-badge-active { border-color: #b7e4c7; background: #eaf8ef; color: #08722f; font-weight: 700; }
 .hr-team-badge-closed { border-color: #d8e3f0; background: #f4f7fb; color: #5c6b82; }
 .hr-team-badge-test { border-color: #ffd37a; background: #fff8e8; color: #8a5a00; font-weight: 700; }
@@ -83,16 +77,37 @@
 .hr-team-empty { padding: 14px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #64748b; font-style: italic; }
 .hr-team-card-foot { padding: 12px 16px; border-top: 1px solid #eef2f7; background: #fbfdff; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .hr-team-archive { margin-top: 18px; }
-@media (max-width: 900px) {
-    .hr-team-form-grid,
-    .hr-team-membership-grid { grid-template-columns: 1fr; }
-    .hr-team-toolbar { display: grid; grid-template-columns: 1fr; }
-    .hr-team-card-head { align-items: flex-start; }
-}
-@media (max-width: 520px) {
-    .hr-team-grid { grid-template-columns: 1fr; }
-    .hr-team-summary span { width: 100%; justify-content: center; }
-    .hr-team-member { grid-template-columns: 30px 1fr; }
-    .hr-team-member form { grid-column: 2; justify-self: start; }
-    .hr-team-count { min-width: 52px; min-height: 52px; }
-}
+@media (max-width: 900px) {.hr-team-form-grid,.hr-team-membership-grid { grid-template-columns: 1fr; }.hr-team-toolbar { display: grid; grid-template-columns: 1fr; }.hr-team-card-head { align-items: flex-start; }}
+@media (max-width: 520px) {.hr-team-grid { grid-template-columns: 1fr; }.hr-team-summary span { width: 100%; justify-content: center; }.hr-team-member { grid-template-columns: 30px 1fr; }.hr-team-member form { grid-column: 2; justify-self: start; }.hr-team-count { min-width: 52px; min-height: 52px; }}
+
+
+/* ===== configurazione_assenze.php ===== */
+.hr-config-stack { display: grid; gap: 18px; }
+.hr-config-hero { margin-bottom: 0; }
+.hr-config-actions { flex-wrap: wrap; }
+.hr-config-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.hr-config-summary span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d8e3f0; background: #fff; color: #10233f; border-radius: 999px; padding: 6px 11px; font-size: .9rem; line-height: 1.2; box-shadow: 0 4px 16px rgba(15,23,42,.04); }
+.hr-config-summary strong { color: #0f172a; }
+.hr-config-card { overflow: hidden; }
+.hr-config-section-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
+.hr-config-section-head h2 { margin: 0 0 6px; }
+.hr-config-table-wrap { overflow-x: auto; }
+.hr-config-table { width: 100%; border-collapse: collapse; min-width: 1040px; }
+.hr-config-table th,
+.hr-config-table td { border: 1px solid #d8e3f0; padding: 10px; text-align: left; vertical-align: top; }
+.hr-config-table th { background: #f3f5f8; color: #0f172a; font-weight: 800; }
+.hr-config-table input[type="text"],
+.hr-config-table input[type="number"] { width: 100%; min-width: 110px; }
+.hr-config-table .col-actions { width: 110px; text-align: center; }
+.hr-muted-note { margin-top: 4px; font-size: .82rem; color: #64748b; }
+.hr-flag-list { display: grid; gap: 6px; min-width: 130px; }
+.hr-flag-list label { display: flex; align-items: center; gap: 6px; white-space: nowrap; color: #334155; }
+.hr-color-palette { display: grid; grid-template-columns: repeat(5, 28px); gap: 7px; align-items: center; }
+.hr-color-option { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.hr-color-option input { position: absolute; opacity: 0; pointer-events: none; }
+.hr-color-chip { width: 26px; height: 26px; border-radius: 999px; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; justify-content: center; background: #fff; position: relative; }
+.hr-color-dot { width: 18px; height: 18px; border-radius: 999px; background: var(--dot-color); display: inline-block; }
+.hr-color-check { display: none; position: absolute; color: #fff; font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,.35); font-size: .8rem; }
+.hr-color-option input:checked + .hr-color-chip { border-color: #0756c9; box-shadow: 0 0 0 3px rgba(13,110,253,.12); }
+.hr-color-option input:checked + .hr-color-chip .hr-color-check { display: inline; }
+@media (max-width: 780px) {.hr-config-actions { width: 100%; display: grid; grid-template-columns: 1fr; }.hr-config-summary span { width: 100%; justify-content: center; }.hr-config-section-head { display: grid; grid-template-columns: 1fr; }.hr-config-table { min-width: 920px; }}
