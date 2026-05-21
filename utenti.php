@@ -150,7 +150,7 @@ layoutHeader('Gestione utenti');
 </section>
 
 <div class="card card-wide">
-    <div class="hr-filter-toolbar">
+    <div class="hr-filter-toolbar admin-directory-toolbar">
         <div>
             <h2>Directory utenti</h2>
             <div class="meta">Vista compatta per verificare rapidamente utenti, ruoli e azioni principali.</div>
@@ -185,28 +185,32 @@ layoutHeader('Gestione utenti');
                 </div>
 
                 <div class="admin-user-card-body">
-                    <div class="admin-user-info-box">
+                    <div class="admin-user-info-box admin-user-info-wide">
                         <span>Ruoli attivi</span>
                         <strong><?= h($ruoli !== '' ? $ruoli : 'Nessun ruolo') ?></strong>
                     </div>
                     <div class="admin-user-info-box">
                         <span>Password</span>
-                        <strong><?= $cambioPassword ? 'Cambio obbligatorio' : 'OK' ?></strong>
+                        <strong><?= $cambioPassword ? 'Cambio richiesto' : 'OK' ?></strong>
                     </div>
-                    <div class="admin-user-info-box">
+                    <div class="admin-user-info-box admin-user-info-date">
                         <span>Creato</span>
                         <strong><?= h(adminFormatDate((string)$utente['data_creazione'])) ?></strong>
                     </div>
-                    <div class="admin-user-info-box">
+                    <div class="admin-user-info-box admin-user-info-date">
                         <span>Aggiornato</span>
                         <strong><?= h(adminFormatDate((string)($utente['data_aggiornamento'] ?? ''))) ?></strong>
                     </div>
                 </div>
 
                 <div class="admin-user-card-footer">
-                    <?php if ($cambioPassword): ?>
-                        <?= renderHrStatusBadge('OBBLIGATORIO', 'Cambio password richiesto', ['class' => 'user-badge']) ?>
-                    <?php endif; ?>
+                    <div class="admin-user-footer-state">
+                        <?php if ($cambioPassword): ?>
+                            <?= renderHrStatusBadge('OBBLIGATORIO', 'Cambio password richiesto', ['class' => 'user-badge']) ?>
+                        <?php else: ?>
+                            <span class="meta">Password verificata</span>
+                        <?php endif; ?>
+                    </div>
 
                     <?php if ($idUtente !== $idUtenteCorrente): ?>
                         <div class="admin-user-actions">
@@ -215,11 +219,11 @@ layoutHeader('Gestione utenti');
                             </a>
                             <a class="btn btn-sm btn-light" href="utente_forza_password.php?id=<?= $idUtente ?>"
                                onclick="return confirm('Vuoi obbligare questo utente a cambiare la password al prossimo accesso?');">
-                                <i class="la la-exclamation-circle" aria-hidden="true"></i> Forza cambio
+                                <i class="la la-exclamation-circle" aria-hidden="true"></i> Forza
                             </a>
                         </div>
                     <?php else: ?>
-                        <span class="meta">Utente corrente</span>
+                        <span class="meta admin-current-user-note">Utente corrente</span>
                     <?php endif; ?>
                 </div>
             </article>
@@ -227,7 +231,7 @@ layoutHeader('Gestione utenti');
     </div>
 </div>
 
-<div class="card card-wide">
+<div class="card card-wide admin-archive-card">
     <div class="hr-filter-toolbar">
         <div>
             <h2>Archivio utenti</h2>
@@ -300,15 +304,15 @@ layoutHeader('Gestione utenti');
 <style>
 .admin-user-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
 }
 
 .admin-user-card {
     background: #fff;
     border: 1px solid var(--border-color, #d8e2ef);
     border-radius: 14px;
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045);
     overflow: hidden;
 }
 
@@ -316,8 +320,8 @@ layoutHeader('Gestione utenti');
 .admin-user-card-footer {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px;
+    gap: 10px;
+    padding: 11px 12px;
 }
 
 .admin-user-card-main {
@@ -326,9 +330,9 @@ layoutHeader('Gestione utenti');
 
 .admin-user-avatar {
     flex: 0 0 auto;
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
     display: grid;
     place-items: center;
     font-weight: 800;
@@ -343,9 +347,9 @@ layoutHeader('Gestione utenti');
 }
 
 .admin-user-identity h3 {
-    margin: 0 0 3px;
-    font-size: 1rem;
-    line-height: 1.2;
+    margin: 0 0 2px;
+    font-size: 0.98rem;
+    line-height: 1.15;
 }
 
 .admin-user-status {
@@ -354,33 +358,42 @@ layoutHeader('Gestione utenti');
 
 .admin-user-card-body {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    padding: 14px;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 8px;
+    padding: 10px 12px;
 }
 
 .admin-user-info-box {
     border: 1px solid #edf2f7;
-    border-radius: 12px;
-    padding: 10px;
-    min-height: 66px;
+    border-radius: 11px;
+    padding: 8px 9px;
+    min-height: 52px;
     background: #fbfdff;
+}
+
+.admin-user-info-wide {
+    grid-column: span 2;
 }
 
 .admin-user-info-box span {
     display: block;
     color: #52677f;
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     font-weight: 800;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.055em;
     text-transform: uppercase;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
 
 .admin-user-info-box strong {
     display: block;
-    line-height: 1.25;
+    line-height: 1.18;
     overflow-wrap: anywhere;
+    font-size: 0.9rem;
+}
+
+.admin-user-info-date strong {
+    font-size: 0.84rem;
 }
 
 .admin-user-card-footer {
@@ -390,14 +403,38 @@ layoutHeader('Gestione utenti');
     flex-wrap: wrap;
 }
 
+.admin-user-footer-state {
+    min-width: 0;
+}
+
 .admin-user-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
     margin-left: auto;
 }
 
+.admin-user-actions .btn,
+.table-actions .btn {
+    min-height: 34px;
+    padding-inline: 10px;
+}
+
+.admin-current-user-note {
+    margin-left: auto;
+}
+
+@media (min-width: 1180px) {
+    .admin-user-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+}
+
 @media (max-width: 720px) {
+    .admin-directory-toolbar {
+        align-items: stretch;
+    }
+
     .admin-user-grid {
         grid-template-columns: 1fr;
     }
@@ -415,6 +452,14 @@ layoutHeader('Gestione utenti');
         grid-template-columns: 1fr;
     }
 
+    .admin-user-info-wide {
+        grid-column: auto;
+    }
+
+    .admin-user-info-box {
+        min-height: 0;
+    }
+
     .admin-user-actions,
     .admin-user-actions .btn {
         width: 100%;
@@ -422,6 +467,18 @@ layoutHeader('Gestione utenti');
 
     .admin-user-actions .btn {
         justify-content: center;
+    }
+
+    .admin-current-user-note {
+        margin-left: 0;
+    }
+
+    .admin-archive-card .table-wrap {
+        overflow-x: auto;
+    }
+
+    .admin-archive-card table {
+        min-width: 780px;
     }
 }
 </style>
