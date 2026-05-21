@@ -68,7 +68,11 @@ try {
             cognome,
             attivo
         FROM aut_utenti
-        ORDER BY attivo DESC, username"
+        ORDER BY
+            CASE WHEN COALESCE(cognome, '') = '' THEN 1 ELSE 0 END,
+            cognome ASC,
+            nome ASC,
+            username ASC"
     );
     $utenti = $stmtUtenti->fetchAll(PDO::FETCH_ASSOC);
 
@@ -238,7 +242,7 @@ layoutHeader('Ruoli utenti');
             </div>
             <div class="form-group hr-filter-search-group">
                 <label for="ruoliUtentiSearch">Filtro rapido</label>
-                <input type="search" id="ruoliUtentiSearch" placeholder="Cerca utente, ruolo, stato..." autocomplete="off">
+                <input type="search" id="ruoliUtentiSearch" placeholder="Cerca persona, ruolo, stato..." autocomplete="off">
             </div>
         </div>
 
@@ -259,7 +263,7 @@ layoutHeader('Ruoli utenti');
                         <div class="admin-role-user-avatar" aria-hidden="true"><?= h(adminRuoliUserInitials($utente)) ?></div>
                         <div class="admin-role-user-title">
                             <h3><?= h($nomeCompleto) ?></h3>
-                            <div class="meta">@<?= h($username) ?> · ID <?= $utenteId ?></div>
+                            <div class="meta"><?= h($username) ?></div>
                         </div>
                         <div class="admin-role-user-status">
                             <?= renderHrStatusBadge($utenteAttivo ? 'ATTIVO' : 'DISATTIVO', $utenteAttivo ? 'Attivo' : 'Disattivo', ['class' => 'user-badge']) ?>
@@ -299,7 +303,8 @@ layoutHeader('Ruoli utenti');
             <table id="tabellaRuoliUtenti">
                 <thead>
                     <tr>
-                        <th>Utente</th>
+                        <th>ID</th>
+                        <th>Username</th>
                         <th>Nome</th>
                         <th>Stato</th>
                         <th>Ruolo attivo</th>
@@ -314,6 +319,7 @@ layoutHeader('Ruoli utenti');
                         $utenteAttivo = (int)$utente['attivo'] === 1;
                         ?>
                         <tr>
+                            <td><?= $utenteId ?></td>
                             <td><?= h((string)$utente['username']) ?></td>
                             <td><?= h($nomeCompleto) ?></td>
                             <td><?= renderHrStatusBadge($utenteAttivo ? 'ATTIVO' : 'DISATTIVO', $utenteAttivo ? 'Attivo' : 'Disattivo', ['class' => 'user-badge']) ?></td>
