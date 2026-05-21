@@ -417,3 +417,197 @@
     }
 }
 
+
+/* ===== permessi_ruoli.php - stili centralizzati ===== */
+.admin-permissions-card {
+    overflow: hidden;
+}
+
+.permissions-role-form {
+    flex: 0 0 min(420px, 100%);
+    margin: 0 0 0 auto;
+}
+
+.permissions-role-form label {
+    color: #52677f;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+}
+
+.admin-current-role {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 12px 14px;
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    background: #fbfdff;
+    color: #52677f;
+}
+
+.admin-current-role strong {
+    color: #172033;
+}
+
+.admin-permissions-table-wrap {
+    margin-top: 10px;
+}
+
+.permissions-table {
+    min-width: 980px;
+}
+
+.permissions-table th,
+.permissions-table td {
+    vertical-align: middle;
+}
+
+.permissions-resource-cell {
+    min-width: 280px;
+    line-height: 1.35;
+}
+
+.permissions-resource-cell strong {
+    overflow-wrap: anywhere;
+}
+
+.permissions-tree-prefix {
+    color: #52677f;
+    font-weight: 700;
+}
+
+.permissions-mobile-meta {
+    display: none;
+}
+
+.permissions-radio-cell {
+    width: 92px;
+    text-align: center;
+}
+
+.permission-choice {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    width: 100%;
+    min-height: 34px;
+    cursor: pointer;
+}
+
+.permission-choice input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--rav-blue, #0068c9);
+}
+
+.permissions-auto-cell {
+    text-align: center;
+    color: #52677f;
+    font-weight: 700;
+    background: #fbfdff;
+}
+
+.permissions-row-container td {
+    background: #f8fafc;
+}
+
+.permissions-row-container .permissions-resource-cell strong {
+    color: #334155;
+}
+
+.resource-menu-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    border: 1px solid transparent;
+}
+
+.resource-menu-badge-on {
+    color: #087a2f;
+    background: #e9f7ee;
+    border-color: #bfe3ca;
+}
+
+.resource-menu-badge-off {
+    color: #52677f;
+    background: #f3f4f6;
+    border-color: #d8e2ef;
+}
+
+.resource-depth-1 { padding-left: 24px !important; }
+.resource-depth-2 { padding-left: 44px !important; }
+.resource-depth-3 { padding-left: 64px !important; }
+.resource-depth-4 { padding-left: 84px !important; }
+.resource-depth-5 { padding-left: 104px !important; }
+.resource-depth-6 { padding-left: 124px !important; }
+.resource-depth-7 { padding-left: 144px !important; }
+.resource-depth-8 { padding-left: 164px !important; }
+
+.admin-save-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+    .permissions-role-form {
+        flex: 1 1 auto;
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .admin-current-role {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .admin-permissions-table-wrap {
+        overflow-x: auto;
+    }
+
+    .permissions-table {
+        min-width: 860px;
+    }
+
+    .permissions-resource-cell {
+        min-width: 240px;
+    }
+
+    .permissions-radio-cell {
+        width: 78px;
+    }
+
+    .resource-depth-1,
+    .resource-depth-2,
+    .resource-depth-3,
+    .resource-depth-4,
+    .resource-depth-5,
+    .resource-depth-6,
+    .resource-depth-7,
+    .resource-depth-8 {
+        padding-left: 10px !important;
+    }
+
+    .permissions-mobile-meta {
+        display: block;
+        margin-top: 4px;
+        color: #52677f;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .admin-save-actions,
+    .admin-save-actions .btn {
+        width: 100%;
+    }
+}

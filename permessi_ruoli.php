@@ -56,6 +56,19 @@ function risorsaContenitorePuro(array $risorsa): bool
     return $tipo === 'menu' && $percorso === '';
 }
 
+function adminPermissionLevelLabel(string $level): string
+{
+    if ($level === 'write') {
+        return 'Scrittura';
+    }
+
+    if ($level === 'read') {
+        return 'Lettura';
+    }
+
+    return 'Nessuno';
+}
+
 try {
     $stmtRuoli = $pdo->query("
         SELECT id_ruolo, codice_ruolo, descrizione, attivo, ordinamento
@@ -247,12 +260,24 @@ $totaleRisorse = count($risorseGerarchiche);
 $totaleContenitori = 0;
 $totaleRisorseProtette = 0;
 $totaleVisibiliMenu = 0;
+$totaleNessuno = 0;
+$totaleLettura = 0;
+$totaleScrittura = 0;
 
 foreach ($risorseGerarchiche as $risorsaConteggio) {
     if (risorsaContenitorePuro($risorsaConteggio)) {
         $totaleContenitori++;
+        continue;
+    }
+
+    $totaleRisorseProtette++;
+    $livelloConteggio = livelloCorrenteRuolo($permessiRuoliMappa, $idRuoloSelezionato, (int)$risorsaConteggio['id_risorsa']);
+    if ($livelloConteggio === 'write') {
+        $totaleScrittura++;
+    } elseif ($livelloConteggio === 'read') {
+        $totaleLettura++;
     } else {
-        $totaleRisorseProtette++;
+        $totaleNessuno++;
     }
 
     if ((int)($risorsaConteggio['visibile_menu'] ?? 0) === 1) {
@@ -262,52 +287,79 @@ foreach ($risorseGerarchiche as $risorsaConteggio) {
 
 layoutHeader('Permessi ruoli');
 ?>
+<link rel="stylesheet" href="/assets/admin.css">
 
-<div class="card card-wide">
-    <h1>Admin</h1>
+<div class="card card-compact">
+    <div class="section-head">
+        <div>
+            <h1>Permessi ruoli</h1>
+            <div class="meta">Gestione dei permessi associati ai ruoli del portale: accesso negato, sola lettura o scrittura.</div>
+        </div>
+        <div class="section-head-actions">
+            <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Dashboard</a>
+        </div>
+    </div>
+</div>
 
+<div class="card card-compact">
     <?php renderAdminTabs('permessi_ruoli'); ?>
+</div>
 
-    <section class="admin-page-block">
-        <div class="admin-section-heading">
-            <h2>Permessi ruoli</h2>
-            <p class="muted">
-                Gestione permessi su risorse gerarchiche del portale. Le righe rappresentano l'albero di <code>aut_risorse</code>.
-            </p>
+<section class="hr-config-summary">
+    <span><strong><?= (int)$totaleRisorseProtette ?></strong> risorse protette</span>
+    <span><strong><?= (int)$totaleScrittura ?></strong> in scrittura</span>
+    <span><strong><?= (int)$totaleLettura ?></strong> in lettura</span>
+    <span><strong><?= (int)$totaleNessuno ?></strong> senza accesso</span>
+    <span><strong><?= (int)$totaleContenitori ?></strong> contenitori</span>
+</section>
+
+<?php renderAdminAlert($errore, 'danger'); ?>
+<?php renderAdminAlert($messaggio, 'success'); ?>
+
+<div class="card card-wide admin-permissions-card">
+    <div class="hr-filter-toolbar admin-section-toolbar">
+        <div class="admin-section-title">
+            <h2>Ruolo selezionato</h2>
+            <div class="meta">Scegli il ruolo da configurare. Le modifiche vengono salvate solo con il pulsante finale.</div>
         </div>
 
-        <div class="admin-actions-toolbar admin-actions-toolbar-role">
-            <form method="get" id="formRuolo" class="permissions-role-form">
-                <label for="id_ruolo"><strong>Ruolo da gestire:</strong></label>
-                <select name="id_ruolo" id="id_ruolo" onchange="this.form.submit()">
-                    <?php foreach ($ruoli as $ruolo): ?>
-                        <option value="<?= (int)$ruolo['id_ruolo'] ?>" <?= (int)$ruolo['id_ruolo'] === $idRuoloSelezionato ? 'selected' : '' ?>>
-                            <?= htmlspecialchars((string)$ruolo['codice_ruolo']) ?> - <?= htmlspecialchars((string)$ruolo['descrizione']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </form>
-
-            <?php renderAdminQuickFilter('filtroRapidoPermessiRuoli', 'tabellaPermessiRuoli'); ?>
-        </div>
-    </section>
-
-    <?php renderAdminAlert($errore, 'danger'); ?>
-    <?php renderAdminAlert($messaggio, 'success'); ?>
-
-    <div class="meta admin-current-role">
-        <span><strong>Ruolo corrente:</strong> <?= htmlspecialchars((string)$ruoloSelezionato['codice_ruolo']) ?> - <?= htmlspecialchars((string)$ruoloSelezionato['descrizione']) ?></span>
-        <span><strong>Risorse:</strong> <?= (int)$totaleRisorse ?></span>
-        <span><strong>Protette:</strong> <?= (int)$totaleRisorseProtette ?></span>
-        <span><strong>Contenitori:</strong> <?= (int)$totaleContenitori ?></span>
-        <span><strong>Visibili menu:</strong> <?= (int)$totaleVisibiliMenu ?></span>
+        <form method="get" id="formRuolo" class="permissions-role-form">
+            <label for="id_ruolo">Ruolo da gestire</label>
+            <select name="id_ruolo" id="id_ruolo" onchange="this.form.submit()">
+                <?php foreach ($ruoli as $ruolo): ?>
+                    <option value="<?= (int)$ruolo['id_ruolo'] ?>" <?= (int)$ruolo['id_ruolo'] === $idRuoloSelezionato ? 'selected' : '' ?>>
+                        <?= htmlspecialchars((string)$ruolo['descrizione']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </form>
     </div>
 
-    <form method="post">
-        <input type="hidden" name="id_ruolo" value="<?= (int)$idRuoloSelezionato ?>">
-        <input type="hidden" name="salva_permessi" value="1">
+    <div class="admin-current-role">
+        <span><strong>Ruolo corrente:</strong> <?= htmlspecialchars((string)$ruoloSelezionato['descrizione']) ?></span>
+        <span><strong>Codice tecnico:</strong> <code><?= htmlspecialchars((string)$ruoloSelezionato['codice_ruolo']) ?></code></span>
+        <span><strong>Risorse visibili nel menu:</strong> <?= (int)$totaleVisibiliMenu ?></span>
+    </div>
+</div>
 
-        <div class="table-responsive table-wrap">
+<form method="post">
+    <input type="hidden" name="id_ruolo" value="<?= (int)$idRuoloSelezionato ?>">
+    <input type="hidden" name="salva_permessi" value="1">
+
+    <div class="card card-wide admin-permissions-card">
+        <div class="hr-filter-toolbar admin-section-toolbar">
+            <div class="admin-section-title">
+                <h2>Albero permessi</h2>
+                <div class="meta">Vista gerarchica delle risorse del portale. I contenitori organizzano il menu e non hanno permessi propri.</div>
+            </div>
+
+            <div class="form-group hr-filter-search-group">
+                <label for="filtroRapidoPermessiRuoli">Filtro rapido</label>
+                <input type="search" id="filtroRapidoPermessiRuoli" placeholder="Cerca risorsa, percorso, codice..." autocomplete="off">
+            </div>
+        </div>
+
+        <div class="table-responsive table-wrap admin-permissions-table-wrap">
             <table id="tabellaPermessiRuoli" class="permissions-table">
                 <thead>
                     <tr>
@@ -334,15 +386,17 @@ layoutHeader('Permessi ruoli');
                         $depthClass = 'resource-depth-' . min($depth, 8);
                         $contenitorePuro = risorsaContenitorePuro($risorsa);
                         $visibileMenu = (int)($risorsa['visibile_menu'] ?? 0) === 1;
+                        $searchText = trim((string)$risorsa['descrizione'] . ' ' . (string)$risorsa['codice_risorsa'] . ' ' . $tipo . ' ' . $percorso . ' ' . adminPermissionLevelLabel($livelloCorrente));
                         ?>
-                        <tr class="<?= $contenitorePuro ? 'permissions-row-container' : 'permissions-row-resource' ?>">
+                        <tr class="<?= $contenitorePuro ? 'permissions-row-container' : 'permissions-row-resource' ?>" data-search="<?= htmlspecialchars(mb_strtolower($searchText, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?>">
                             <td class="permissions-resource-cell <?= htmlspecialchars($depthClass) ?>">
-                                <?= htmlspecialchars($prefisso) ?>
+                                <span class="permissions-tree-prefix"><?= htmlspecialchars($prefisso) ?></span>
                                 <strong><?= htmlspecialchars((string)$risorsa['descrizione']) ?></strong>
+                                <span class="permissions-mobile-meta"><?= htmlspecialchars(adminPermissionLevelLabel($livelloCorrente)) ?></span>
                             </td>
 
                             <?php if ($contenitorePuro): ?>
-                                <td colspan="3" class="permissions-auto-cell">contenitore menu</td>
+                                <td colspan="3" class="permissions-auto-cell">Contenitore menu</td>
                             <?php else: ?>
                                 <td class="permissions-radio-cell">
                                     <label class="permission-choice" title="Nessun accesso">
@@ -376,8 +430,27 @@ layoutHeader('Permessi ruoli');
         </div>
 
         <?php renderAdminSaveActions('Salva permessi ruolo'); ?>
-    </form>
-</div>
+    </div>
+</form>
 
+<script>
+(function () {
+    function normalize(value) {
+        return (value || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    var input = document.getElementById('filtroRapidoPermessiRuoli');
+    var table = document.getElementById('tabellaPermessiRuoli');
+    if (!input || !table) return;
+
+    input.addEventListener('input', function () {
+        var filter = normalize(input.value);
+        table.querySelectorAll('tbody tr').forEach(function (row) {
+            var text = normalize(row.getAttribute('data-search') || row.textContent);
+            row.style.display = text.indexOf(filter) !== -1 ? '' : 'none';
+        });
+    });
+})();
+</script>
 
 <?php layoutFooter(); ?>
