@@ -14,7 +14,6 @@
 .hr-org-summary span { display: inline-flex; align-items: center; gap: .35rem; padding: .42rem .72rem; border: 1px solid #dbe4f0; border-radius: 999px; background: #fff; font-size: .9rem; color: #24364f; box-shadow: 0 4px 16px rgba(15, 23, 42, .04); }
 .hr-org-summary strong { color: #0f172a; }
 .hr-org-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-.hr-org-search { min-width: min(360px, 100%); }
 .hr-org-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: .95rem; }
 .hr-org-card { border: 1px solid #dbe4f0; border-radius: 16px; background: #fff; box-shadow: 0 12px 34px rgba(15, 23, 42, .06); overflow: hidden; }
 .hr-org-card-head { padding: 1rem 1rem .75rem; display: flex; justify-content: space-between; gap: .9rem; border-bottom: 1px solid #edf2f7; }
@@ -40,7 +39,7 @@
 .hr-org-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: .8rem; margin-top: .9rem; }
 .hr-org-form-actions { display: flex; justify-content: flex-end; margin-top: .85rem; }
 .hr-org-history { margin-top: 1.25rem; }
-@media (max-width: 720px) {.hr-org-toolbar { align-items: stretch; flex-direction: column; }.hr-org-search { min-width: 100%; }.hr-org-grid { grid-template-columns: 1fr; }.hr-org-card-head { flex-direction: column; }}
+@media (max-width: 720px) {.hr-org-toolbar { align-items: stretch; flex-direction: column; }.hr-filter-search-group { min-width: 100%; }.hr-org-grid { grid-template-columns: 1fr; }.hr-org-card-head { flex-direction: column; }}
 
 
 /* ===== gruppi_lavoro.php ===== */
@@ -111,3 +110,46 @@
 .hr-color-option input:checked + .hr-color-chip { border-color: #0756c9; box-shadow: 0 0 0 3px rgba(13,110,253,.12); }
 .hr-color-option input:checked + .hr-color-chip .hr-color-check { display: inline; }
 @media (max-width: 780px) {.hr-config-actions { width: 100%; display: grid; grid-template-columns: 1fr; }.hr-config-summary span { width: 100%; justify-content: center; }.hr-config-section-head { display: grid; grid-template-columns: 1fr; }.hr-config-table { min-width: 920px; }}
+
+
+/* ===== HR shared toolbar and quick filter components =====
+   Regola comune: tutti i blocchi con Filtro rapido usano lo stesso componente.
+   Non usare classi pagina-specifiche per dimensionare i filtri.
+*/
+.hr-profile-toolbar,
+.hr-org-toolbar,
+.hr-team-toolbar,
+.hr-filter-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 360px);
+    gap: 18px;
+    align-items: end;
+    margin-bottom: 1rem;
+}
+
+.hr-filter-search-group {
+    width: 100%;
+    max-width: 360px;
+    justify-self: end;
+    margin: 0;
+}
+
+.hr-filter-search-group input[type="search"] {
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .hr-profile-toolbar,
+    .hr-org-toolbar,
+    .hr-team-toolbar,
+    .hr-filter-toolbar {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .hr-filter-search-group {
+        max-width: none;
+        justify-self: stretch;
+        min-width: 100%;
+    }
+}

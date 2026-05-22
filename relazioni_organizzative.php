@@ -286,7 +286,7 @@ layoutHeader('Relazioni organizzative');
             <h2>Mappa responsabili / referenti</h2>
             <div class="meta">Vista per responsabile: mostra solo i collegamenti attivi e diretti.</div>
         </div>
-        <div class="form-group hr-org-search">
+        <div class="form-group hr-filter-search-group">
             <label for="orgSearch">Filtro rapido</label>
             <input type="search" id="orgSearch" placeholder="Cerca responsabile, collaboratore, note...">
         </div>
