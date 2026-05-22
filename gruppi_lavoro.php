@@ -149,7 +149,7 @@ try {
                 CONCAT(COALESCE(nome,''), ' ', COALESCE(cognome,'')) AS nominativo
          FROM aut_utenti
          WHERE attivo = 1
-         ORDER BY nominativo, username"
+         ORDER BY cognome, nome, username"
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $gruppi = $pdo->query(
@@ -309,7 +309,6 @@ layoutHeader('Team e gruppi di lavoro');
                     <div class="hr-team-card-head">
                         <div class="hr-team-card-title">
                             <strong><?= h((string)$gruppo['nome']) ?></strong>
-                            <span class="meta">@<?= h((string)$gruppo['codice']) ?></span>
                             <div class="hr-team-card-badges">
                                 <?= hrTeamBadge((int)$gruppo['attivo'] === 1 ? 'Attivo' : 'Disattivo', (int)$gruppo['attivo'] === 1 ? 'active' : 'closed') ?>
                                 <?= hrTeamBadge(count($membriAttivi) . ' membri', 'role') ?>
@@ -330,7 +329,6 @@ layoutHeader('Team e gruppi di lavoro');
                                         <span class="hr-team-member-icon"><i class="la la-user-friends" aria-hidden="true"></i></span>
                                         <div class="hr-team-member-main">
                                             <strong><?= h(hrTeamLabelUtente($membro)) ?></strong>
-                                            <span class="meta">@<?= h((string)$membro['username']) ?></span>
                                             <div class="hr-team-member-tags">
                                                 <?php if (trim((string)$membro['ruolo_nel_gruppo']) !== ''): ?><?= hrTeamBadge((string)$membro['ruolo_nel_gruppo'], 'role') ?><?php endif; ?>
                                                 <?php if ($isTest): ?><?= hrTeamBadge('Test', 'test') ?><?php endif; ?>
@@ -380,7 +378,7 @@ layoutHeader('Team e gruppi di lavoro');
                     ?>
                     <tr>
                         <td><span class="group-icon"><i class="la la-users" aria-hidden="true"></i></span><strong><?= h((string)$a['gruppo_nome']) ?></strong><br><span class="meta"><?= h((string)$a['gruppo_codice']) ?></span></td>
-                        <td><strong><?= h(hrTeamLabelUtente($a)) ?></strong><br><span class="meta">@<?= h((string)$a['username']) ?></span><?= $isTest ? '<br>' . hrTeamBadge('Test', 'test') : '' ?></td>
+                        <td><strong><?= h(hrTeamLabelUtente($a)) ?></strong><?= $isTest ? '<br>' . hrTeamBadge('Test', 'test') : '' ?></td>
                         <td><?= h((string)$a['ruolo_nel_gruppo']) ?></td>
                         <td><?= h((string)$a['data_inizio']) ?><?= $a['data_fine'] ? ' → ' . h((string)$a['data_fine']) : '' ?></td>
                         <td><?= renderHrStatusBadge($attiva ? 'ATTIVA' : 'CHIUSA', $attiva ? 'Attiva' : 'Chiusa') ?></td>

@@ -141,7 +141,7 @@ try {
         "SELECT id_utente, username, CONCAT(COALESCE(nome,''), ' ', COALESCE(cognome,'')) AS nominativo
          FROM aut_utenti
          WHERE attivo = 1
-         ORDER BY nominativo, username"
+         ORDER BY cognome, nome, username"
     )->fetchAll();
 
     $tipiRelazione = $pdo->query("SELECT * FROM hr_tipi_relazione_organizzativa WHERE attivo = 1 AND codice IN ('RESPONSABILE_FUNZIONALE','RESPONSABILE_DIRETTO') ORDER BY CASE WHEN codice = 'RESPONSABILE_FUNZIONALE' THEN 0 ELSE 1 END, descrizione")->fetchAll();
@@ -309,7 +309,6 @@ layoutHeader('Relazioni organizzative');
                     <div class="hr-org-card-head">
                         <div>
                             <h3 class="hr-org-card-title"><?= h((string)$responsabile['nome']) ?></h3>
-                            <div class="hr-org-card-user">@<?= h((string)$responsabile['username']) ?></div>
                             <div class="hr-org-chip-row"><?= hrRelazioneTestBadge((string)$responsabile['username']) ?></div>
                         </div>
                         <?= renderHrStatusBadge('ATTIVO', 'Attivo') ?>
@@ -321,7 +320,7 @@ layoutHeader('Relazioni organizzative');
                                 <span class="hr-org-relation-icon"><i class="la la-user-check" aria-hidden="true"></i></span>
                                 <div>
                                     <div class="hr-org-person"><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></div>
-                                    <div class="hr-org-meta">@<?= h(hrRelazioneUsername($r, 'utente')) ?> · <?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></div>
+                                    <div class="hr-org-meta"><?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></div>
                                     <div class="hr-org-chip-row">
                                         <?= hrRelazioneTestBadge(hrRelazioneUsername($r, 'utente')) ?>
                                         <span class="hr-org-chip hr-org-chip-muted"><?= h(hrRelazionePeriodo($r)) ?></span>
@@ -366,9 +365,9 @@ layoutHeader('Relazioni organizzative');
             <tbody>
             <?php foreach ($relazioni as $r): ?>
                 <tr>
-                    <td><strong><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></strong><br><span class="meta">@<?= h(hrRelazioneUsername($r, 'utente')) ?></span></td>
+                    <td><strong><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></strong></td>
                     <td><span class="relation-icon"><i class="la la-level-up-alt" aria-hidden="true"></i></span><?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></td>
-                    <td><strong><?= h(hrRelazioneNomeUtente($r, 'collegato')) ?></strong><br><span class="meta">@<?= h(hrRelazioneUsername($r, 'collegato')) ?></span></td>
+                    <td><strong><?= h(hrRelazioneNomeUtente($r, 'collegato')) ?></strong></td>
                     <td><?= h(hrRelazionePeriodo($r)) ?></td>
                     <td><?= h((string)$r['note']) ?></td>
                     <td><?= renderHrStatusBadge((int)$r['attiva'] === 1 ? 'ATTIVA' : 'CHIUSA', (int)$r['attiva'] === 1 ? 'Attiva' : 'Chiusa') ?></td>
