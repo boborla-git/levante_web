@@ -60,13 +60,20 @@
 
 .hr-form-actions-inline {
     display: flex;
-    align-items: flex-end;
+    align-items: stretch;
     justify-content: flex-end;
+    align-self: end;
 }
 
 .hr-form-actions-inline button,
 .hr-form-actions-inline .btn {
     white-space: nowrap;
+    min-height: 42px;
+    height: 42px;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 @media (max-width: 780px) {
@@ -137,6 +144,12 @@
 .hr-team-hero { margin-bottom: 0; }
 .hr-team-form-grid { display: grid; grid-template-columns: minmax(140px, .8fr) minmax(180px, 1.2fr) minmax(220px, 2fr) auto; gap: 12px; align-items: end; }
 .hr-team-membership-grid { display: grid; grid-template-columns: minmax(200px, 1.2fr) minmax(220px, 1.4fr) minmax(170px, 1fr) minmax(145px, .8fr) minmax(145px, .8fr) auto; gap: 12px; align-items: end; }
+.hr-team-form-grid .form-group,
+.hr-team-membership-grid .form-group { margin-bottom: 0; }
+.hr-team-form-grid .hr-form-actions-inline,
+.hr-team-membership-grid .hr-form-actions-inline { align-self: end; height: 42px; }
+.hr-team-form-grid .hr-form-actions-inline button,
+.hr-team-membership-grid .hr-form-actions-inline button { height: 42px; min-height: 42px; padding-top: 0; padding-bottom: 0; }
 .hr-team-toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
 .hr-team-toolbar .hr-filter-search-group { min-width: min(330px, 100%); }
 .hr-team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
