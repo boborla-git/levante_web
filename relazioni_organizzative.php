@@ -288,7 +288,7 @@ layoutHeader('Relazioni organizzative');
         </div>
         <div class="form-group hr-filter-search-group">
             <label for="orgSearch">Filtro rapido</label>
-            <input type="search" id="orgSearch" placeholder="Cerca responsabile, collaboratore, note...">
+            <input type="search" id="orgSearch" data-card-filter="relazioniOrganizzative" placeholder="Cerca responsabile, collaboratore, note...">
         </div>
     </div>
 
@@ -305,7 +305,7 @@ layoutHeader('Relazioni organizzative');
                     $searchText .= ' ' . strtolower(hrRelazioneNomeUtente($collab, 'utente') . ' ' . hrRelazioneUsername($collab, 'utente') . ' ' . (string)($collab['note'] ?? ''));
                 }
                 ?>
-                <article class="hr-org-card" data-org-card data-search="<?= h($searchText) ?>">
+                <article class="hr-org-card" data-card-filter-item="relazioniOrganizzative" data-search-text="<?= h($searchText) ?>">
                     <div class="hr-org-card-head">
                         <div>
                             <h3 class="hr-org-card-title"><?= h((string)$responsabile['nome']) ?></h3>
@@ -387,22 +387,6 @@ layoutHeader('Relazioni organizzative');
     </div>
 </div>
 
-<script>
-(function () {
-    var search = document.getElementById('orgSearch');
-    var cards = Array.prototype.slice.call(document.querySelectorAll('[data-org-card]'));
-    if (!search || cards.length === 0) {
-        return;
-    }
-
-    search.addEventListener('input', function () {
-        var value = String(search.value || '').trim().toLowerCase();
-        cards.forEach(function (card) {
-            var text = String(card.getAttribute('data-search') || '').toLowerCase();
-            card.style.display = value === '' || text.indexOf(value) !== -1 ? '' : 'none';
-        });
-    });
-}());
-</script>
+<script src="/assets/hr-common.js"></script>
 
 <?php layoutFooter(); ?>

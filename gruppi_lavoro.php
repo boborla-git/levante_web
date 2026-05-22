@@ -399,20 +399,6 @@ layoutHeader('Team e gruppi di lavoro');
     </section>
 </div>
 
-<script>
-(function () {
-    const inputs = document.querySelectorAll('[data-card-filter]');
-    inputs.forEach(function (input) {
-        const target = input.getAttribute('data-card-filter');
-        input.addEventListener('input', function () {
-            const q = input.value.trim().toLowerCase();
-            document.querySelectorAll('[data-card-filter-item="' + target + '"]').forEach(function (card) {
-                const text = (card.getAttribute('data-search-text') || card.textContent || '').toLowerCase();
-                card.style.display = text.indexOf(q) !== -1 ? '' : 'none';
-            });
-        });
-    });
-}());
-</script>
+<script src="/assets/hr-common.js"></script>
 
 <?php layoutFooter(); ?>

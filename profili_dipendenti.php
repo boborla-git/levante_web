@@ -274,7 +274,7 @@ layoutHeader('Profili dipendenti');
             </div>
             <div class="form-group hr-filter-search-group">
                 <label for="profiliSearch">Filtro rapido</label>
-                <input type="search" id="profiliSearch" placeholder="Cerca persona, reparto, centro di costo, team...">
+                <input type="search" id="profiliSearch" data-card-filter="profiliDipendenti" placeholder="Cerca persona, reparto, centro di costo, team...">
             </div>
         </div>
     </section>
@@ -309,7 +309,7 @@ layoutHeader('Profili dipendenti');
                 implode(' ', array_map(static fn(array $t): string => (string)$t['nome'] . ' ' . (string)$t['codice'] . ' ' . (string)$t['ruolo'], $teams)),
             ])));
             ?>
-            <article class="hr-profile-card <?= $isTest ? 'is-test' : '' ?>" data-search="<?= h($searchText) ?>">
+            <article class="hr-profile-card <?= $isTest ? 'is-test' : '' ?>" data-card-filter-item="profiliDipendenti" data-search-text="<?= h($searchText) ?>">
                 <div class="hr-profile-card-header">
                     <div class="hr-profile-person">
                         <div class="hr-profile-name"><?= h($nomeUtente) ?></div>
@@ -433,23 +433,6 @@ layoutHeader('Profili dipendenti');
     </section>
 </div>
 
-<script>
-(function () {
-    var input = document.getElementById('profiliSearch');
-    var grid = document.getElementById('profiliGrid');
-    if (!input || !grid) {
-        return;
-    }
-
-    input.addEventListener('input', function () {
-        var needle = input.value.trim().toLowerCase();
-        var cards = grid.querySelectorAll('.hr-profile-card');
-        cards.forEach(function (card) {
-            var haystack = (card.getAttribute('data-search') || '').toLowerCase();
-            card.classList.toggle('hr-profile-hidden', needle !== '' && haystack.indexOf(needle) === -1);
-        });
-    });
-}());
-</script>
+<script src="/assets/hr-common.js"></script>
 
 <?php layoutFooter(); ?>
