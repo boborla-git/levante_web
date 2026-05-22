@@ -1,18 +1,102 @@
 /* ===== HR organization UI =====
    Stili comuni centralizzati per pagine HR organizzative e configurazione HR.
    Usato da: profili_dipendenti.php, relazioni_organizzative.php, gruppi_lavoro.php, configurazione_assenze.php.
+
+   Regole architetturali:
+   - le pagine PHP non devono definire layout comuni;
+   - i filtri rapidi HR usano sempre .hr-filter-search-group dentro una toolbar comune;
+   - form larghi, riepiloghi, card, badge e tabelle HR sono governati qui;
+   - le regole locali sono ammesse solo se davvero specifiche della pagina.
 */
 
+/* ===== HR shared page/header/summary components ===== */
+.hr-summary-pills,
+.hr-profile-summary,
+.hr-org-summary,
+.hr-team-summary,
+.hr-config-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.hr-summary-pills span,
+.hr-profile-summary span,
+.hr-org-summary span,
+.hr-team-summary span,
+.hr-config-summary span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #d8e3f0;
+    background: #fff;
+    color: #10233f;
+    border-radius: 999px;
+    padding: 6px 11px;
+    font-size: .9rem;
+    line-height: 1.2;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, .04);
+}
+
+.hr-summary-pills strong,
+.hr-profile-summary strong,
+.hr-org-summary strong,
+.hr-team-summary strong,
+.hr-config-summary strong {
+    color: #0f172a;
+}
+
+.hr-wide-form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+
+.hr-wide-form-row .form-group,
+.hr-form-actions-inline {
+    margin-bottom: 0;
+}
+
+.hr-form-actions-inline {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+}
+
+.hr-form-actions-inline button,
+.hr-form-actions-inline .btn {
+    white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+    .hr-summary-pills span,
+    .hr-profile-summary span,
+    .hr-org-summary span,
+    .hr-team-summary span,
+    .hr-config-summary span {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hr-wide-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .hr-form-actions-inline,
+    .hr-form-actions-inline button,
+    .hr-form-actions-inline .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
 
 /* ===== profili_dipendenti.php ===== */
-.hr-profile-stack{display:flex;flex-direction:column;gap:16px}.hr-profile-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.hr-profile-hero h1{margin:0 0 8px}.hr-profile-summary{display:flex;flex-wrap:wrap;gap:8px}.hr-profile-summary span{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-color,#d9e2ec);background:#fff;border-radius:999px;padding:7px 11px;font-size:.92rem}.hr-profile-toolbar{display:grid;grid-template-columns:1fr minmax(250px,360px);gap:18px;align-items:end}.hr-profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}.hr-profile-card{border:1px solid var(--border-color,#d9e2ec);border-radius:16px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.05);overflow:hidden}.hr-profile-card.is-test{background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.hr-profile-card-header{display:flex;justify-content:space-between;gap:12px;padding:16px 16px 12px;border-bottom:1px solid #eef2f6}.hr-profile-person{min-width:0}.hr-profile-name{font-weight:800;font-size:1.05rem;color:#0f172a}.hr-profile-username{color:#64748b;font-size:.9rem;margin-top:2px}.hr-profile-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.hr-profile-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid #dbe4ef;background:#f8fafc;color:#334155;padding:4px 9px;font-size:.82rem;font-weight:650}.hr-profile-pill.primary{background:#eef6ff;border-color:#bfdbfe;color:#0b5ed7}.hr-profile-pill.admin{background:#f8f5ff;border-color:#ddd6fe;color:#5b21b6}.hr-profile-pill.warning{background:#fff8e6;border-color:#f8d36b;color:#7a4d00}.hr-profile-pill.muted{background:#f8fafc;color:#64748b}.hr-profile-status{display:flex;flex-direction:column;align-items:flex-end;gap:6px;white-space:nowrap}.hr-profile-body{padding:14px 16px;display:grid;gap:12px}.hr-profile-main{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hr-profile-info{border:1px solid #eef2f6;background:#fbfcfe;border-radius:12px;padding:10px}.hr-profile-info-label{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:800;margin-bottom:4px}.hr-profile-info-value{font-weight:750;color:#0f172a}.hr-profile-info-sub{font-size:.86rem;color:#64748b;margin-top:2px}.hr-profile-org{display:grid;gap:8px}.hr-profile-org-row{display:flex;gap:8px;align-items:flex-start;color:#334155}.hr-profile-org-row i{margin-top:2px;color:#64748b}.hr-profile-details{border-top:1px solid #eef2f6}.hr-profile-details summary{cursor:pointer;list-style:none;padding:12px 16px;font-weight:750;color:#0b5ed7;display:flex;justify-content:space-between;gap:12px}.hr-profile-details summary::-webkit-details-marker{display:none}.hr-profile-details summary:after{content:'+';font-weight:900}.hr-profile-details[open] summary:after{content:'−'}.hr-profile-form{padding:0 16px 16px;display:grid;gap:12px}.hr-profile-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.hr-profile-form .form-group{margin:0}.hr-profile-form textarea{min-height:72px}.hr-profile-form-actions{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.hr-profile-empty{color:#64748b;font-style:italic}.hr-profile-hidden{display:none!important}@media(max-width:780px){.hr-profile-hero,.hr-profile-toolbar{grid-template-columns:1fr;display:grid}.hr-profile-main,.hr-profile-form-grid{grid-template-columns:1fr}.hr-profile-card-header{flex-direction:column}.hr-profile-status{align-items:flex-start}.hr-profile-grid{grid-template-columns:1fr}}
-
+.hr-profile-stack{display:flex;flex-direction:column;gap:16px}.hr-profile-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.hr-profile-hero h1{margin:0 0 8px}.hr-profile-toolbar{display:grid;grid-template-columns:1fr minmax(250px,360px);gap:18px;align-items:end}.hr-profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}.hr-profile-card{border:1px solid var(--border-color,#d9e2ec);border-radius:16px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.05);overflow:hidden}.hr-profile-card.is-test{background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}.hr-profile-card-header{display:flex;justify-content:space-between;gap:12px;padding:16px 16px 12px;border-bottom:1px solid #eef2f6}.hr-profile-person{min-width:0}.hr-profile-name{font-weight:800;font-size:1.05rem;color:#0f172a}.hr-profile-username{color:#64748b;font-size:.9rem;margin-top:2px}.hr-profile-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.hr-profile-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid #dbe4ef;background:#f8fafc;color:#334155;padding:4px 9px;font-size:.82rem;font-weight:650}.hr-profile-pill.primary{background:#eef6ff;border-color:#bfdbfe;color:#0b5ed7}.hr-profile-pill.admin{background:#f8f5ff;border-color:#ddd6fe;color:#5b21b6}.hr-profile-pill.warning{background:#fff8e6;border-color:#f8d36b;color:#7a4d00}.hr-profile-pill.muted{background:#f8fafc;color:#64748b}.hr-profile-status{display:flex;flex-direction:column;align-items:flex-end;gap:6px;white-space:nowrap}.hr-profile-body{padding:14px 16px;display:grid;gap:12px}.hr-profile-main{display:grid;grid-template-columns:1fr 1fr;gap:12px}.hr-profile-info{border:1px solid #eef2f6;background:#fbfcfe;border-radius:12px;padding:10px}.hr-profile-info-label{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:800;margin-bottom:4px}.hr-profile-info-value{font-weight:750;color:#0f172a}.hr-profile-info-sub{font-size:.86rem;color:#64748b;margin-top:2px}.hr-profile-org{display:grid;gap:8px}.hr-profile-org-row{display:flex;gap:8px;align-items:flex-start;color:#334155}.hr-profile-org-row i{margin-top:2px;color:#64748b}.hr-profile-details{border-top:1px solid #eef2f6}.hr-profile-details summary{cursor:pointer;list-style:none;padding:12px 16px;font-weight:750;color:#0b5ed7;display:flex;justify-content:space-between;gap:12px}.hr-profile-details summary::-webkit-details-marker{display:none}.hr-profile-details summary:after{content:'+';font-weight:900}.hr-profile-details[open] summary:after{content:'−'}.hr-profile-form{padding:0 16px 16px;display:grid;gap:12px}.hr-profile-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.hr-profile-form .form-group{margin:0}.hr-profile-form textarea{min-height:72px}.hr-profile-form-actions{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.hr-profile-empty{color:#64748b;font-style:italic}.hr-profile-hidden{display:none!important}@media(max-width:780px){.hr-profile-hero,.hr-profile-toolbar{grid-template-columns:1fr;display:grid}.hr-profile-main,.hr-profile-form-grid{grid-template-columns:1fr}.hr-profile-card-header{flex-direction:column}.hr-profile-status{align-items:flex-start}.hr-profile-grid{grid-template-columns:1fr}}
 
 /* ===== relazioni_organizzative.php ===== */
 .hr-org-hero { margin-bottom: 1.25rem; }
-.hr-org-summary { display: flex; flex-wrap: wrap; gap: .55rem; margin: .9rem 0 1.15rem; }
-.hr-org-summary span { display: inline-flex; align-items: center; gap: .35rem; padding: .42rem .72rem; border: 1px solid #dbe4f0; border-radius: 999px; background: #fff; font-size: .9rem; color: #24364f; box-shadow: 0 4px 16px rgba(15, 23, 42, .04); }
-.hr-org-summary strong { color: #0f172a; }
+.hr-org-summary { margin: .9rem 0 1.15rem; }
 .hr-org-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .hr-org-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(285px, 1fr)); gap: .95rem; }
 .hr-org-card { border: 1px solid #dbe4f0; border-radius: 16px; background: #fff; box-shadow: 0 12px 34px rgba(15, 23, 42, .06); overflow: hidden; }
@@ -41,11 +125,10 @@
 .hr-org-history { margin-top: 1.25rem; }
 @media (max-width: 720px) {.hr-org-toolbar { align-items: stretch; flex-direction: column; }.hr-filter-search-group { min-width: 100%; }.hr-org-grid { grid-template-columns: 1fr; }.hr-org-card-head { flex-direction: column; }}
 
-
 /* ===== gruppi_lavoro.php ===== */
 .hr-team-stack { display: grid; gap: 18px; }
-.hr-team-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
-.hr-team-summary span,.hr-team-badge { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #d8e3f0; background: #fff; color: #10233f; border-radius: 999px; padding: 4px 10px; font-size: .88rem; line-height: 1.2; }
+.hr-team-summary { margin: 18px 0; }
+.hr-team-badge { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #d8e3f0; background: #fff; color: #10233f; border-radius: 999px; padding: 4px 10px; font-size: .88rem; line-height: 1.2; }
 .hr-team-badge-active { border-color: #b7e4c7; background: #eaf8ef; color: #08722f; font-weight: 700; }
 .hr-team-badge-closed { border-color: #d8e3f0; background: #f4f7fb; color: #5c6b82; }
 .hr-team-badge-test { border-color: #ffd37a; background: #fff8e8; color: #8a5a00; font-weight: 700; }
@@ -77,16 +160,12 @@
 .hr-team-card-foot { padding: 12px 16px; border-top: 1px solid #eef2f7; background: #fbfdff; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .hr-team-archive { margin-top: 18px; }
 @media (max-width: 900px) {.hr-team-form-grid,.hr-team-membership-grid { grid-template-columns: 1fr; }.hr-team-toolbar { display: grid; grid-template-columns: 1fr; }.hr-team-card-head { align-items: flex-start; }}
-@media (max-width: 520px) {.hr-team-grid { grid-template-columns: 1fr; }.hr-team-summary span { width: 100%; justify-content: center; }.hr-team-member { grid-template-columns: 30px 1fr; }.hr-team-member form { grid-column: 2; justify-self: start; }.hr-team-count { min-width: 52px; min-height: 52px; }}
-
+@media (max-width: 520px) {.hr-team-grid { grid-template-columns: 1fr; }.hr-team-member { grid-template-columns: 30px 1fr; }.hr-team-member form { grid-column: 2; justify-self: start; }.hr-team-count { min-width: 52px; min-height: 52px; }}
 
 /* ===== configurazione_assenze.php ===== */
 .hr-config-stack { display: grid; gap: 18px; }
 .hr-config-hero { margin-bottom: 0; }
 .hr-config-actions { flex-wrap: wrap; }
-.hr-config-summary { display: flex; flex-wrap: wrap; gap: 8px; }
-.hr-config-summary span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d8e3f0; background: #fff; color: #10233f; border-radius: 999px; padding: 6px 11px; font-size: .9rem; line-height: 1.2; box-shadow: 0 4px 16px rgba(15,23,42,.04); }
-.hr-config-summary strong { color: #0f172a; }
 .hr-config-card { overflow: hidden; }
 .hr-config-section-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
 .hr-config-section-head h2 { margin: 0 0 6px; }
@@ -109,8 +188,7 @@
 .hr-color-check { display: none; position: absolute; color: #fff; font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,.35); font-size: .8rem; }
 .hr-color-option input:checked + .hr-color-chip { border-color: #0756c9; box-shadow: 0 0 0 3px rgba(13,110,253,.12); }
 .hr-color-option input:checked + .hr-color-chip .hr-color-check { display: inline; }
-@media (max-width: 780px) {.hr-config-actions { width: 100%; display: grid; grid-template-columns: 1fr; }.hr-config-summary span { width: 100%; justify-content: center; }.hr-config-section-head { display: grid; grid-template-columns: 1fr; }.hr-config-table { min-width: 920px; }}
-
+@media (max-width: 780px) {.hr-config-actions { width: 100%; display: grid; grid-template-columns: 1fr; }.hr-config-section-head { display: grid; grid-template-columns: 1fr; }.hr-config-table { min-width: 920px; }}
 
 /* ===== HR shared toolbar and quick filter components =====
    Regola comune: tutti i blocchi con Filtro rapido usano lo stesso componente.

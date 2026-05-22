@@ -157,6 +157,7 @@ $palette = hrPaletteColori();
 
 layoutHeader('Configurazione assenze');
 ?>
+<link rel="stylesheet" href="/assets/hr.css">
 
 <div class="hr-config-stack">
     <section class="card card-compact hr-config-hero">
