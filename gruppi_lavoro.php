@@ -240,7 +240,7 @@ layoutHeader('Team e gruppi di lavoro');
                     <div class="form-group"><label for="codice">Codice</label><input type="text" name="codice" id="codice" maxlength="50" required></div>
                     <div class="form-group"><label for="nome">Nome team</label><input type="text" name="nome" id="nome" maxlength="100" required></div>
                     <div class="form-group"><label for="descrizione">Descrizione</label><input type="text" name="descrizione" id="descrizione" maxlength="255" placeholder="Esempio: gruppo operativo produzione, ufficio, progetto..."></div>
-                    <div class="form-group hr-form-actions-inline"><button type="submit">Salva team</button></div>
+                    <div class="form-group"><label aria-hidden="true">&nbsp;</label><button type="submit" class="btn btn-primary">Salva team</button></div>
                 </div>
             </form>
         <?php endif; ?>
@@ -274,7 +274,7 @@ layoutHeader('Team e gruppi di lavoro');
                     <div class="form-group"><label for="ruolo_nel_gruppo">Etichetta nel team</label><input type="text" name="ruolo_nel_gruppo" id="ruolo_nel_gruppo" maxlength="50" placeholder="Referente, membro, supporto..."></div>
                     <div class="form-group"><label for="data_inizio">Data inizio</label><input type="date" name="data_inizio" id="data_inizio" value="<?= date('Y-m-d') ?>" required></div>
                     <div class="form-group"><label for="data_fine">Data fine</label><input type="date" name="data_fine" id="data_fine"></div>
-                    <div class="form-group hr-form-actions-inline"><button type="submit">Salva appartenenza</button></div>
+                    <div class="form-group"><label aria-hidden="true">&nbsp;</label><button type="submit" class="btn btn-primary">Salva appartenenza</button></div>
                 </div>
             </form>
         <?php endif; ?>
