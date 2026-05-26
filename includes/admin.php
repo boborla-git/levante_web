@@ -9,6 +9,21 @@ if (!function_exists('adminEscape')) {
     }
 }
 
+if (!function_exists('renderAdminCommonScripts')) {
+    /** Carica una sola volta gli script comuni Admin/HR. */
+    function renderAdminCommonScripts(): void
+    {
+        static $loaded = false;
+        if ($loaded) {
+            return;
+        }
+        $loaded = true;
+        ?>
+        <script defer src="/assets/hr-common.js"></script>
+        <?php
+    }
+}
+
 if (!function_exists('renderAdminTabs')) {
     /**
      * Renderizza la navigazione comune dell'area Admin.
@@ -47,6 +62,7 @@ if (!function_exists('renderAdminTabs')) {
             <?php endforeach; ?>
         </div>
         <?php
+        renderAdminCommonScripts();
     }
 }
 
@@ -101,4 +117,3 @@ if (!function_exists('renderAdminSaveActions')) {
         <?php
     }
 }
-
