@@ -162,7 +162,7 @@ layoutHeader('Gestione utenti');
         </div>
         <div class="form-group hr-filter-search-group">
             <label for="utentiSearch">Filtro rapido</label>
-            <input type="search" id="utentiSearch" placeholder="Cerca persona, ruolo, stato..." autocomplete="off">
+            <input type="search" id="utentiSearch" data-card-filter="utentiCards" placeholder="Cerca persona, ruolo, stato..." autocomplete="off">
         </div>
     </div>
 
@@ -177,7 +177,7 @@ layoutHeader('Gestione utenti');
             $cambioPassword = (int)$utente['deve_cambiare_password'] === 1;
             $searchText = trim($username . ' ' . $nomeCompleto . ' ' . $ruoli . ' ' . ($utenteAttivo ? 'attivo' : 'disattivo') . ' ' . ($cambioPassword ? 'cambio password obbligatorio' : 'password ok'));
             ?>
-            <article class="admin-user-card" data-search="<?= h(mb_strtolower($searchText, 'UTF-8')) ?>">
+            <article class="admin-user-card" data-card-filter-item="utentiCards" data-search-text="<?= h(mb_strtolower($searchText, 'UTF-8')) ?>">
                 <div class="admin-user-card-main">
                     <div class="admin-user-avatar" aria-hidden="true"><?= h(adminUserInitials($utente)) ?></div>
                     <div class="admin-user-identity">
@@ -306,23 +306,6 @@ layoutHeader('Gestione utenti');
     </div>
 </div>
 
-
-<script>
-(function () {
-    var input = document.getElementById('utentiSearch');
-    var cards = Array.prototype.slice.call(document.querySelectorAll('#utentiCards .admin-user-card'));
-    if (!input || cards.length === 0) {
-        return;
-    }
-
-    input.addEventListener('input', function () {
-        var query = input.value.trim().toLowerCase();
-        cards.forEach(function (card) {
-            var text = card.getAttribute('data-search') || '';
-            card.style.display = text.indexOf(query) !== -1 ? '' : 'none';
-        });
-    });
-}());
-</script>
+<script src="/assets/hr-common.js"></script>
 
 <?php layoutFooter(); ?>

@@ -243,7 +243,7 @@ layoutHeader('Ruoli utenti');
             </div>
             <div class="form-group hr-filter-search-group">
                 <label for="ruoliUtentiSearch">Filtro rapido</label>
-                <input type="search" id="ruoliUtentiSearch" placeholder="Cerca persona, ruolo, stato..." autocomplete="off">
+                <input type="search" id="ruoliUtentiSearch" data-card-filter="ruoliUtentiCards" placeholder="Cerca persona, ruolo, stato..." autocomplete="off">
             </div>
         </div>
 
@@ -259,7 +259,7 @@ layoutHeader('Ruoli utenti');
                 $utenteAttivo = (int)$utente['attivo'] === 1;
                 $searchText = mb_strtolower(trim($username . ' ' . $nomeCompleto . ' ' . $ruoloCorrenteLabel . ' ' . ($utenteAttivo ? 'attivo' : 'disattivo')), 'UTF-8');
                 ?>
-                <article class="admin-role-user-card" data-search="<?= h($searchText) ?>">
+                <article class="admin-role-user-card" data-card-filter-item="ruoliUtentiCards" data-search-text="<?= h($searchText) ?>">
                     <div class="admin-role-user-head">
                         <div class="admin-role-user-avatar" aria-hidden="true"><?= h(adminRuoliUserInitials($utente)) ?></div>
                         <div class="admin-role-user-title">
@@ -333,23 +333,6 @@ layoutHeader('Ruoli utenti');
     </section>
 </form>
 
-
-<script>
-(function () {
-    var input = document.getElementById('ruoliUtentiSearch');
-    var cards = Array.prototype.slice.call(document.querySelectorAll('#ruoliUtentiCards .admin-role-user-card'));
-    if (!input || cards.length === 0) {
-        return;
-    }
-
-    input.addEventListener('input', function () {
-        var query = input.value.trim().toLowerCase();
-        cards.forEach(function (card) {
-            var text = card.getAttribute('data-search') || '';
-            card.style.display = text.indexOf(query) !== -1 ? '' : 'none';
-        });
-    });
-}());
-</script>
+<script src="/assets/hr-common.js"></script>
 
 <?php layoutFooter(); ?>
