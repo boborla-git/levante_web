@@ -81,7 +81,6 @@ function layoutRenderLabel(array $node): void
     }
 }
 
-
 function layoutUnreadNotificationsCount(int $idUtente): int
 {
     if ($idUtente <= 0) {
@@ -273,7 +272,6 @@ function layoutRenderDesktopDropdownItems(array $nodes, array $childrenMap, stri
         $hasChildren = count($children) > 0;
         $isActive = layoutIsActiveNode($node, $childrenMap, $currentPage);
         $canOpen = (bool)($node['can_open'] ?? false);
-        $label = (string)($node['descrizione'] ?? '');
         $href = ltrim((string)($node['percorso'] ?? ''), '/');
         ?>
         <div class="topnav-menu-item level-<?= $level ?>">
@@ -430,58 +428,17 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
         <link rel="apple-touch-icon" href="/assets/favicon.png">
 
         <style>
-            :root {
-                --ravioli-blue: #0068c9;
-                --ravioli-blue-hover: #0068c9;
-                --ravioli-yellow: #ffd400;
-                --ravioli-yellow-hover: #ffd400;
-            }
-
+            :root { --ravioli-blue: #0068c9; --ravioli-blue-hover: #0068c9; --ravioli-yellow: #ffd400; --ravioli-yellow-hover: #ffd400; }
             .page-content .btn:not(.btn-light):not(.btn-danger):not(.hr-icon-btn),
             .page-content button:not(.topnav-parent):not(.nav-drawer-close):not(.nav-drawer-toggle):not(.btn-light):not(.btn-danger):not(.hr-icon-btn),
-            .page-content input[type="submit"] {
-                background: var(--ravioli-blue);
-                color: var(--ravioli-yellow);
-                border-color: var(--ravioli-blue);
-            }
-
+            .page-content input[type="submit"] { background: var(--ravioli-blue); color: var(--ravioli-yellow); border-color: var(--ravioli-blue); }
             .page-content .btn:not(.btn-light):not(.btn-danger):not(.hr-icon-btn):hover,
             .page-content button:not(.topnav-parent):not(.nav-drawer-close):not(.nav-drawer-toggle):not(.btn-light):not(.btn-danger):not(.hr-icon-btn):hover,
-            .page-content input[type="submit"]:hover {
-                background: var(--ravioli-blue-hover);
-                color: var(--ravioli-yellow-hover);
-                border-color: var(--ravioli-blue-hover);
-            }
-
-            .btn-ravioli-primary {
-                background: var(--ravioli-blue) !important;
-                color: var(--ravioli-yellow) !important;
-                border-color: var(--ravioli-blue) !important;
-            }
-
-            .btn-ravioli-primary:hover,
-            .btn-ravioli-primary:focus-visible {
-                background: var(--ravioli-blue) !important;
-                color: var(--ravioli-yellow) !important;
-                border-color: var(--ravioli-yellow) !important;
-                box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.55) !important;
-                outline: none !important;
-            }
-
-            .btn-ravioli-secondary {
-                background: var(--ravioli-yellow) !important;
-                color: var(--ravioli-blue) !important;
-                border-color: var(--ravioli-yellow) !important;
-            }
-
-            .btn-ravioli-secondary:hover,
-            .btn-ravioli-secondary:focus-visible {
-                background: var(--ravioli-yellow) !important;
-                color: var(--ravioli-blue) !important;
-                border-color: var(--ravioli-blue) !important;
-                box-shadow: 0 0 0 2px rgba(0, 104, 201, 0.28) !important;
-                outline: none !important;
-            }
+            .page-content input[type="submit"]:hover { background: var(--ravioli-blue-hover); color: var(--ravioli-yellow-hover); border-color: var(--ravioli-blue-hover); }
+            .btn-ravioli-primary { background: var(--ravioli-blue) !important; color: var(--ravioli-yellow) !important; border-color: var(--ravioli-blue) !important; }
+            .btn-ravioli-primary:hover, .btn-ravioli-primary:focus-visible { background: var(--ravioli-blue) !important; color: var(--ravioli-yellow) !important; border-color: var(--ravioli-yellow) !important; box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.55) !important; outline: none !important; }
+            .btn-ravioli-secondary { background: var(--ravioli-yellow) !important; color: var(--ravioli-blue) !important; border-color: var(--ravioli-yellow) !important; }
+            .btn-ravioli-secondary:hover, .btn-ravioli-secondary:focus-visible { background: var(--ravioli-yellow) !important; color: var(--ravioli-blue) !important; border-color: var(--ravioli-blue) !important; box-shadow: 0 0 0 2px rgba(0, 104, 201, 0.28) !important; outline: none !important; }
         </style>
     </head>
     <body>
@@ -498,7 +455,6 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
                 <?php if ($utenteLoggato && count($menuTree) > 0): ?>
                     <nav class="topnav" aria-label="Navigazione principale">
                         <?php layoutRenderDesktopMenu($menuTree, $menuChildrenMap, $paginaCorrente); ?>
-
                     </nav>
                 <?php endif; ?>
             </div>
@@ -520,6 +476,156 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
 
     <main class="page-content">
         <div class="container">
+    <?php
+}
+
+function layoutHrAssenzeTipologieRules(): array
+{
+    try {
+        $pdo = db();
+        $stmt = $pdo->query(
+            "SELECT id_tipologia_evento,
+                    codice,
+                    descrizione,
+                    consente_giorni,
+                    consente_ore,
+                    motivazione_obbligatoria,
+                    avviso_richiedente
+             FROM hr_tipologie_evento
+             WHERE attivo = 1"
+        );
+        $rules = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $id = (int)$row['id_tipologia_evento'];
+            $rules[$id] = [
+                'codice' => (string)$row['codice'],
+                'descrizione' => (string)$row['descrizione'],
+                'consente_giorni' => (int)$row['consente_giorni'] === 1,
+                'consente_ore' => (int)$row['consente_ore'] === 1,
+                'motivazione_obbligatoria' => (int)$row['motivazione_obbligatoria'] === 1,
+                'avviso_richiedente' => trim((string)($row['avviso_richiedente'] ?? '')),
+            ];
+        }
+        return $rules;
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function layoutRenderAssenzeRegoleScript(): void
+{
+    if (basename($_SERVER['PHP_SELF'] ?? '') !== 'assenze.php') {
+        return;
+    }
+
+    $rules = layoutHrAssenzeTipologieRules();
+    if (count($rules) === 0) {
+        return;
+    }
+    ?>
+    <script>
+    window.hrTipologieAssenzeRegole = <?= json_encode($rules, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    (function () {
+        const rules = window.hrTipologieAssenzeRegole || {};
+        const tipologia = document.getElementById('id_tipologia_evento');
+        const modalita = document.getElementById('modalita');
+        const note = document.getElementById('note_richiedente');
+        const form = document.getElementById('form-richiesta-assenza');
+        if (!tipologia || !modalita) return;
+
+        const modalitaOriginali = Array.from(modalita.options).map(function (option) {
+            return { value: option.value, text: option.textContent };
+        });
+
+        function ensureAvvisoBox() {
+            let box = document.getElementById('hr-tipologia-avviso');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'hr-tipologia-avviso';
+                box.className = 'info-box';
+                box.style.marginTop = '12px';
+                box.style.display = 'none';
+                const layout = document.querySelector('.hr-request-layout');
+                if (layout) {
+                    layout.parentNode.insertBefore(box, layout.nextSibling);
+                }
+            }
+            return box;
+        }
+
+        function optionLabel(value) {
+            return value === 'ore' ? 'Ore' : 'Giorni';
+        }
+
+        function aggiornaModalita(rule) {
+            const precedente = modalita.value;
+            modalita.innerHTML = '';
+            const consentite = [];
+            if (!rule || rule.consente_giorni) consentite.push('giorni');
+            if (!rule || rule.consente_ore) consentite.push('ore');
+            if (consentite.length === 0) consentite.push('giorni');
+
+            consentite.forEach(function (value) {
+                const opt = document.createElement('option');
+                opt.value = value;
+                const originale = modalitaOriginali.find(function (item) { return item.value === value; });
+                opt.textContent = originale ? originale.text : optionLabel(value);
+                modalita.appendChild(opt);
+            });
+
+            if (consentite.indexOf(precedente) !== -1) {
+                modalita.value = precedente;
+            } else {
+                modalita.value = consentite[0];
+            }
+            modalita.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function aggiornaAvviso(rule) {
+            const box = ensureAvvisoBox();
+            const testo = rule && rule.avviso_richiedente ? String(rule.avviso_richiedente).trim() : '';
+            if (testo !== '') {
+                box.textContent = testo;
+                box.style.display = '';
+            } else {
+                box.textContent = '';
+                box.style.display = 'none';
+            }
+        }
+
+        function aggiornaNotaObbligatoria(rule) {
+            if (!note) return;
+            const required = !!(rule && rule.motivazione_obbligatoria);
+            note.required = required;
+            const label = document.querySelector('label[for="note_richiedente"]');
+            if (label) {
+                label.textContent = required ? 'Note del richiedente *' : 'Note del richiedente';
+            }
+        }
+
+        function applicaRegole() {
+            const id = parseInt(tipologia.value || '0', 10);
+            const rule = rules[id] || null;
+            aggiornaModalita(rule);
+            aggiornaAvviso(rule);
+            aggiornaNotaObbligatoria(rule);
+        }
+
+        tipologia.addEventListener('change', applicaRegole);
+        if (form) {
+            form.addEventListener('submit', function (event) {
+                const id = parseInt(tipologia.value || '0', 10);
+                const rule = rules[id] || null;
+                if (rule && rule.motivazione_obbligatoria && note && note.value.trim() === '') {
+                    event.preventDefault();
+                    note.focus();
+                    alert('Compila le note del richiedente per questa tipologia.');
+                }
+            });
+        }
+        applicaRegole();
+    })();
+    </script>
     <?php
 }
 
@@ -579,7 +685,6 @@ function layoutFooter(): void
                 });
             });
 
-
             var desktopParents = document.querySelectorAll('.topnav-dropdown > .topnav-parent');
             desktopParents.forEach(function (btn) {
                 btn.addEventListener('click', function (event) {
@@ -611,8 +716,6 @@ function layoutFooter(): void
                     });
                 }
             });
-
-
 
             function normalizzaFiltroRapido(valore) {
                 return (valore || '')
@@ -660,6 +763,7 @@ function layoutFooter(): void
             });
         })();
     </script>
+    <?php layoutRenderAssenzeRegoleScript(); ?>
     </body>
     </html>
     <?php
