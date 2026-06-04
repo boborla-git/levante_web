@@ -16,11 +16,24 @@ function h(?string $v): string
     return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
 }
 
+function reportAssenzePeriodo(array $riga): string
+{
+    $periodo = (string)($riga['data_da'] ?? '');
+    if ((string)($riga['data_a'] ?? '') !== '' && (string)$riga['data_a'] !== (string)$riga['data_da']) {
+        $periodo .= ' - ' . (string)$riga['data_a'];
+    }
+    if ((string)($riga['tipo_periodo'] ?? '') === 'ORE' && (string)($riga['ora_da'] ?? '') !== '' && (string)($riga['ora_a'] ?? '') !== '') {
+        $periodo .= ' ' . (string)$riga['ora_da'] . '-' . (string)$riga['ora_a'];
+    }
+    return $periodo;
+}
+
 $filtroStato = trim((string)($_GET['stato'] ?? ''));
 $filtroTipologia = trim((string)($_GET['tipologia'] ?? ''));
 $filtroDataDa = trim((string)($_GET['data_da'] ?? ''));
 $filtroDataA = trim((string)($_GET['data_a'] ?? ''));
 $filtroUtente = trim((string)($_GET['utente'] ?? ''));
+$exportExcel = (string)($_GET['export'] ?? '') === 'excel';
 
 $where = [];
 $params = [];
@@ -85,17 +98,99 @@ try {
     $erroreReport = 'Impossibile leggere i dati del report assenze.';
 }
 
+if ($exportExcel && $erroreReport === '') {
+    $nomeFile = 'HR_ReportAssenze_' . date('Y-m-d_H-i-s') . '.xls';
+    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . $nomeFile . '"');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    echo "\xEF\xBB\xBF";
+    ?>
+    <table border="1">
+        <thead>
+        <tr>
+            <th>Codice</th>
+            <th>Stato</th>
+            <th>Tipologia</th>
+            <th>Dipendente</th>
+            <th>Username</th>
+            <th>Periodo</th>
+            <th>Creata il</th>
+            <th>Oggetto</th>
+            <th>Note</th>
+        </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($righe as $riga): ?>
+            <tr>
+                <td><?= h((string)$riga['codice_richiesta']) ?></td>
+                <td><?= h((string)$riga['stato']) ?></td>
+                <td><?= h((string)$riga['tipologia']) ?></td>
+                <td><?= h(trim((string)$riga['richiedente']) !== '' ? (string)$riga['richiedente'] : (string)$riga['username']) ?></td>
+                <td><?= h((string)$riga['username']) ?></td>
+                <td><?= h(reportAssenzePeriodo($riga)) ?></td>
+                <td><?= h((string)$riga['data_creazione']) ?></td>
+                <td><?= h((string)$riga['oggetto']) ?></td>
+                <td><?= h((string)$riga['note_richiedente']) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php
+    exit;
+}
+
 $tipologie = $pdo->query("SELECT codice, descrizione FROM hr_tipologie_evento WHERE attivo = 1 ORDER BY ordinamento, descrizione")->fetchAll(PDO::FETCH_ASSOC);
 $stati = $pdo->query("SELECT codice, descrizione FROM hr_stati_richiesta WHERE attivo = 1 ORDER BY ordinamento, descrizione")->fetchAll(PDO::FETCH_ASSOC);
+$queryExport = $_GET;
+$queryExport['export'] = 'excel';
+$urlExport = 'report_assenze.php?' . http_build_query($queryExport);
 
 layoutHeader('Report assenze');
 ?>
+
+<style>
+    .report-filters-grid {
+        display: grid;
+        grid-template-columns: minmax(150px, 1fr) minmax(170px, 1fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) minmax(220px, 1.2fr) auto auto auto;
+        gap: 12px;
+        align-items: end;
+    }
+    .report-filters-grid .form-group {
+        margin: 0;
+    }
+    .report-filters-grid input,
+    .report-filters-grid select {
+        width: 100%;
+        min-height: 42px;
+    }
+    .report-actions-inline {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        white-space: nowrap;
+    }
+    @media (max-width: 1100px) {
+        .report-filters-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .report-actions-inline {
+            grid-column: 1 / -1;
+            flex-wrap: wrap;
+        }
+    }
+    @media (max-width: 700px) {
+        .report-filters-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 
 <div class="card card-compact">
     <div class="section-head">
         <div>
             <h1>Report assenze</h1>
-            <div class="meta">Consulta e filtra le richieste HR. La tabella può essere copiata in Excel.</div>
+            <div class="meta">Consulta, filtra ed esporta le richieste HR visualizzate.</div>
         </div>
         <div class="section-head-actions">
             <a class="btn btn-light" href="approvazioni_assenze.php"><i class="la la-check-circle" aria-hidden="true"></i> Approvazioni</a>
@@ -105,7 +200,7 @@ layoutHeader('Report assenze');
 
 <div class="card card-compact">
     <form method="get">
-        <div class="form-grid">
+        <div class="report-filters-grid">
             <div class="form-group">
                 <label for="stato">Stato</label>
                 <select name="stato" id="stato">
@@ -136,9 +231,10 @@ layoutHeader('Report assenze');
                 <label for="utente">Dipendente</label>
                 <input type="search" name="utente" id="utente" value="<?= h($filtroUtente) ?>" placeholder="Nome, cognome o username">
             </div>
-            <div class="actions">
+            <div class="report-actions-inline">
                 <button type="submit" class="btn btn-primary"><i class="la la-filter" aria-hidden="true"></i> Filtra</button>
                 <a class="btn btn-light" href="report_assenze.php">Reset</a>
+                <a class="btn btn-light" href="<?= h($urlExport) ?>"><i class="la la-file-excel" aria-hidden="true"></i> Esporta Excel</a>
             </div>
         </div>
     </form>
@@ -167,33 +263,21 @@ layoutHeader('Report assenze');
                     <th>Dipendente</th>
                     <th>Periodo</th>
                     <th>Creata il</th>
-                    <th>Oggetto / note</th>
+                    <th>Oggetto</th>
+                    <th>Note</th>
                 </tr>
                 </thead>
                 <tbody>
                 <?php foreach ($righe as $riga): ?>
-                    <?php
-                    $periodo = (string)$riga['data_da'];
-                    if ((string)$riga['data_a'] !== '' && (string)$riga['data_a'] !== (string)$riga['data_da']) {
-                        $periodo .= ' - ' . (string)$riga['data_a'];
-                    }
-                    if ((string)$riga['tipo_periodo'] === 'ORE' && (string)$riga['ora_da'] !== '' && (string)$riga['ora_a'] !== '') {
-                        $periodo .= ' ' . (string)$riga['ora_da'] . '-' . (string)$riga['ora_a'];
-                    }
-                    ?>
                     <tr>
                         <td><strong><?= h((string)$riga['codice_richiesta']) ?></strong></td>
                         <td><?= h((string)$riga['stato']) ?></td>
                         <td><?= h((string)$riga['tipologia']) ?></td>
                         <td><?= h(trim((string)$riga['richiedente']) !== '' ? (string)$riga['richiedente'] : (string)$riga['username']) ?></td>
-                        <td><?= h($periodo) ?></td>
+                        <td><?= h(reportAssenzePeriodo($riga)) ?></td>
                         <td><?= h((string)$riga['data_creazione']) ?></td>
-                        <td>
-                            <?php if (trim((string)$riga['oggetto']) !== ''): ?>
-                                <strong><?= h((string)$riga['oggetto']) ?></strong><br>
-                            <?php endif; ?>
-                            <?= nl2br(h((string)$riga['note_richiedente'])) ?>
-                        </td>
+                        <td><strong><?= h((string)$riga['oggetto']) ?></strong></td>
+                        <td><?= nl2br(h((string)$riga['note_richiedente'])) ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
