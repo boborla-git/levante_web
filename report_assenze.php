@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/export_excel.php';
 
 richiediPermessoLettura('approvazioni_assenze');
 
@@ -14,11 +15,6 @@ $puoConfigurare = haPermessoLettura('configurazione_assenze');
 function h(?string $v): string
 {
     return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
-}
-
-function xlsxText(?string $v): string
-{
-    return htmlspecialchars((string)$v, ENT_XML1 | ENT_QUOTES, 'UTF-8');
 }
 
 function reportAssenzePeriodo(array $riga): string
@@ -33,64 +29,11 @@ function reportAssenzePeriodo(array $riga): string
     return $periodo;
 }
 
-function reportExcelColumnName(int $index): string
+function reportAssenzeExportRows(array $righe): array
 {
-    $name = '';
-    while ($index > 0) {
-        $index--;
-        $name = chr(65 + ($index % 26)) . $name;
-        $index = intdiv($index, 26);
-    }
-    return $name;
-}
-
-function reportExcelCell(string $value, int $row, int $col, int $style = 0): string
-{
-    $ref = reportExcelColumnName($col) . $row;
-    $styleAttr = $style > 0 ? ' s="' . $style . '"' : '';
-    return '<c r="' . $ref . '" t="inlineStr"' . $styleAttr . '><is><t>' . xlsxText($value) . '</t></is></c>';
-}
-
-function reportExcelRow(array $values, int $row, int $style = 0): string
-{
-    $cells = '';
-    $col = 1;
-    foreach ($values as $value) {
-        $cells .= reportExcelCell((string)$value, $row, $col, $style);
-        $col++;
-    }
-    return '<row r="' . $row . '">' . $cells . '</row>';
-}
-
-function reportOutputXlsx(array $righe): void
-{
-    if (!class_exists('ZipArchive')) {
-        http_response_code(500);
-        echo 'Impossibile generare il file XLSX: estensione ZipArchive non disponibile sul server.';
-        exit;
-    }
-
-    $tmp = tempnam(sys_get_temp_dir(), 'hr_report_');
-    if ($tmp === false) {
-        http_response_code(500);
-        echo 'Impossibile creare il file temporaneo XLSX.';
-        exit;
-    }
-
-    $zip = new ZipArchive();
-    if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) {
-        @unlink($tmp);
-        http_response_code(500);
-        echo 'Impossibile creare il file XLSX.';
-        exit;
-    }
-
-    $headers = ['Codice', 'Stato', 'Tipologia', 'Dipendente', 'Username', 'Periodo', 'Creata il', 'Oggetto', 'Note'];
-    $rows = reportExcelRow($headers, 1, 1);
-    $rowNumber = 2;
-
+    $rows = [];
     foreach ($righe as $riga) {
-        $rows .= reportExcelRow([
+        $rows[] = [
             (string)($riga['codice_richiesta'] ?? ''),
             (string)($riga['stato'] ?? ''),
             (string)($riga['tipologia'] ?? ''),
@@ -100,27 +43,9 @@ function reportOutputXlsx(array $righe): void
             (string)($riga['data_creazione'] ?? ''),
             (string)($riga['oggetto'] ?? ''),
             (string)($riga['note_richiedente'] ?? ''),
-        ], $rowNumber);
-        $rowNumber++;
+        ];
     }
-
-    $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
-    $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
-    $zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
-    $zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Report assenze" sheetId="1" r:id="rId1"/></sheets></workbook>');
-    $zip->addFromString('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>');
-    $zip->addFromString('xl/worksheets/sheet1.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="28" customWidth="1"/><col min="2" max="3" width="16" customWidth="1"/><col min="4" max="5" width="24" customWidth="1"/><col min="6" max="7" width="22" customWidth="1"/><col min="8" max="9" width="35" customWidth="1"/></cols><sheetData>' . $rows . '</sheetData></worksheet>');
-    $zip->close();
-
-    $nomeFile = 'HR_ReportAssenze_' . date('Y-m-d_H-i-s') . '.xlsx';
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment; filename="' . $nomeFile . '"');
-    header('Content-Length: ' . filesize($tmp));
-    header('Pragma: no-cache');
-    header('Expires: 0');
-    readfile($tmp);
-    @unlink($tmp);
-    exit;
+    return $rows;
 }
 
 $filtroStato = trim((string)($_GET['stato'] ?? ''));
@@ -194,7 +119,13 @@ try {
 }
 
 if ($exportExcel && $erroreReport === '') {
-    reportOutputXlsx($righe);
+    levanteOutputXlsx(
+        'HR_ReportAssenze',
+        'Report assenze',
+        ['Codice', 'Stato', 'Tipologia', 'Dipendente', 'Username', 'Periodo', 'Creata il', 'Oggetto', 'Note'],
+        reportAssenzeExportRows($righe),
+        [28, 16, 16, 24, 24, 22, 22, 35, 35]
+    );
 }
 
 $tipologie = $pdo->query("SELECT codice, descrizione FROM hr_tipologie_evento WHERE attivo = 1 ORDER BY ordinamento, descrizione")->fetchAll(PDO::FETCH_ASSOC);
