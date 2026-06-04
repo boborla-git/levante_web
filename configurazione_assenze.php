@@ -19,6 +19,8 @@ $riepilogo = [
     'membri_gruppi_attivi' => 0,
     'recapiti_email_attivi' => 0,
 ];
+$tipologie = [];
+$configurazioni = [];
 
 function h(?string $v): string
 {
@@ -47,7 +49,27 @@ function hrColoreValido(?string $colore): string
     return preg_match('/^#[0-9a-fA-F]{6}$/', $colore) ? $colore : '#6c757d';
 }
 
+function hrConfigurazioneAssenzeColonnaEsiste(PDO $pdo, string $tabella, string $colonna): bool
+{
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*)
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = :tabella
+           AND COLUMN_NAME = :colonna'
+    );
+    $stmt->execute([
+        'tabella' => $tabella,
+        'colonna' => $colonna,
+    ]);
+
+    return (int)$stmt->fetchColumn() > 0;
+}
+
 try {
+    $haMotivazioneObbligatoria = hrConfigurazioneAssenzeColonnaEsiste($pdo, 'hr_tipologie_evento', 'motivazione_obbligatoria');
+    $haAvvisoRichiedente = hrConfigurazioneAssenzeColonnaEsiste($pdo, 'hr_tipologie_evento', 'avviso_richiedente');
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$puoScrivere) {
             throw new RuntimeException('Non hai i permessi di modifica.');
@@ -64,12 +86,24 @@ try {
             $descrizione = trim((string)($_POST['descrizione'] ?? ''));
             $descrizioneCalendario = trim((string)($_POST['descrizione_calendario'] ?? ''));
             $coloreCalendario = hrColoreValido((string)($_POST['colore_calendario'] ?? ''));
+            $avvisoRichiedente = trim((string)($_POST['avviso_richiedente'] ?? ''));
 
             if ($descrizione === '') {
                 throw new RuntimeException('La descrizione della tipologia è obbligatoria.');
             }
             if ($descrizioneCalendario === '') {
                 $descrizioneCalendario = $descrizione;
+            }
+
+            $campiExtraSql = '';
+            $paramsExtra = [];
+            if ($haMotivazioneObbligatoria) {
+                $campiExtraSql .= ', motivazione_obbligatoria = :motivazione_obbligatoria';
+                $paramsExtra['motivazione_obbligatoria'] = isset($_POST['motivazione_obbligatoria']) ? 1 : 0;
+            }
+            if ($haAvvisoRichiedente) {
+                $campiExtraSql .= ', avviso_richiedente = :avviso_richiedente';
+                $paramsExtra['avviso_richiedente'] = $avvisoRichiedente !== '' ? $avvisoRichiedente : null;
             }
 
             $stmt = $pdo->prepare(
@@ -83,10 +117,11 @@ try {
                      visibile_ai_colleghi = :visibile_ai_colleghi,
                      attivo = :attivo,
                      ordinamento = :ordinamento,
-                     colore_calendario = :colore_calendario
-                 WHERE id_tipologia_evento = :id_tipologia_evento'
+                     colore_calendario = :colore_calendario'
+                     . $campiExtraSql .
+                ' WHERE id_tipologia_evento = :id_tipologia_evento'
             );
-            $stmt->execute([
+            $stmt->execute(array_merge([
                 'descrizione' => $descrizione,
                 'descrizione_calendario' => $descrizioneCalendario,
                 'richiede_approvazione' => isset($_POST['richiede_approvazione']) ? 1 : 0,
@@ -98,7 +133,7 @@ try {
                 'ordinamento' => (int)($_POST['ordinamento'] ?? 0),
                 'colore_calendario' => $coloreCalendario,
                 'id_tipologia_evento' => $id,
-            ]);
+            ], $paramsExtra));
 
             header('Location: configurazione_assenze.php?ok_tipologia=1');
             exit;
@@ -139,11 +174,24 @@ try {
     $riepilogo['membri_gruppi_attivi'] = (int)$pdo->query('SELECT COUNT(*) FROM hr_gruppi_utenti WHERE attivo = 1 AND (data_fine IS NULL OR data_fine >= CURDATE())')->fetchColumn();
     $riepilogo['recapiti_email_attivi'] = (int)$pdo->query("SELECT COUNT(*) FROM hr_recapiti_utenti ru INNER JOIN hr_tipi_recapito tr ON tr.id_tipo_recapito = ru.id_tipo_recapito WHERE ru.attivo = 1 AND tr.codice IN ('EMAIL_LAVORO','EMAIL_PERSONALE')")->fetchColumn();
 
+    $campiExtraSelect = '';
+    if ($haMotivazioneObbligatoria) {
+        $campiExtraSelect .= ', te.motivazione_obbligatoria';
+    } else {
+        $campiExtraSelect .= ', 0 AS motivazione_obbligatoria';
+    }
+    if ($haAvvisoRichiedente) {
+        $campiExtraSelect .= ', te.avviso_richiedente';
+    } else {
+        $campiExtraSelect .= ', NULL AS avviso_richiedente';
+    }
+
     $tipologie = $pdo->query(
-        'SELECT te.*, sp.descrizione AS stato_presenza
-         FROM hr_tipologie_evento te
-         INNER JOIN hr_stati_presenza sp ON sp.id_stato_presenza = te.id_stato_presenza
-         ORDER BY te.ordinamento, te.descrizione'
+        'SELECT te.*, sp.descrizione AS stato_presenza'
+        . $campiExtraSelect .
+        ' FROM hr_tipologie_evento te
+          INNER JOIN hr_stati_presenza sp ON sp.id_stato_presenza = te.id_stato_presenza
+          ORDER BY te.ordinamento, te.descrizione'
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $configurazioni = $pdo->query('SELECT * FROM hr_configurazioni ORDER BY codice')->fetchAll(PDO::FETCH_ASSOC);
@@ -195,7 +243,7 @@ layoutHeader('Configurazione assenze');
         <div class="hr-config-section-head">
             <div>
                 <h2>Tipologie evento</h2>
-                <div class="meta">Definisci cosa viene mostrato agli utenti e come appare nel calendario.</div>
+                <div class="meta">Definisci cosa viene mostrato agli utenti, quali modalità sono consentite e come appare nel calendario.</div>
             </div>
         </div>
 
@@ -208,6 +256,7 @@ layoutHeader('Configurazione assenze');
                     <th>Presenza</th>
                     <th>Regole</th>
                     <th>Visibilità</th>
+                    <th>Avviso / note</th>
                     <th>Ordine</th>
                     <th>Colore</th>
                     <th class="col-actions">Azioni</th>
@@ -238,6 +287,9 @@ layoutHeader('Configurazione assenze');
                                     <label><input type="checkbox" name="richiede_approvazione" value="1" <?= (int)$tipologia['richiede_approvazione'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> approvazione</label>
                                     <label><input type="checkbox" name="consente_giorni" value="1" <?= (int)$tipologia['consente_giorni'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> giorni</label>
                                     <label><input type="checkbox" name="consente_ore" value="1" <?= (int)$tipologia['consente_ore'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> ore</label>
+                                    <?php if ($haMotivazioneObbligatoria): ?>
+                                        <label><input type="checkbox" name="motivazione_obbligatoria" value="1" <?= (int)($tipologia['motivazione_obbligatoria'] ?? 0) === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> nota obbligatoria</label>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                             <td>
@@ -246,6 +298,14 @@ layoutHeader('Configurazione assenze');
                                     <label><input type="checkbox" name="visibile_ai_colleghi" value="1" <?= (int)$tipologia['visibile_ai_colleghi'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> colleghi</label>
                                     <label><input type="checkbox" name="attivo" value="1" <?= (int)$tipologia['attivo'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> attiva</label>
                                 </div>
+                            </td>
+                            <td>
+                                <?php if ($haAvvisoRichiedente): ?>
+                                    <textarea name="avviso_richiedente" rows="3" maxlength="255" <?= $puoScrivere ? '' : 'readonly' ?>><?= h((string)($tipologia['avviso_richiedente'] ?? '')) ?></textarea>
+                                    <div class="hr-muted-note">Messaggio informativo mostrabile al richiedente.</div>
+                                <?php else: ?>
+                                    <span class="hr-muted-note">Eseguire prima lo script SQL della fase 2.</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <input type="number" name="ordinamento" value="<?= (int)$tipologia['ordinamento'] ?>" <?= $puoScrivere ? '' : 'readonly' ?>>
