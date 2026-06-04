@@ -43,7 +43,8 @@ function levanteOutputXlsx(string $fileBaseName, string $sheetName, array $heade
         exit;
     }
 
-    $safeSheetName = mb_substr(preg_replace('/[\\\/\?\*\[\]:]/', ' ', $sheetName), 0, 31);
+    $safeSheetName = preg_replace('/[\\\/\?\*\[\]:]/', ' ', $sheetName);
+    $safeSheetName = substr((string)$safeSheetName, 0, 31);
     if ($safeSheetName === '') {
         $safeSheetName = 'Foglio1';
     }
