@@ -19,6 +19,35 @@ function normalizzaPermesso(string $permesso): string
     return $permesso;
 }
 
+function utenteAdminGlobale(): bool
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    $username = strtolower(trim((string)($_SESSION['username'] ?? '')));
+    if ($username === 'admin') {
+        return true;
+    }
+
+    $ruolo = strtolower(trim((string)($_SESSION['ruolo'] ?? '')));
+    if (in_array($ruolo, ['admin', 'admin_portale', 'amministratore'], true)) {
+        return true;
+    }
+
+    $ruoli = $_SESSION['ruoli'] ?? [];
+    if (is_array($ruoli)) {
+        foreach ($ruoli as $codiceRuolo) {
+            $codice = strtolower(trim((string)$codiceRuolo));
+            if (in_array($codice, ['admin', 'admin_portale', 'amministratore'], true)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 /**
  * Verifica se l'utente corrente ha un permesso su una risorsa.
  *
@@ -45,6 +74,10 @@ function haPermesso(string $codiceRisorsa, string $permesso = 'read'): bool
 
     if ($idUtente <= 0) {
         return false;
+    }
+
+    if (utenteAdminGlobale()) {
+        return true;
     }
 
     $esitoNuovo = haPermessoNuovoModello($idUtente, $codiceRisorsa, $permesso);
