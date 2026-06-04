@@ -46,7 +46,7 @@ if ($filtroDataA !== '') {
     $params['data_a'] = $filtroDataA;
 }
 if ($filtroUtente !== '') {
-    $where[] = "(u.username LIKE :utente OR u.nome LIKE :utente OR u.cognome LIKE :utente)";
+    $where[] = '(u.username LIKE :utente OR u.nome LIKE :utente OR u.cognome LIKE :utente)';
     $params['utente'] = '%' . $filtroUtente . '%';
 }
 $whereSql = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -72,15 +72,21 @@ $sql = "SELECT
         LEFT JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta AND p.ordinamento = 1
         LEFT JOIN hr_richieste_approvazioni a ON a.id_richiesta = r.id_richiesta
         {$whereSql}
-        GROUP BY r.id_richiesta, p.id_periodo
+        GROUP BY r.id_richiesta, p.id_richiesta_periodo
         ORDER BY p.data_da DESC, r.data_creazione DESC";
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$righe = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$righe = [];
+$erroreReport = '';
+try {
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $righe = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $erroreReport = 'Impossibile leggere i dati del report assenze.';
+}
 
 $tipologie = $pdo->query("SELECT codice, descrizione FROM hr_tipologie_evento WHERE attivo = 1 ORDER BY ordinamento, descrizione")->fetchAll(PDO::FETCH_ASSOC);
-$stati = $pdo->query("SELECT codice, descrizione FROM hr_stati_richiesta ORDER BY ordinamento, descrizione")->fetchAll(PDO::FETCH_ASSOC);
+$stati = $pdo->query("SELECT codice, descrizione FROM hr_stati_richiesta WHERE attivo = 1 ORDER BY ordinamento, descrizione")->fetchAll(PDO::FETCH_ASSOC);
 
 layoutHeader('Report assenze');
 ?>
@@ -146,7 +152,9 @@ layoutHeader('Report assenze');
         </div>
     </div>
 
-    <?php if (!$righe): ?>
+    <?php if ($erroreReport !== ''): ?>
+        <div class="errore"><?= h($erroreReport) ?></div>
+    <?php elseif (!$righe): ?>
         <div class="info-box">Nessuna richiesta corrisponde ai filtri selezionati.</div>
     <?php else: ?>
         <div class="table-wrap">
