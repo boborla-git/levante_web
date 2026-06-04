@@ -28,6 +28,13 @@ function reportAssenzePeriodo(array $riga): string
     return $periodo;
 }
 
+function reportCsvValue($value): string
+{
+    $value = (string)($value ?? '');
+    $value = str_replace(["\r\n", "\r", "\n"], ' ', $value);
+    return trim($value);
+}
+
 $filtroStato = trim((string)($_GET['stato'] ?? ''));
 $filtroTipologia = trim((string)($_GET['tipologia'] ?? ''));
 $filtroDataDa = trim((string)($_GET['data_da'] ?? ''));
@@ -99,44 +106,35 @@ try {
 }
 
 if ($exportExcel && $erroreReport === '') {
-    $nomeFile = 'HR_ReportAssenze_' . date('Y-m-d_H-i-s') . '.xls';
-    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+    $nomeFile = 'HR_ReportAssenze_' . date('Y-m-d_H-i-s') . '.csv';
+    header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $nomeFile . '"');
     header('Pragma: no-cache');
     header('Expires: 0');
-    echo "\xEF\xBB\xBF";
-    ?>
-    <table border="1">
-        <thead>
-        <tr>
-            <th>Codice</th>
-            <th>Stato</th>
-            <th>Tipologia</th>
-            <th>Dipendente</th>
-            <th>Username</th>
-            <th>Periodo</th>
-            <th>Creata il</th>
-            <th>Oggetto</th>
-            <th>Note</th>
-        </tr>
-        </thead>
-        <tbody>
-        <?php foreach ($righe as $riga): ?>
-            <tr>
-                <td><?= h((string)$riga['codice_richiesta']) ?></td>
-                <td><?= h((string)$riga['stato']) ?></td>
-                <td><?= h((string)$riga['tipologia']) ?></td>
-                <td><?= h(trim((string)$riga['richiedente']) !== '' ? (string)$riga['richiedente'] : (string)$riga['username']) ?></td>
-                <td><?= h((string)$riga['username']) ?></td>
-                <td><?= h(reportAssenzePeriodo($riga)) ?></td>
-                <td><?= h((string)$riga['data_creazione']) ?></td>
-                <td><?= h((string)$riga['oggetto']) ?></td>
-                <td><?= h((string)$riga['note_richiedente']) ?></td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-    <?php
+
+    $out = fopen('php://output', 'w');
+    if ($out === false) {
+        exit;
+    }
+
+    fwrite($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['Codice', 'Stato', 'Tipologia', 'Dipendente', 'Username', 'Periodo', 'Creata il', 'Oggetto', 'Note'], ';');
+
+    foreach ($righe as $riga) {
+        fputcsv($out, [
+            reportCsvValue($riga['codice_richiesta'] ?? ''),
+            reportCsvValue($riga['stato'] ?? ''),
+            reportCsvValue($riga['tipologia'] ?? ''),
+            reportCsvValue(trim((string)($riga['richiedente'] ?? '')) !== '' ? (string)$riga['richiedente'] : (string)($riga['username'] ?? '')),
+            reportCsvValue($riga['username'] ?? ''),
+            reportCsvValue(reportAssenzePeriodo($riga)),
+            reportCsvValue($riga['data_creazione'] ?? ''),
+            reportCsvValue($riga['oggetto'] ?? ''),
+            reportCsvValue($riga['note_richiedente'] ?? ''),
+        ], ';');
+    }
+
+    fclose($out);
     exit;
 }
 
@@ -152,7 +150,7 @@ layoutHeader('Report assenze');
 <style>
     .report-filters-grid {
         display: grid;
-        grid-template-columns: minmax(150px, 1fr) minmax(170px, 1fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) minmax(220px, 1.2fr) auto auto auto;
+        grid-template-columns: minmax(150px, 1fr) minmax(170px, 1fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) minmax(220px, 1.2fr) auto;
         gap: 12px;
         align-items: end;
     }
@@ -160,9 +158,24 @@ layoutHeader('Report assenze');
         margin: 0;
     }
     .report-filters-grid input,
-    .report-filters-grid select {
+    .report-filters-grid select,
+    .report-input {
         width: 100%;
         min-height: 42px;
+        border: 1px solid #d5deea;
+        border-radius: 10px;
+        padding: 9px 12px;
+        background: #fff;
+        color: #172033;
+        font: inherit;
+        box-sizing: border-box;
+    }
+    .report-filters-grid input:focus,
+    .report-filters-grid select:focus,
+    .report-input:focus {
+        outline: none;
+        border-color: #0b63f6;
+        box-shadow: 0 0 0 3px rgba(11, 99, 246, 0.12);
     }
     .report-actions-inline {
         display: flex;
@@ -229,7 +242,7 @@ layoutHeader('Report assenze');
             </div>
             <div class="form-group">
                 <label for="utente">Dipendente</label>
-                <input type="search" name="utente" id="utente" value="<?= h($filtroUtente) ?>" placeholder="Nome, cognome o username">
+                <input class="report-input" type="text" name="utente" id="utente" value="<?= h($filtroUtente) ?>" placeholder="Nome, cognome o username">
             </div>
             <div class="report-actions-inline">
                 <button type="submit" class="btn btn-primary"><i class="la la-filter" aria-hidden="true"></i> Filtra</button>
