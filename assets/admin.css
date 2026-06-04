@@ -1,6 +1,6 @@
 /* ===== Admin common UI =====
    Stili comuni centralizzati per pagine admin a card/directory.
-   Usato da: utenti.php, ruoli_utenti.php.
+   Usato da: utenti.php, ruoli_utenti.php, permessi_ruoli.php.
 */
 
 /* ===== utenti.php - stili centralizzati ===== */
@@ -219,29 +219,6 @@
 
 
 /* ===== ruoli_utenti.php - stili centralizzati ===== */
-.admin-section-toolbar {
-    align-items: flex-start;
-    justify-content: flex-start;
-    text-align: left;
-    gap: 18px;
-}
-
-.admin-section-toolbar .admin-section-title {
-    flex: 1 1 auto;
-    min-width: 0;
-    text-align: left;
-}
-
-.admin-section-toolbar .admin-section-title h2 {
-    margin-left: 0;
-    text-align: left;
-}
-
-.admin-section-toolbar .hr-filter-search-group,
-.admin-section-toolbar .admin-list-filter {
-    flex: 0 0 min(360px, 100%);
-    margin-left: auto;
-}
 .admin-role-summary-grid,
 .admin-role-user-grid {
     display: grid;
