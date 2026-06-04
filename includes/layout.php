@@ -36,7 +36,7 @@ function layoutIconClass(array $node): string
         return '';
     }
 
-    $icon = preg_replace('/[^a-zA-Z0-9_\\- ]/', '', $icon) ?? '';
+    $icon = preg_replace('/[^a-zA-Z0-9_\- ]/', '', $icon) ?? '';
     $icon = trim($icon);
     if ($icon === '') {
         return '';
@@ -439,6 +439,14 @@ function layoutHeader(string $titoloPagina, string $titoloApplicazione = 'Levant
             .btn-ravioli-primary:hover, .btn-ravioli-primary:focus-visible { background: var(--ravioli-blue) !important; color: var(--ravioli-yellow) !important; border-color: var(--ravioli-yellow) !important; box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.55) !important; outline: none !important; }
             .btn-ravioli-secondary { background: var(--ravioli-yellow) !important; color: var(--ravioli-blue) !important; border-color: var(--ravioli-yellow) !important; }
             .btn-ravioli-secondary:hover, .btn-ravioli-secondary:focus-visible { background: var(--ravioli-yellow) !important; color: var(--ravioli-blue) !important; border-color: var(--ravioli-blue) !important; box-shadow: 0 0 0 2px rgba(0, 104, 201, 0.28) !important; outline: none !important; }
+            .topnav, .topnav-dropdown, .topnav-menu-item, .topnav-subtree { overflow: visible !important; }
+            .topnav { flex-wrap: nowrap; }
+            .topnav-link, .topnav-parent, .topnav-dropdown-menu a, .topnav-menu-label, .menu-text { white-space: nowrap !important; }
+            .topnav-link, .topnav-parent, .topnav-dropdown-menu a, .topnav-menu-label { display: inline-flex !important; align-items: center; gap: 0.35rem; line-height: 1.15; }
+            .topnav-dropdown-menu { min-width: max-content; width: max-content; max-width: min(92vw, 520px); }
+            .topnav-dropdown-menu a, .topnav-menu-label { width: 100%; min-width: 220px; }
+            .topnav-link.active, .topnav-parent.active, .topnav-dropdown.active > .topnav-parent { min-height: 42px; }
+            @media (max-width: 1100px) { .topnav { display: none; } }
         </style>
     </head>
     <body>
