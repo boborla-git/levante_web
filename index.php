@@ -15,6 +15,7 @@ $puoLeggereUtenti = haPermessoLettura('utenti');
 $puoLeggereOrdini = haPermessoLettura('ordini_fornitori_aperti');
 $puoLeggereAssenze = haPermessoLettura('assenze');
 $puoLeggereApprovazioniAssenze = haPermessoLettura('approvazioni_assenze');
+$puoLeggereReportAssenze = haPermessoLettura('report_assenze');
 $puoLeggereCalendarioAssenze = haPermessoLettura('calendario_assenze');
 $puoLeggereConfigurazioneAssenze = haPermessoLettura('configurazione_assenze');
 $utenteSenzaRuolo = utenteSenzaRuolo();
@@ -91,6 +92,15 @@ if ($puoLeggereApprovazioniAssenze) {
     }
 }
 
+if ($puoLeggereReportAssenze) {
+    $accessiRapidi[] = [
+        'label' => 'Report assenze',
+        'href' => 'report_assenze.php',
+        'kicker' => 'HR',
+        'descrizione' => 'Analisi, filtri ed esportazione Excel delle richieste.'
+    ];
+}
+
 if ($puoLeggereCalendarioAssenze) {
     $accessiRapidi[] = [
         'label' => 'Calendario assenze',
@@ -142,6 +152,9 @@ layoutHeader('Dashboard');
             </div>
             <div class="section-head-actions">
                 <a class="btn btn-light" href="approvazioni_assenze.php"><i class="la la-check-circle" aria-hidden="true"></i> Apri approvazioni</a>
+                <?php if ($puoLeggereReportAssenze): ?>
+                    <a class="btn btn-light" href="report_assenze.php"><i class="la la-file-excel" aria-hidden="true"></i> Report assenze</a>
+                <?php endif; ?>
             </div>
         </div>
 
