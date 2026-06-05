@@ -5,11 +5,19 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/export_excel.php';
 
-richiediPermessoLettura('profili_dipendenti');
+richiediLogin();
+
+if (!haPermessoLettura('approvazioni_assenze') && !haPermessoLettura('profili_dipendenti')) {
+    registraLogAccesso('pagina.export_personale_responsabile', 'read', 'negato');
+    http_response_code(403);
+    die('Accesso negato.');
+}
+
+registraLogAccesso('pagina.export_personale_responsabile', 'read', 'consentito');
 
 $pdo = db();
 $idUtenteLoggato = (int)($_SESSION['id_utente'] ?? $_SESSION['utente_id'] ?? 0);
-$puoConfigurare = haPermessoLettura('configurazione_assenze');
+$puoConfigurare = haPermessoLettura('configurazione_assenze') || haPermessoLettura('profili_dipendenti');
 
 function exportRespValore(?string $valore): string
 {
