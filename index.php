@@ -77,6 +77,29 @@ function hrTimbraturaLabel(string $tipo): string
     return $labels[$tipo] ?? $tipo;
 }
 
+function hrTimbraturaMotiviFuoriSede(): array
+{
+    return [
+        'CLIENTE' => 'Cliente',
+        'FORNITORE' => 'Fornitore',
+        'TRASFERTA' => 'Trasferta',
+        'FORMAZIONE' => 'Formazione',
+        'CONSEGNA_RITIRO' => 'Consegna / ritiro materiale',
+        'PERMESSO_PERSONALE' => 'Permesso personale',
+        'ALTRO' => 'Altro',
+    ];
+}
+
+function hrTimbraturaCausaleLabel(?string $causale): string
+{
+    $causale = strtoupper(trim((string)$causale));
+    if ($causale === '') {
+        return '';
+    }
+    $motivi = hrTimbraturaMotiviFuoriSede();
+    return $motivi[$causale] ?? $causale;
+}
+
 function hrTimbraturaStatoCorrente(string $ultimoTipo): string
 {
     $ultimoTipo = strtoupper(trim($ultimoTipo));
@@ -128,19 +151,6 @@ function hrTimbraturaProssimeAzioni(string $ultimoTipo): array
     return [];
 }
 
-function hrTimbraturaMotiviFuoriSede(): array
-{
-    return [
-        'CLIENTE' => 'Cliente',
-        'FORNITORE' => 'Fornitore',
-        'TRASFERTA' => 'Trasferta',
-        'FORMAZIONE' => 'Formazione',
-        'CONSEGNA_RITIRO' => 'Consegna / ritiro materiale',
-        'PERMESSO_PERSONALE' => 'Permesso personale',
-        'ALTRO' => 'Altro',
-    ];
-}
-
 function hrTimbraturaLeggiOggi(PDO $pdo, int $idUtente): array
 {
     if ($idUtente <= 0) {
@@ -150,6 +160,7 @@ function hrTimbraturaLeggiOggi(PDO $pdo, int $idUtente): array
     $stmt = $pdo->prepare(
         "SELECT id_timbratura,
                 tipo,
+                causale,
                 note,
                 DATE_FORMAT(data_ora, '%H:%i:%s') AS ora,
                 DATE_FORMAT(data_ora, '%d/%m/%Y %H:%i:%s') AS data_ora_fmt
@@ -187,6 +198,7 @@ try {
             throw new RuntimeException('Timbratura non coerente con lo stato corrente della giornata.');
         }
 
+        $causaleTimbratura = null;
         $noteTimbratura = null;
         if ($tipoTimbratura === 'FUORI_SEDE') {
             $motivi = hrTimbraturaMotiviFuoriSede();
@@ -195,18 +207,20 @@ try {
             if (!array_key_exists($motivo, $motivi)) {
                 throw new RuntimeException('Seleziona il motivo del fuori sede.');
             }
-            $noteTimbratura = 'Motivo: ' . $motivi[$motivo] . ($notaLibera !== '' ? ' - ' . $notaLibera : '');
+            $causaleTimbratura = $motivo;
+            $noteTimbratura = $notaLibera !== '' ? $notaLibera : null;
         }
 
         $stmtTimbratura = $pdoHome->prepare(
             "INSERT INTO hr_timbrature
-             (id_utente, tipo, data_ora, origine, ip_address, user_agent, note)
+             (id_utente, tipo, causale, data_ora, origine, ip_address, user_agent, note)
              VALUES
-             (:id_utente, :tipo, NOW(), 'web', :ip_address, :user_agent, :note)"
+             (:id_utente, :tipo, :causale, NOW(), 'web', :ip_address, :user_agent, :note)"
         );
         $stmtTimbratura->execute([
             'id_utente' => $idUtenteLoggato,
             'tipo' => $tipoTimbratura,
+            'causale' => $causaleTimbratura,
             'ip_address' => substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
             'user_agent' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
             'note' => $noteTimbratura,
@@ -319,12 +333,13 @@ layoutHeader('Dashboard');
     <?php if ($timbratureOggi): ?>
         <div class="table-wrap" style="margin-top:16px;">
             <table>
-                <thead><tr><th>Ora</th><th>Evento</th><th>Dettaglio</th></tr></thead>
+                <thead><tr><th>Ora</th><th>Evento</th><th>Causale</th><th>Note</th></tr></thead>
                 <tbody>
                 <?php foreach ($timbratureOggi as $timbratura): ?>
                     <tr>
                         <td><?= h((string)$timbratura['ora']) ?></td>
                         <td><?= h(hrTimbraturaLabel((string)$timbratura['tipo'])) ?></td>
+                        <td><?= h(hrTimbraturaCausaleLabel($timbratura['causale'] ?? '')) ?></td>
                         <td><?= h((string)($timbratura['note'] ?? '')) ?></td>
                     </tr>
                 <?php endforeach; ?>
