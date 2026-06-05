@@ -127,6 +127,36 @@ function hrRedirectApprovazioniConFiltri(string $queryFiltri, string $esito): st
     return 'approvazioni_assenze.php' . ($query !== '' ? '?' . $query : '');
 }
 
+function hrMesiChiusiRichiesta(PDO $pdo, int $idRichiesta): array
+{
+    static $cache = [];
+
+    if (isset($cache[$idRichiesta])) {
+        return $cache[$idRichiesta];
+    }
+
+    $stmt = $pdo->prepare("\n        SELECT DISTINCT cm.anno, cm.mese\n        FROM hr_richieste_periodi p\n        INNER JOIN hr_chiusure_mese cm\n            ON cm.chiuso = 1\n           AND (\n                (cm.anno * 100 + cm.mese) BETWEEN (YEAR(p.data_da) * 100 + MONTH(p.data_da))\n                                             AND (YEAR(p.data_a) * 100 + MONTH(p.data_a))\n           )\n        WHERE p.id_richiesta = :id_richiesta\n        ORDER BY cm.anno, cm.mese\n    ");
+    $stmt->execute(['id_richiesta' => $idRichiesta]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $cache[$idRichiesta] = $rows ?: [];
+    return $cache[$idRichiesta];
+}
+
+function hrMesiChiusiLabel(array $mesi): string
+{
+    if (!$mesi) {
+        return '';
+    }
+
+    $labels = [];
+    foreach ($mesi as $mese) {
+        $labels[] = str_pad((string)(int)$mese['mese'], 2, '0', STR_PAD_LEFT) . '/' . (int)$mese['anno'];
+    }
+
+    return implode(', ', $labels);
+}
+
 try {
     $filtroApprovatore = $puoConfigurare
         ? '1 = 1'
@@ -171,17 +201,18 @@ try {
             throw new RuntimeException('Richiesta non trovata, già gestita oppure fuori dal tuo perimetro di approvazione.');
         }
 
+        if (!$puoConfigurare) {
+            $mesiChiusi = hrMesiChiusiRichiesta($pdo, $idRichiesta);
+            if ($mesiChiusi) {
+                throw new RuntimeException('Il periodo ' . hrMesiChiusiLabel($mesiChiusi) . ' risulta chiuso da HR. Contattare l\'ufficio del personale.');
+            }
+        }
+
         $gestioneHr = $puoConfigurare && (int)$richiesta['id_approvatore_assegnato'] !== $idUtente;
         $codiceStato = $azione === 'approva_richiesta' ? 'APPROVATA' : 'RIFIUTATA';
         $idStato = hrIdStatoRichiesta($pdo, $codiceStato);
         $azioneStorico = $azione === 'approva_richiesta' ? 'APPROVAZIONE' : 'RIFIUTO';
 
-        /*
-         * Contratto funzionale: una richiesta gia gestita non deve poter essere
-         * approvata/rifiutata una seconda volta, neppure con doppio click o due
-         * sessioni aperte. Il SELECT precedente blocca la riga in transazione;
-         * gli UPDATE sotto verificano comunque lo stato atteso prima di scrivere.
-         */
         $stmtUpdApp = $pdo->prepare("\n            UPDATE hr_richieste_approvazioni\n            SET stato_approvazione = :stato_approvazione,\n                data_risposta = NOW(),\n                esito = :esito,\n                note_approvatore = :note_approvatore,\n                gestita_da_hr = :gestita_da_hr\n            WHERE id_richiesta_approvazione = :id_richiesta_approvazione\n              AND stato_approvazione = 'IN_ATTESA'\n        ");
         $stmtUpdApp->execute([
             'stato_approvazione' => $codiceStato,
@@ -243,12 +274,6 @@ try {
 
         $pdo->commit();
 
-        /*
-         * Email workflow HR: l'invio reale resta protetto da
-         * HR_EMAIL_WORKFLOW_ATTIVO = 1 dentro hrCreaNotificaEmailPerUtenti().
-         * Questa chiamata avviene solo dopo il commit: l'approvazione/rifiuto
-         * resta consolidato anche se il canale email non e' attivo o fallisce.
-         */
         try {
             hrCreaNotificaEmailPerUtenti(
                 $pdo,
@@ -261,7 +286,6 @@ try {
                 [(int)$richiesta['id_utente_richiedente']]
             );
         } catch (Throwable $emailException) {
-            // L'esito email non deve bloccare un'approvazione/rifiuto gia registrato.
         }
 
         $redirectQuery = trim((string)($_POST['redirect_query'] ?? ''));
@@ -298,22 +322,18 @@ try {
         $whereExtra[] = 'a.stato_approvazione = :filtro_stato';
         $paramsExtra['filtro_stato'] = $filtroStato;
     }
-
     if ($filtroDataDa !== '') {
         $whereExtra[] = 'COALESCE(p.data_da, DATE(a.data_assegnazione)) >= :data_da';
         $paramsExtra['data_da'] = $filtroDataDa;
     }
-
     if ($filtroDataA !== '') {
         $whereExtra[] = 'COALESCE(p.data_a, DATE(a.data_assegnazione)) <= :data_a';
         $paramsExtra['data_a'] = $filtroDataA;
     }
-
     if ($filtroTipologia !== '') {
         $whereExtra[] = 'te.codice = :tipologia';
         $paramsExtra['tipologia'] = $filtroTipologia;
     }
-
     if ($filtroUtente !== '') {
         $whereExtra[] = "(u.nome LIKE :utente OR u.cognome LIKE :utente OR CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, '')) LIKE :utente)";
         $paramsExtra['utente'] = '%' . $filtroUtente . '%';
@@ -333,6 +353,12 @@ try {
     $stmtRichieste = $pdo->prepare($sqlRichieste);
     $stmtRichieste->execute($params);
     $richieste = $stmtRichieste->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($richieste as &$richiesta) {
+        $mesiChiusi = hrMesiChiusiRichiesta($pdo, (int)$richiesta['id_richiesta']);
+        $richiesta['mesi_chiusi_label'] = hrMesiChiusiLabel($mesiChiusi);
+        $richiesta['bloccata_chiusura_mese'] = (!$puoConfigurare && $mesiChiusi) ? 1 : 0;
+    }
+    unset($richiesta);
     $riepilogo['visualizzate'] = count($richieste);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
@@ -344,24 +370,14 @@ try {
 layoutHeader('Approvazioni assenze');
 ?>
 
-
-
 <div class="approvals-page">
     <section class="approvals-hero">
         <div>
             <h1><i class="la la-check-circle"></i> Approvazioni assenze</h1>
-            <p class="text-muted">
-                Gestisci le richieste in attesa. L'approvazione può essere confermata senza nota; il rifiuto richiede sempre una motivazione.
-            </p>
-            <div class="approvals-scope">
-                <i class="la la-user-shield"></i>
-                <span>Ambito corrente: <strong><?= h(hrScopeLabelApprovazioni($puoConfigurare)) ?></strong></span>
-            </div>
+            <p class="text-muted">Gestisci le richieste in attesa. L'approvazione può essere confermata senza nota; il rifiuto richiede sempre una motivazione.</p>
+            <div class="approvals-scope"><i class="la la-user-shield"></i><span>Ambito corrente: <strong><?= h(hrScopeLabelApprovazioni($puoConfigurare)) ?></strong></span></div>
         </div>
-
-        <a href="assenze.php" class="btn btn-outline-primary btn-sm">
-            <i class="la la-calendar"></i> Le mie richieste
-        </a>
+        <a href="assenze.php" class="btn btn-outline-primary btn-sm"><i class="la la-calendar"></i> Le mie richieste</a>
     </section>
 
     <?php renderHrAlert($messaggio, 'success'); ?>
@@ -376,76 +392,23 @@ layoutHeader('Approvazioni assenze');
 
     <section class="card approvals-filters" aria-label="Filtri approvazioni assenze">
         <div class="approvals-filters-header">
-            <div class="approvals-filters-title">
-                <i class="la la-filter"></i>
-                <span>Filtri</span>
-                <?php if ($filtriAttivi): ?>
-                    <?= renderHrStatusBadge('IN_ATTESA', 'filtri attivi') ?>
-                <?php endif; ?>
-            </div>
-            <a href="approvazioni_assenze.php" class="btn btn-sm btn-outline-secondary">
-                <i class="la la-undo"></i> Ripristina
-            </a>
+            <div class="approvals-filters-title"><i class="la la-filter"></i><span>Filtri</span><?php if ($filtriAttivi): ?> <?= renderHrStatusBadge('IN_ATTESA', 'filtri attivi') ?><?php endif; ?></div>
+            <a href="approvazioni_assenze.php" class="btn btn-sm btn-outline-secondary"><i class="la la-undo"></i> Ripristina</a>
         </div>
-
         <form method="get" class="approvals-filter-grid">
-            <label>
-                Stato
-                <select name="stato">
-                    <option value=""<?= selectedAttr('', $filtroStato) ?>>Tutti</option>
-                    <option value="IN_ATTESA"<?= selectedAttr('IN_ATTESA', $filtroStato) ?>>In attesa</option>
-                    <option value="APPROVATA"<?= selectedAttr('APPROVATA', $filtroStato) ?>>Approvate</option>
-                    <option value="RIFIUTATA"<?= selectedAttr('RIFIUTATA', $filtroStato) ?>>Rifiutate</option>
-                </select>
-            </label>
-
-            <label>
-                Dal giorno
-                <input type="date" name="data_da" value="<?= h($filtroDataDa) ?>">
-            </label>
-
-            <label>
-                Al giorno
-                <input type="date" name="data_a" value="<?= h($filtroDataA) ?>">
-            </label>
-
-            <label>
-                Tipologia
-                <select name="tipologia">
-                    <option value=""<?= selectedAttr('', $filtroTipologia) ?>>Tutte</option>
-                    <?php foreach ($tipologie as $tipologia): ?>
-                        <option value="<?= h((string)$tipologia['codice']) ?>"<?= selectedAttr((string)$tipologia['codice'], $filtroTipologia) ?>>
-                            <?= h((string)$tipologia['descrizione']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-
-            <label>
-                Richiedente
-                <input type="search" name="utente" value="<?= h($filtroUtente) ?>" placeholder="Nome o cognome" autocomplete="off">
-            </label>
-
-            <div class="approvals-filter-actions">
-                <button type="submit" class="btn btn-sm btn-primary">
-                    <i class="la la-search"></i> Applica
-                </button>
-            </div>
+            <label>Stato<select name="stato"><option value=""<?= selectedAttr('', $filtroStato) ?>>Tutti</option><option value="IN_ATTESA"<?= selectedAttr('IN_ATTESA', $filtroStato) ?>>In attesa</option><option value="APPROVATA"<?= selectedAttr('APPROVATA', $filtroStato) ?>>Approvate</option><option value="RIFIUTATA"<?= selectedAttr('RIFIUTATA', $filtroStato) ?>>Rifiutate</option></select></label>
+            <label>Dal giorno<input type="date" name="data_da" value="<?= h($filtroDataDa) ?>"></label>
+            <label>Al giorno<input type="date" name="data_a" value="<?= h($filtroDataA) ?>"></label>
+            <label>Tipologia<select name="tipologia"><option value=""<?= selectedAttr('', $filtroTipologia) ?>>Tutte</option><?php foreach ($tipologie as $tipologia): ?><option value="<?= h((string)$tipologia['codice']) ?>"<?= selectedAttr((string)$tipologia['codice'], $filtroTipologia) ?>><?= h((string)$tipologia['descrizione']) ?></option><?php endforeach; ?></select></label>
+            <label>Richiedente<input type="search" name="utente" value="<?= h($filtroUtente) ?>" placeholder="Nome o cognome" autocomplete="off"></label>
+            <div class="approvals-filter-actions"><button type="submit" class="btn btn-sm btn-primary"><i class="la la-search"></i> Applica</button></div>
         </form>
     </section>
 
     <section class="card approvals-table-card">
         <div class="approvals-table-title">
-            <div>
-                <h2>Richieste</h2>
-                <p class="text-muted">Sono mostrate le richieste coerenti con i filtri impostati; il filtro rapido cerca nella tabella già caricata.</p>
-            </div>
-            <div class="hr-filter-toolbar">
-                <div class="form-group hr-filter-search-group">
-                    <label for="approvazioniSearch">Filtro rapido</label>
-                    <input type="search" id="approvazioniSearch" data-quick-filter="approvazioniTable" placeholder="Cerca in tutte le colonne..." autocomplete="off">
-                </div>
-            </div>
+            <div><h2>Richieste</h2><p class="text-muted">Sono mostrate le richieste coerenti con i filtri impostati; il filtro rapido cerca nella tabella già caricata.</p></div>
+            <div class="hr-filter-toolbar"><div class="form-group hr-filter-search-group"><label for="approvazioniSearch">Filtro rapido</label><input type="search" id="approvazioniSearch" data-quick-filter="approvazioniTable" placeholder="Cerca in tutte le colonne..." autocomplete="off"></div></div>
         </div>
 
         <?php if (count($richieste) === 0): ?>
@@ -453,88 +416,36 @@ layoutHeader('Approvazioni assenze');
         <?php else: ?>
             <div class="table-responsive">
                 <table class="table" id="approvazioniTable" data-quick-filter-table>
-                    <thead>
-                        <tr>
-                            <th>Richiedente</th>
-                            <th>Richiesta</th>
-                            <th>Periodo</th>
-                            <th>Stato</th>
-                            <th>Note</th>
-                            <th style="width: 320px;">Decisione</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Richiedente</th><th>Richiesta</th><th>Periodo</th><th>Stato</th><th>Note</th><th style="width: 320px;">Decisione</th></tr></thead>
                     <tbody>
-                        <?php foreach ($richieste as $richiesta): ?>
-                            <?php $stato = (string)$richiesta['stato_approvazione']; ?>
-                            <tr>
-                                <td>
-                                    <strong><?= h(trim((string)$richiesta['richiedente'])) ?></strong>
-                                    <?php if ($puoConfigurare && trim((string)$richiesta['approvatore_assegnato']) !== ''): ?>
-                                        <br><span class="text-muted">Assegnata a <?= h(trim((string)$richiesta['approvatore_assegnato'])) ?></span>
-                                    <?php endif; ?>
-                                    <?php if ($stato === 'IN_ATTESA'): ?>
-                                        <br><span class="text-muted">Dal <?= h((string)$richiesta['data_assegnazione']) ?></span>
-                                    <?php elseif (trim((string)$richiesta['data_risposta']) !== ''): ?>
-                                        <br><span class="text-muted">Risposta: <?= h((string)$richiesta['data_risposta']) ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <strong><?= h((string)$richiesta['tipologia']) ?></strong>
-                                    <?php if (trim((string)$richiesta['oggetto']) !== ''): ?>
-                                        <br><?= h((string)$richiesta['oggetto']) ?>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= h(hrPeriodoRichiesta($richiesta)) ?></td>
-                                <td>
-                                    <?= renderHrStatusBadge($stato) ?>
-                                    <?php if ((int)$richiesta['gestita_da_hr'] === 1): ?>
-                                        <br><?= renderHrStatusBadge('IN_ATTESA', 'gestita da HR', ['style' => 'margin-top: 0.35rem;']) ?>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($stato === 'IN_ATTESA'): ?>
-                                        <?php if (trim((string)$richiesta['note_richiedente']) !== ''): ?>
-                                            <?= nl2br(h((string)$richiesta['note_richiedente'])) ?>
-                                        <?php else: ?>
-                                            <span class="text-muted">Nessuna nota</span>
-                                        <?php endif; ?>
+                    <?php foreach ($richieste as $richiesta): ?>
+                        <?php
+                        $stato = (string)$richiesta['stato_approvazione'];
+                        $bloccataChiusuraMese = (int)($richiesta['bloccata_chiusura_mese'] ?? 0) === 1;
+                        $mesiChiusiLabel = trim((string)($richiesta['mesi_chiusi_label'] ?? ''));
+                        ?>
+                        <tr>
+                            <td><strong><?= h(trim((string)$richiesta['richiedente'])) ?></strong><?php if ($puoConfigurare && trim((string)$richiesta['approvatore_assegnato']) !== ''): ?><br><span class="text-muted">Assegnata a <?= h(trim((string)$richiesta['approvatore_assegnato'])) ?></span><?php endif; ?><?php if ($stato === 'IN_ATTESA'): ?><br><span class="text-muted">Dal <?= h((string)$richiesta['data_assegnazione']) ?></span><?php elseif (trim((string)$richiesta['data_risposta']) !== ''): ?><br><span class="text-muted">Risposta: <?= h((string)$richiesta['data_risposta']) ?></span><?php endif; ?></td>
+                            <td><strong><?= h((string)$richiesta['tipologia']) ?></strong><?php if (trim((string)$richiesta['oggetto']) !== ''): ?><br><?= h((string)$richiesta['oggetto']) ?><?php endif; ?></td>
+                            <td><?= h(hrPeriodoRichiesta($richiesta)) ?><?php if ($mesiChiusiLabel !== ''): ?><br><?= renderHrStatusBadge('IN_ATTESA', 'mese chiuso: ' . $mesiChiusiLabel, ['style' => 'margin-top: 0.35rem;']) ?><?php endif; ?></td>
+                            <td><?= renderHrStatusBadge($stato) ?><?php if ((int)$richiesta['gestita_da_hr'] === 1): ?><br><?= renderHrStatusBadge('IN_ATTESA', 'gestita da HR', ['style' => 'margin-top: 0.35rem;']) ?><?php endif; ?></td>
+                            <td><?php if ($stato === 'IN_ATTESA'): ?><?php if (trim((string)$richiesta['note_richiedente']) !== ''): ?><?= nl2br(h((string)$richiesta['note_richiedente'])) ?><?php else: ?><span class="text-muted">Nessuna nota</span><?php endif; ?><?php else: ?><?php if (trim((string)$richiesta['note_approvatore']) !== ''): ?><?= nl2br(h((string)$richiesta['note_approvatore'])) ?><?php else: ?><span class="text-muted">Nessuna nota</span><?php endif; ?><?php endif; ?></td>
+                            <td>
+                                <?php if ($stato === 'IN_ATTESA'): ?>
+                                    <?php if ($bloccataChiusuraMese): ?>
+                                        <span class="text-muted">Periodo chiuso da HR. Contattare l'ufficio del personale.</span>
                                     <?php else: ?>
-                                        <?php if (trim((string)$richiesta['note_approvatore']) !== ''): ?>
-                                            <?= nl2br(h((string)$richiesta['note_approvatore'])) ?>
-                                        <?php else: ?>
-                                            <span class="text-muted">Nessuna nota</span>
-                                        <?php endif; ?>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($stato === 'IN_ATTESA'): ?>
                                         <div class="approvals-actions">
-                                            <form method="post" class="approvals-action-form">
-                                                <input type="hidden" name="azione" value="approva_richiesta">
-                                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
-                                                <input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>">
-                                                <input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione">
-                                                <button type="submit" class="btn btn-sm btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>
-                                                    <i class="la la-check"></i> Approva
-                                                </button>
-                                            </form>
-
-                                            <form method="post" class="approvals-action-form">
-                                                <input type="hidden" name="azione" value="rifiuta_richiesta">
-                                                <input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>">
-                                                <input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>">
-                                                <input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required>
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" <?= $puoScrivere ? '' : 'disabled' ?>>
-                                                    <i class="la la-times"></i> Rifiuta
-                                                </button>
-                                            </form>
+                                            <form method="post" class="approvals-action-form"><input type="hidden" name="azione" value="approva_richiesta"><input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>"><input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>"><input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione"><button type="submit" class="btn btn-sm btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>><i class="la la-check"></i> Approva</button></form>
+                                            <form method="post" class="approvals-action-form"><input type="hidden" name="azione" value="rifiuta_richiesta"><input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>"><input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>"><input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required><button type="submit" class="btn btn-sm btn-outline-danger" <?= $puoScrivere ? '' : 'disabled' ?>><i class="la la-times"></i> Rifiuta</button></form>
                                         </div>
-                                    <?php else: ?>
-                                        <span class="text-muted">Già gestita</span>
                                     <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+                                <?php else: ?>
+                                    <span class="text-muted">Già gestita</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
                     </tbody>
                 </table>
                 <div class="text-muted quick-filter-empty" data-quick-filter-empty="approvazioniTable">Nessuna richiesta corrisponde al filtro rapido.</div>
@@ -542,7 +453,6 @@ layoutHeader('Approvazioni assenze');
         <?php endif; ?>
     </section>
 </div>
-
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -552,7 +462,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 event.preventDefault();
                 return;
             }
-
             form.dataset.submitting = '1';
             form.querySelectorAll('button[type="submit"]').forEach(function (button) {
                 button.disabled = true;
@@ -563,6 +472,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-
 
 <?php layoutFooter(); ?>
