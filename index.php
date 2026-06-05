@@ -64,30 +64,81 @@ function hrTimbraturaLabel(string $tipo): string
 {
     $tipo = strtoupper(trim($tipo));
     $labels = [
-        'ENTRATA' => 'Entrata',
-        'INIZIO_PAUSA' => 'Inizio pausa',
+        'PRESENTE' => 'Presente',
+        'IN_PAUSA' => 'In pausa',
         'FINE_PAUSA' => 'Fine pausa',
-        'USCITA' => 'Uscita',
+        'FUORI_SEDE' => 'Fuori sede',
+        'RIENTRO' => 'Rientro',
+        'FINE_LAVORO' => 'Fine lavoro',
+        'ENTRATA' => 'Presente',
+        'INIZIO_PAUSA' => 'In pausa',
+        'USCITA' => 'Fine lavoro',
     ];
     return $labels[$tipo] ?? $tipo;
 }
 
-function hrTimbraturaProssimeAzioni(string $ultimoTipo): array
+function hrTimbraturaStatoCorrente(string $ultimoTipo): string
 {
     $ultimoTipo = strtoupper(trim($ultimoTipo));
     if ($ultimoTipo === '') {
-        return ['ENTRATA' => 'Entrata'];
+        return 'NON_INIZIATA';
     }
-    if ($ultimoTipo === 'ENTRATA') {
-        return ['INIZIO_PAUSA' => 'Inizio pausa', 'USCITA' => 'Uscita'];
+    if (in_array($ultimoTipo, ['PRESENTE', 'FINE_PAUSA', 'RIENTRO', 'ENTRATA'], true)) {
+        return 'PRESENTE';
     }
-    if ($ultimoTipo === 'INIZIO_PAUSA') {
+    if (in_array($ultimoTipo, ['IN_PAUSA', 'INIZIO_PAUSA'], true)) {
+        return 'IN_PAUSA';
+    }
+    if ($ultimoTipo === 'FUORI_SEDE') {
+        return 'FUORI_SEDE';
+    }
+    if (in_array($ultimoTipo, ['FINE_LAVORO', 'USCITA'], true)) {
+        return 'FINE_LAVORO';
+    }
+    return $ultimoTipo;
+}
+
+function hrTimbraturaStatoLabel(string $stato): string
+{
+    $labels = [
+        'NON_INIZIATA' => 'Giornata non iniziata',
+        'PRESENTE' => 'Presente',
+        'IN_PAUSA' => 'In pausa',
+        'FUORI_SEDE' => 'Fuori sede',
+        'FINE_LAVORO' => 'Fine lavoro',
+    ];
+    return $labels[$stato] ?? $stato;
+}
+
+function hrTimbraturaProssimeAzioni(string $ultimoTipo): array
+{
+    $stato = hrTimbraturaStatoCorrente($ultimoTipo);
+    if ($stato === 'NON_INIZIATA') {
+        return ['PRESENTE' => 'Presente'];
+    }
+    if ($stato === 'PRESENTE') {
+        return ['IN_PAUSA' => 'In pausa', 'FUORI_SEDE' => 'Fuori sede', 'FINE_LAVORO' => 'Fine lavoro'];
+    }
+    if ($stato === 'IN_PAUSA') {
         return ['FINE_PAUSA' => 'Fine pausa'];
     }
-    if ($ultimoTipo === 'FINE_PAUSA') {
-        return ['INIZIO_PAUSA' => 'Inizio pausa', 'USCITA' => 'Uscita'];
+    if ($stato === 'FUORI_SEDE') {
+        return ['RIENTRO' => 'Rientro'];
     }
     return [];
+}
+
+function hrTimbraturaMotiviFuoriSede(): array
+{
+    return [
+        'CLIENTE' => 'Cliente',
+        'FORNITORE' => 'Fornitore',
+        'TRASFERTA' => 'Trasferta',
+        'FORMAZIONE' => 'Formazione',
+        'CONSEGNA_RITIRO' => 'Consegna / ritiro materiale',
+        'PERMESSO_PERSONALE' => 'Permesso personale',
+        'ALTRO' => 'Altro',
+    ];
 }
 
 function hrTimbraturaLeggiOggi(PDO $pdo, int $idUtente): array
@@ -99,6 +150,7 @@ function hrTimbraturaLeggiOggi(PDO $pdo, int $idUtente): array
     $stmt = $pdo->prepare(
         "SELECT id_timbratura,
                 tipo,
+                note,
                 DATE_FORMAT(data_ora, '%H:%i:%s') AS ora,
                 DATE_FORMAT(data_ora, '%d/%m/%Y %H:%i:%s') AS data_ora_fmt
          FROM hr_timbrature
@@ -135,17 +187,29 @@ try {
             throw new RuntimeException('Timbratura non coerente con lo stato corrente della giornata.');
         }
 
+        $noteTimbratura = null;
+        if ($tipoTimbratura === 'FUORI_SEDE') {
+            $motivi = hrTimbraturaMotiviFuoriSede();
+            $motivo = strtoupper(trim((string)($_POST['motivo_fuori_sede'] ?? '')));
+            $notaLibera = trim((string)($_POST['nota_fuori_sede'] ?? ''));
+            if (!array_key_exists($motivo, $motivi)) {
+                throw new RuntimeException('Seleziona il motivo del fuori sede.');
+            }
+            $noteTimbratura = 'Motivo: ' . $motivi[$motivo] . ($notaLibera !== '' ? ' - ' . $notaLibera : '');
+        }
+
         $stmtTimbratura = $pdoHome->prepare(
             "INSERT INTO hr_timbrature
-             (id_utente, tipo, data_ora, origine, ip_address, user_agent)
+             (id_utente, tipo, data_ora, origine, ip_address, user_agent, note)
              VALUES
-             (:id_utente, :tipo, NOW(), 'web', :ip_address, :user_agent)"
+             (:id_utente, :tipo, NOW(), 'web', :ip_address, :user_agent, :note)"
         );
         $stmtTimbratura->execute([
             'id_utente' => $idUtenteLoggato,
             'tipo' => $tipoTimbratura,
             'ip_address' => substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
             'user_agent' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
+            'note' => $noteTimbratura,
         ]);
 
         header('Location: index.php?timbratura=1');
@@ -153,7 +217,7 @@ try {
     }
 
     if (isset($_GET['timbratura']) && $_GET['timbratura'] === '1') {
-        $messaggioTimbratura = 'Timbratura registrata correttamente.';
+        $messaggioTimbratura = 'Registrazione presenza completata correttamente.';
     }
 
     $timbratureOggi = hrTimbraturaLeggiOggi($pdoHome, $idUtenteLoggato);
@@ -163,75 +227,35 @@ try {
 }
 
 if ($puoLeggereUtenti) {
-    $accessiRapidi[] = [
-        'label' => 'Gestione utenti',
-        'href' => 'utenti.php',
-        'kicker' => 'Amministrazione',
-        'descrizione' => 'Accessi, ruoli e permessi del portale.'
-    ];
+    $accessiRapidi[] = ['label' => 'Gestione utenti', 'href' => 'utenti.php', 'kicker' => 'Amministrazione', 'descrizione' => 'Accessi, ruoli e permessi del portale.'];
 }
-
 if ($puoLeggereOrdini) {
-    $accessiRapidi[] = [
-        'label' => 'Ordini fornitori',
-        'href' => 'ordini_fornitori_aperti.php',
-        'kicker' => 'Acquisti',
-        'descrizione' => 'Controllo degli ordini fornitori ancora aperti.'
-    ];
+    $accessiRapidi[] = ['label' => 'Ordini fornitori', 'href' => 'ordini_fornitori_aperti.php', 'kicker' => 'Acquisti', 'descrizione' => 'Controllo degli ordini fornitori ancora aperti.'];
 }
-
 if ($puoLeggereAssenze) {
-    $accessiRapidi[] = [
-        'label' => 'Richieste assenze',
-        'href' => 'assenze.php',
-        'kicker' => 'HR',
-        'descrizione' => 'Invio e consultazione delle proprie richieste.'
-    ];
+    $accessiRapidi[] = ['label' => 'Richieste assenze', 'href' => 'assenze.php', 'kicker' => 'HR', 'descrizione' => 'Invio e consultazione delle proprie richieste.'];
 }
-
 if ($puoLeggereApprovazioniAssenze) {
-    $accessiRapidi[] = [
-        'label' => 'Approvazioni assenze',
-        'href' => 'approvazioni_assenze.php',
-        'kicker' => 'HR',
-        'descrizione' => 'Richieste pendenti da verificare e approvare.'
-    ];
-
+    $accessiRapidi[] = ['label' => 'Approvazioni assenze', 'href' => 'approvazioni_assenze.php', 'kicker' => 'HR', 'descrizione' => 'Richieste pendenti da verificare e approvare.'];
     try {
         $approvazioniPendenti = contaApprovazioniHrPendentiHome($idUtenteLoggato, $puoLeggereConfigurazioneAssenze);
     } catch (Throwable $e) {
         $erroreApprovalsHome = 'Impossibile leggere le approvazioni HR pendenti.';
     }
 }
-
 if ($puoLeggereReportAssenze) {
-    $accessiRapidi[] = [
-        'label' => 'Report assenze',
-        'href' => 'report_assenze.php',
-        'kicker' => 'HR',
-        'descrizione' => 'Analisi, filtri ed esportazione Excel delle richieste.'
-    ];
+    $accessiRapidi[] = ['label' => 'Report assenze', 'href' => 'report_assenze.php', 'kicker' => 'HR', 'descrizione' => 'Analisi, filtri ed esportazione Excel delle richieste.'];
 }
-
 if ($puoLeggereCalendarioAssenze) {
-    $accessiRapidi[] = [
-        'label' => 'Calendario assenze',
-        'href' => 'calendario_assenze.php',
-        'kicker' => 'HR',
-        'descrizione' => 'Vista giornaliera e mensile delle presenze.'
-    ];
+    $accessiRapidi[] = ['label' => 'Calendario assenze', 'href' => 'calendario_assenze.php', 'kicker' => 'HR', 'descrizione' => 'Vista giornaliera e mensile delle presenze.'];
 }
-
 if ($puoLeggereConfigurazioneAssenze) {
-    $accessiRapidi[] = [
-        'label' => 'Configurazione assenze',
-        'href' => 'configurazione_assenze.php',
-        'kicker' => 'HR',
-        'descrizione' => 'Tipologie, gruppi di lavoro e relazioni organizzative.'
-    ];
+    $accessiRapidi[] = ['label' => 'Configurazione assenze', 'href' => 'configurazione_assenze.php', 'kicker' => 'HR', 'descrizione' => 'Tipologie, gruppi di lavoro e relazioni organizzative.'];
 }
 
+$statoTimbratura = hrTimbraturaStatoCorrente($ultimoTipoTimbratura);
 $azioniTimbratura = hrTimbraturaProssimeAzioni($ultimoTipoTimbratura);
+$motiviFuoriSede = hrTimbraturaMotiviFuoriSede();
 
 layoutHeader('Dashboard');
 ?>
@@ -243,48 +267,51 @@ layoutHeader('Dashboard');
         <div><strong>Nome:</strong> <?= h($nome) ?></div>
         <div><strong>Ruolo:</strong> <?= h($ruolo !== '' ? $ruolo : 'nessun ruolo') ?></div>
     </div>
-
     <?php if ($utenteSenzaRuolo): ?>
-        <div class="errore" style="margin-top:18px;">
-            Il tuo utente è autenticato ma non ha ancora un ruolo assegnato. Contatta un amministratore per abilitare i moduli.
-        </div>
+        <div class="errore" style="margin-top:18px;">Il tuo utente è autenticato ma non ha ancora un ruolo assegnato. Contatta un amministratore per abilitare i moduli.</div>
     <?php endif; ?>
-
-    <div class="links">
-        <a class="btn btn-light" href="cambia_password.php"><i class="la la-key" aria-hidden="true"></i> Cambia password</a>
-    </div>
+    <div class="links"><a class="btn btn-light" href="cambia_password.php"><i class="la la-key" aria-hidden="true"></i> Cambia password</a></div>
 </div>
 
 <div class="card card-compact">
     <div class="section-head">
         <div>
-            <h2>Timbratura presenze</h2>
-            <div class="meta">Registra entrata, pausa e uscita della giornata.</div>
+            <h2>Stato presenza</h2>
+            <div class="meta">Registra lo stato della giornata: presente, pausa, fuori sede o fine lavoro.</div>
         </div>
-        <div class="section-head-actions">
-            <div style="font-size:1.8rem;font-weight:700;" id="hrClock">--:--:--</div>
-        </div>
+        <div class="section-head-actions"><div style="font-size:1.8rem;font-weight:700;" id="hrClock">--:--:--</div></div>
     </div>
 
     <?php if ($messaggioTimbratura !== ''): ?><div class="alert alert-success"><?= h($messaggioTimbratura) ?></div><?php endif; ?>
     <?php if ($erroreTimbratura !== ''): ?><div class="alert alert-error"><?= h($erroreTimbratura) ?></div><?php endif; ?>
 
-    <div class="hr-summary-line" style="margin-top:14px;">
-        <span><strong>Stato:</strong> <?= h($ultimoTipoTimbratura !== '' ? hrTimbraturaLabel($ultimoTipoTimbratura) : 'Non ancora entrato') ?></span>
-    </div>
+    <div class="hr-summary-line" style="margin-top:14px;"><span><strong>Stato attuale:</strong> <?= h(hrTimbraturaStatoLabel($statoTimbratura)) ?></span></div>
 
     <div class="links" style="margin-top:14px;">
         <?php if (!$azioniTimbratura): ?>
-            <span class="info-box">Giornata completata. Nessuna ulteriore timbratura disponibile.</span>
+            <span class="info-box">Giornata conclusa. Non sono disponibili altre registrazioni per oggi.</span>
         <?php else: ?>
             <?php foreach ($azioniTimbratura as $tipo => $label): ?>
-                <form method="post" style="display:inline-block;margin-right:8px;">
-                    <input type="hidden" name="azione" value="timbratura_home">
-                    <input type="hidden" name="tipo_timbratura" value="<?= h($tipo) ?>">
-                    <button type="submit" class="btn <?= $tipo === 'USCITA' ? 'btn-light' : 'btn-primary' ?>">
-                        <i class="la la-clock" aria-hidden="true"></i> <?= h($label) ?>
-                    </button>
-                </form>
+                <?php if ($tipo === 'FUORI_SEDE'): ?>
+                    <form method="post" class="hr-presence-action" style="display:inline-block;margin-right:8px;margin-bottom:8px;">
+                        <input type="hidden" name="azione" value="timbratura_home">
+                        <input type="hidden" name="tipo_timbratura" value="FUORI_SEDE">
+                        <select name="motivo_fuori_sede" required aria-label="Motivo fuori sede">
+                            <option value="">Motivo fuori sede...</option>
+                            <?php foreach ($motiviFuoriSede as $codice => $motivo): ?><option value="<?= h($codice) ?>"><?= h($motivo) ?></option><?php endforeach; ?>
+                        </select>
+                        <input type="text" name="nota_fuori_sede" placeholder="Nota opzionale" aria-label="Nota fuori sede">
+                        <button type="submit" class="btn btn-primary"><i class="la la-route" aria-hidden="true"></i> Fuori sede</button>
+                    </form>
+                <?php else: ?>
+                    <form method="post" class="hr-presence-action" style="display:inline-block;margin-right:8px;margin-bottom:8px;">
+                        <input type="hidden" name="azione" value="timbratura_home">
+                        <input type="hidden" name="tipo_timbratura" value="<?= h($tipo) ?>">
+                        <button type="submit" class="btn <?= $tipo === 'FINE_LAVORO' ? 'btn-light js-fine-lavoro' : 'btn-primary' ?>">
+                            <i class="la la-clock" aria-hidden="true"></i> <?= h($label) ?>
+                        </button>
+                    </form>
+                <?php endif; ?>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
@@ -292,14 +319,15 @@ layoutHeader('Dashboard');
     <?php if ($timbratureOggi): ?>
         <div class="table-wrap" style="margin-top:16px;">
             <table>
-                <thead><tr><th>Ora</th><th>Evento</th></tr></thead>
+                <thead><tr><th>Ora</th><th>Evento</th><th>Dettaglio</th></tr></thead>
                 <tbody>
-                    <?php foreach ($timbratureOggi as $timbratura): ?>
-                        <tr>
-                            <td><?= h((string)$timbratura['ora']) ?></td>
-                            <td><?= h(hrTimbraturaLabel((string)$timbratura['tipo'])) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
+                <?php foreach ($timbratureOggi as $timbratura): ?>
+                    <tr>
+                        <td><?= h((string)$timbratura['ora']) ?></td>
+                        <td><?= h(hrTimbraturaLabel((string)$timbratura['tipo'])) ?></td>
+                        <td><?= h((string)($timbratura['note'] ?? '')) ?></td>
+                    </tr>
+                <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -309,51 +337,22 @@ layoutHeader('Dashboard');
 <?php if ($puoLeggereApprovazioniAssenze): ?>
     <div class="card card-compact">
         <div class="section-head">
-            <div>
-                <h2>Approvazioni HR pendenti</h2>
-                <div class="meta">
-                    <?= $puoLeggereConfigurazioneAssenze ? 'Vista HR globale sulle richieste ancora da gestire.' : 'Richieste assegnate direttamente a te come approvatore.' ?>
-                </div>
-            </div>
-            <div class="section-head-actions">
-                <a class="btn btn-light" href="approvazioni_assenze.php"><i class="la la-check-circle" aria-hidden="true"></i> Apri approvazioni</a>
-                <?php if ($puoLeggereReportAssenze): ?>
-                    <a class="btn btn-light" href="report_assenze.php"><i class="la la-file-excel" aria-hidden="true"></i> Report assenze</a>
-                <?php endif; ?>
-            </div>
+            <div><h2>Approvazioni HR pendenti</h2><div class="meta"><?= $puoLeggereConfigurazioneAssenze ? 'Vista HR globale sulle richieste ancora da gestire.' : 'Richieste assegnate direttamente a te come approvatore.' ?></div></div>
+            <div class="section-head-actions"><a class="btn btn-light" href="approvazioni_assenze.php"><i class="la la-check-circle" aria-hidden="true"></i> Apri approvazioni</a><?php if ($puoLeggereReportAssenze): ?><a class="btn btn-light" href="report_assenze.php"><i class="la la-file-excel" aria-hidden="true"></i> Report assenze</a><?php endif; ?></div>
         </div>
-
-        <?php if ($erroreApprovalsHome !== ''): ?>
-            <div class="errore" style="margin-top:14px;"><?= h($erroreApprovalsHome) ?></div>
-        <?php elseif ($approvazioniPendenti > 0): ?>
-            <div class="hr-summary-line" style="margin-top:14px;">
-                <span><strong><?= (int)$approvazioniPendenti ?></strong> richieste da approvare</span>
-            </div>
-        <?php else: ?>
-            <div class="info-box" style="margin-top:14px;">Non ci sono approvazioni HR pendenti.</div>
-        <?php endif; ?>
+        <?php if ($erroreApprovalsHome !== ''): ?><div class="errore" style="margin-top:14px;"><?= h($erroreApprovalsHome) ?></div><?php elseif ($approvazioniPendenti > 0): ?><div class="hr-summary-line" style="margin-top:14px;"><span><strong><?= (int)$approvazioniPendenti ?></strong> richieste da approvare</span></div><?php else: ?><div class="info-box" style="margin-top:14px;">Non ci sono approvazioni HR pendenti.</div><?php endif; ?>
     </div>
 <?php endif; ?>
 
 <div class="card card-compact">
     <h2>Accessi rapidi</h2>
-    <div class="section-intro">
-        Il menu in alto resta la guida principale della navigazione.
-        Qui trovi alcune scorciatoie alle funzioni che usi più spesso.
-    </div>
-
+    <div class="section-intro">Il menu in alto resta la guida principale della navigazione. Qui trovi alcune scorciatoie alle funzioni che usi più spesso.</div>
     <?php if (!$accessiRapidi): ?>
-        <div class="info-box">
-            Al momento non hai moduli disponibili in accesso rapido. Verifica i permessi del tuo ruolo.
-        </div>
+        <div class="info-box">Al momento non hai moduli disponibili in accesso rapido. Verifica i permessi del tuo ruolo.</div>
     <?php else: ?>
         <div class="modules">
             <?php foreach ($accessiRapidi as $voce): ?>
-                <div class="module-box clickable" onclick="location.href='<?= h($voce['href']) ?>'">
-                    <div class="module-kicker"><?= h($voce['kicker']) ?></div>
-                    <h3><?= h($voce['label']) ?></h3>
-                    <p><?= h($voce['descrizione']) ?></p>
-                </div>
+                <div class="module-box clickable" onclick="location.href='<?= h($voce['href']) ?>'"><div class="module-kicker"><?= h($voce['kicker']) ?></div><h3><?= h($voce['label']) ?></h3><p><?= h($voce['descrizione']) ?></p></div>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
@@ -369,6 +368,14 @@ layoutHeader('Dashboard');
     }
     updateClock();
     window.setInterval(updateClock, 1000);
+
+    document.querySelectorAll('.js-fine-lavoro').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            if (!window.confirm('Confermi la fine della giornata lavorativa? Dopo questa operazione non potrai registrare ulteriori eventi oggi.')) {
+                event.preventDefault();
+            }
+        });
+    });
 })();
 </script>
 
