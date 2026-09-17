@@ -45,7 +45,7 @@ function hrRecapitiUtente(PDO $pdo, int $idUtente): array
     return $out;
 }
 
-function hrRecapitiSalva(PDO $pdo, int $idUtente, string $codiceTipo, string $valore, int $idOperatore): array
+function hrRecapitiSalva(PDO $pdo, int $idUtente, string $codiceTipo, string $valore, int $idOperatore, bool $confermaImplicita = false): array
 {
     $codiceTipo = strtoupper(trim($codiceTipo));
     $valore = trim($valore);
@@ -75,8 +75,15 @@ function hrRecapitiSalva(PDO $pdo, int $idUtente, string $codiceTipo, string $va
 
     $email = strpos($codiceTipo, 'EMAIL_') === 0;
     $stessoValore = $esistente && strcasecmp(trim((string)$esistente['valore']), $valore) === 0;
-    $verificato = ($email && !$stessoValore) ? 0 : (int)($esistente['verificato'] ?? 0);
-    if (!$email) $verificato = 0;
+    if ($email) {
+        $verificato = $confermaImplicita ? 1 : (($stessoValore && (int)($esistente['verificato'] ?? 0) === 1) ? 1 : 0);
+    } else {
+        $verificato = 0;
+    }
+
+    $notaOperatore = $confermaImplicita
+        ? 'Aggiornato da HR/amministrazione - operatore #' . $idOperatore . ' - conferma implicita'
+        : 'Aggiornato dal portale - operatore #' . $idOperatore;
 
     if ($esistente) {
         $idRecapito = (int)$esistente['id_recapito_utente'];
@@ -86,23 +93,28 @@ function hrRecapitiSalva(PDO $pdo, int $idUtente, string $codiceTipo, string $va
         $upd->execute([
             'valore' => $valore,
             'verificato' => $verificato,
-            'note' => 'Aggiornato dal portale - operatore #' . $idOperatore,
+            'note' => $notaOperatore,
             'id' => $idRecapito,
         ]);
     } else {
         $ins = $pdo->prepare(
-            'INSERT INTO hr_recapiti_utenti (id_utente,id_tipo_recapito,valore,principale,verificato,attivo,note) VALUES (:id_utente,:id_tipo,:valore,1,0,1,:note)'
+            'INSERT INTO hr_recapiti_utenti (id_utente,id_tipo_recapito,valore,principale,verificato,attivo,note) VALUES (:id_utente,:id_tipo,:valore,1,:verificato,1,:note)'
         );
         $ins->execute([
             'id_utente' => $idUtente,
             'id_tipo' => $idTipo,
             'valore' => $valore,
-            'note' => 'Inserito dal portale - operatore #' . $idOperatore,
+            'verificato' => $verificato,
+            'note' => $notaOperatore,
         ]);
         $idRecapito = (int)$pdo->lastInsertId();
     }
 
-    return ['modificato' => !$stessoValore, 'richiede_verifica' => $email && (!$stessoValore || $verificato !== 1), 'id_recapito' => $idRecapito];
+    return [
+        'modificato' => !$stessoValore,
+        'richiede_verifica' => $email && !$confermaImplicita && (!$stessoValore || $verificato !== 1),
+        'id_recapito' => $idRecapito,
+    ];
 }
 
 function hrRecapitiCreaTokenVerifica(PDO $pdo, int $idRecapito, int $idUtente): string
