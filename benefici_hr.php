@@ -1,0 +1,56 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/layout.php';
+
+richiediPermessoLettura('benefici_hr');
+$pdo = db();
+$puoScrivere = haPermessoScrittura('benefici_hr');
+$idOperatore = (int)($_SESSION['id_utente'] ?? $_SESSION['utente_id'] ?? 0);
+$errore = '';
+$messaggio = '';
+function h(?string $v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
+
+try {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!$puoScrivere) throw new RuntimeException('Non hai i permessi di modifica.');
+        $idUtente = (int)($_POST['id_utente'] ?? 0);
+        $attivo = isset($_POST['attivo']) ? 1 : 0;
+        $dataInizio = trim((string)($_POST['data_inizio'] ?? ''));
+        $dataFine = trim((string)($_POST['data_fine'] ?? ''));
+        $giorni = (float)str_replace(',', '.', (string)($_POST['plafond_giorni_mese'] ?? '0'));
+        $ore = (float)str_replace(',', '.', (string)($_POST['plafond_ore_mese'] ?? '0'));
+        $oreGiornata = (float)str_replace(',', '.', (string)($_POST['ore_giornata_equivalenza'] ?? '0'));
+        $note = trim((string)($_POST['note_hr'] ?? ''));
+        if ($idUtente <= 0 || $dataInizio === '') throw new RuntimeException('Dipendente e data di decorrenza sono obbligatori.');
+        if ($giorni <= 0 || $ore <= 0 || $oreGiornata <= 0) throw new RuntimeException('Plafond giorni, plafond ore e ore equivalenti per giornata devono essere maggiori di zero.');
+        if ($dataFine !== '' && $dataFine < $dataInizio) throw new RuntimeException('La data finale non può precedere la data iniziale.');
+        $minuti = (int)round($ore * 60);
+        $minutiGiornata = (int)round($oreGiornata * 60);
+        $stmt = $pdo->prepare("INSERT INTO hr_benefici_utenti (id_utente,codice_beneficio,data_inizio,data_fine,consente_giorni,consente_ore,plafond_giorni_mese,plafond_minuti_mese,minuti_giornata_equivalenza,note_hr,attivo,aggiornato_da,data_aggiornamento) VALUES (:u,'LEGGE_104',:di,:df,1,1,:pg,:pm,:mg,:n,:a,:op,NOW()) ON DUPLICATE KEY UPDATE data_inizio=VALUES(data_inizio),data_fine=VALUES(data_fine),consente_giorni=1,consente_ore=1,plafond_giorni_mese=VALUES(plafond_giorni_mese),plafond_minuti_mese=VALUES(plafond_minuti_mese),minuti_giornata_equivalenza=VALUES(minuti_giornata_equivalenza),note_hr=VALUES(note_hr),attivo=VALUES(attivo),aggiornato_da=VALUES(aggiornato_da),data_aggiornamento=NOW()");
+        $stmt->execute(['u'=>$idUtente,'di'=>$dataInizio,'df'=>$dataFine!==''?$dataFine:null,'pg'=>$giorni,'pm'=>$minuti,'mg'=>$minutiGiornata,'n'=>$note!==''?$note:null,'a'=>$attivo,'op'=>$idOperatore?:null]);
+        $messaggio = 'Abilitazione Legge 104 aggiornata correttamente.';
+    }
+
+    $utenti = $pdo->query("SELECT u.id_utente,u.username,TRIM(CONCAT(COALESCE(u.nome,''),' ',COALESCE(u.cognome,''))) nominativo,b.data_inizio,b.data_fine,b.plafond_giorni_mese,b.plafond_minuti_mese,b.minuti_giornata_equivalenza,b.note_hr,b.attivo beneficio_attivo FROM aut_utenti u LEFT JOIN hr_benefici_utenti b ON b.id_utente=u.id_utente AND b.codice_beneficio='LEGGE_104' WHERE u.attivo=1 ORDER BY u.cognome,u.nome,u.username")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) { $errore = $e->getMessage(); $utenti = $utenti ?? []; }
+
+layoutHeader('Benefici e diritti HR');
+?>
+<div class="page-container">
+<div class="card card-wide"><div class="section-head"><div><h1>Benefici e diritti HR</h1><div class="meta">Abilitazioni individuali e plafond mensili. Informazioni riservate a HR e utenti autorizzati.</div></div><a class="btn btn-light" href="configurazione_assenze.php">Configurazione assenze</a></div></div>
+<?php if($messaggio): ?><div class="alert alert-success"><?=h($messaggio)?></div><?php endif; ?>
+<?php if($errore): ?><div class="alert alert-error"><?=h($errore)?></div><?php endif; ?>
+<div class="card card-wide"><h2>Permessi Legge 104</h2><p class="meta">Il plafond viene controllato contemporaneamente in giorni equivalenti e in ore. I valori sono configurati da HR per il singolo dipendente.</p>
+<div class="table-wrap"><table><thead><tr><th>Dipendente</th><th>Decorrenza</th><th>Plafond mensile</th><th>Equivalenza giornata</th><th>Note HR</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>
+<?php foreach($utenti as $u): $abilitato=$u['data_inizio']!==null; ?>
+<tr><form method="post"><td><strong><?=h(trim((string)$u['nominativo']) ?: (string)$u['username'])?></strong><input type="hidden" name="id_utente" value="<?=(int)$u['id_utente']?>"></td>
+<td><input type="date" name="data_inizio" value="<?=h((string)($u['data_inizio'] ?? date('Y-m-d')))?>"><br><span class="meta">fino a</span><br><input type="date" name="data_fine" value="<?=h((string)($u['data_fine'] ?? ''))?>"></td>
+<td><label>Giorni</label><input type="number" min="0.01" step="0.01" name="plafond_giorni_mese" value="<?=h((string)($u['plafond_giorni_mese'] ?? '3'))?>"><label>Ore</label><input type="number" min="0.01" step="0.01" name="plafond_ore_mese" value="<?=h($abilitato ? number_format(((int)$u['plafond_minuti_mese'])/60,2,'.','') : '24.00')?>"></td>
+<td><input type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" value="<?=h($abilitato ? number_format(((int)$u['minuti_giornata_equivalenza'])/60,2,'.','') : '8.00')?>"> ore</td>
+<td><textarea name="note_hr" rows="2"><?=h((string)($u['note_hr'] ?? ''))?></textarea></td>
+<td><label><input type="checkbox" name="attivo" value="1" <?=((int)($u['beneficio_attivo'] ?? 0)===1)?'checked':''?>> abilitato</label></td>
+<td><?php if($puoScrivere): ?><button class="btn btn-primary" type="submit">Salva</button><?php else: ?><span class="meta">Sola lettura</span><?php endif; ?></td></form></tr>
+<?php endforeach; ?></tbody></table></div></div></div>
+<?php layoutFooter(); ?>
