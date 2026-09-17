@@ -233,7 +233,7 @@ function layoutRenderDesktopMenu(array $tree, array $childrenMap, string $curren
         <div class="topnav-dropdown <?= $isActive ? 'active' : '' ?>">
             <?php if ($canOpen): ?><a href="/<?= htmlspecialchars($href) ?>" class="topnav-link topnav-parent <?= $isActive ? 'active' : '' ?>"><?php layoutRenderLabel($root); ?></a>
             <?php else: ?><button type="button" class="topnav-link topnav-parent <?= $isActive ? 'active' : '' ?>" aria-haspopup="true" aria-expanded="false"><?php layoutRenderLabel($root); ?></button><?php endif; ?>
-            <?php if (count($children) > 0): ?><div class="topnav-dropdown-menu"><?php layoutRenderDesktopDropdownItems($children, $childrenMap, $currentPage, 0); ?></div><?php endif; ?>
+            <?php if (count($children) > 0): ?><div class="topnav-dropdown-menu"><?php layoutRenderDesktopDropdownItems($children, $childrenMap,$currentPage,0); ?></div><?php endif; ?>
         </div>
         <?php
     }
@@ -304,10 +304,20 @@ function layoutHrAssenzeTipologieRules(): array
     }catch(Throwable $e){return [];}
 }
 
+function layoutHrUtentiLegge104Abilitati(): array
+{
+    try {
+        $pdo=db();
+        $stmt=$pdo->query("SELECT DISTINCT id_utente FROM hr_benefici_utenti WHERE codice_beneficio='LEGGE_104' AND attivo=1 AND data_inizio<=CURDATE() AND (data_fine IS NULL OR data_fine>=CURDATE())");
+        return array_values(array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN)));
+    }catch(Throwable $e){return [];}
+}
+
 function layoutRenderAssenzeRegoleScript(): void
 {
     if(basename($_SERVER['PHP_SELF']??'')!=='assenze.php')return;
     $rules=layoutHrAssenzeTipologieRules();if(count($rules)===0)return;
+    $utenti104=layoutHrUtentiLegge104Abilitati();
     ?>
     <script>
     (function(){
@@ -322,13 +332,42 @@ function layoutRenderAssenzeRegoleScript(): void
         }
     })();
     window.hrTipologieAssenzeRegole=<?= json_encode($rules,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
-    (function(){const rules=window.hrTipologieAssenzeRegole||{};const tipologia=document.getElementById('id_tipologia_evento');const modalita=document.getElementById('modalita');const note=document.getElementById('note_richiedente');const form=document.getElementById('form-richiesta-assenza');if(!tipologia||!modalita)return;const modalitaOriginali=Array.from(modalita.options).map(function(option){return{value:option.value,text:option.textContent};});
-    function ensureAvvisoBox(){let box=document.getElementById('hr-tipologia-avviso');if(!box){box=document.createElement('div');box.id='hr-tipologia-avviso';box.className='info-box';box.style.marginTop='12px';box.style.display='none';const layout=document.querySelector('.hr-request-layout');if(layout)layout.parentNode.insertBefore(box,layout.nextSibling);}return box;}
-    function optionLabel(value){return value==='ore'?'Ore':'Giorni';}
-    function aggiornaModalita(rule){const precedente=modalita.value;modalita.innerHTML='';const consentite=[];if(!rule||rule.consente_giorni)consentite.push('giorni');if(!rule||rule.consente_ore)consentite.push('ore');if(consentite.length===0)consentite.push('giorni');consentite.forEach(function(value){const opt=document.createElement('option');opt.value=value;const originale=modalitaOriginali.find(function(item){return item.value===value;});opt.textContent=originale?originale.text:optionLabel(value);modalita.appendChild(opt);});modalita.value=consentite.indexOf(precedente)!==-1?precedente:consentite[0];modalita.dispatchEvent(new Event('change',{bubbles:true}));}
-    function aggiornaAvviso(rule){const box=ensureAvvisoBox();const testo=rule&&rule.avviso_richiedente?String(rule.avviso_richiedente).trim():'';if(testo!==''){box.textContent=testo;box.style.display='';}else{box.textContent='';box.style.display='none';}}
-    function aggiornaNotaObbligatoria(rule){if(!note)return;const required=!!(rule&&rule.motivazione_obbligatoria);note.required=required;const label=document.querySelector('label[for="note_richiedente"]');if(label)label.textContent=required?'Note del richiedente *':'Note del richiedente';}
-    function applicaRegole(){const id=parseInt(tipologia.value||'0',10);const rule=rules[id]||null;aggiornaModalita(rule);aggiornaAvviso(rule);aggiornaNotaObbligatoria(rule);}tipologia.addEventListener('change',applicaRegole);if(form)form.addEventListener('submit',function(event){const id=parseInt(tipologia.value||'0',10);const rule=rules[id]||null;if(rule&&rule.motivazione_obbligatoria&&note&&note.value.trim()===''){event.preventDefault();note.focus();alert('Compila le note del richiedente per questa tipologia.');}});applicaRegole();})();
+    window.hrUtentiLegge104Abilitati=<?= json_encode($utenti104,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
+    (function(){
+        const rules=window.hrTipologieAssenzeRegole||{};
+        const utenti104=Array.isArray(window.hrUtentiLegge104Abilitati)?window.hrUtentiLegge104Abilitati.map(Number):[];
+        const tipologia=document.getElementById('id_tipologia_evento');
+        const modalita=document.getElementById('modalita');
+        const note=document.getElementById('note_richiedente');
+        const form=document.getElementById('form-richiesta-assenza');
+        if(!tipologia||!modalita)return;
+        const modalitaOriginali=Array.from(modalita.options).map(function(option){return{value:option.value,text:option.textContent};});
+        const tipologieOriginali=Array.from(tipologia.options).map(function(option){return{value:option.value,text:option.textContent};});
+        function idUtenteSelezionato(){const campo=document.querySelector('[name="id_utente"]');return campo?parseInt(campo.value||'0',10):0;}
+        function utenteHa104(){return utenti104.indexOf(idUtenteSelezionato())!==-1;}
+        function ricostruisciTipologie(){
+            const precedente=tipologia.value;
+            tipologia.innerHTML='';
+            tipologieOriginali.forEach(function(item){
+                const id=parseInt(item.value||'0',10);
+                const rule=rules[id]||null;
+                if(rule&&String(rule.codice||'').toUpperCase()==='LEGGE_104'&&!utenteHa104())return;
+                const opt=document.createElement('option');opt.value=item.value;opt.textContent=item.text;tipologia.appendChild(opt);
+            });
+            const esiste=Array.from(tipologia.options).some(function(opt){return opt.value===precedente;});
+            tipologia.value=esiste?precedente:'';
+        }
+        function ensureAvvisoBox(){let box=document.getElementById('hr-tipologia-avviso');if(!box){box=document.createElement('div');box.id='hr-tipologia-avviso';box.className='info-box';box.style.marginTop='12px';box.style.display='none';const layout=document.querySelector('.hr-request-layout');if(layout)layout.parentNode.insertBefore(box,layout.nextSibling);}return box;}
+        function optionLabel(value){return value==='ore'?'Ore':'Giorni';}
+        function aggiornaModalita(rule){const precedente=modalita.value;modalita.innerHTML='';const consentite=[];if(!rule||rule.consente_giorni)consentite.push('giorni');if(!rule||rule.consente_ore)consentite.push('ore');if(consentite.length===0)consentite.push('giorni');consentite.forEach(function(value){const opt=document.createElement('option');opt.value=value;const originale=modalitaOriginali.find(function(item){return item.value===value;});opt.textContent=originale?originale.text:optionLabel(value);modalita.appendChild(opt);});modalita.value=consentite.indexOf(precedente)!==-1?precedente:consentite[0];modalita.dispatchEvent(new Event('change',{bubbles:true}));}
+        function aggiornaAvviso(rule){const box=ensureAvvisoBox();const testo=rule&&rule.avviso_richiedente?String(rule.avviso_richiedente).trim():'';if(testo!==''){box.textContent=testo;box.style.display='';}else{box.textContent='';box.style.display='none';}}
+        function aggiornaNotaObbligatoria(rule){if(!note)return;const required=!!(rule&&rule.motivazione_obbligatoria);note.required=required;const label=document.querySelector('label[for="note_richiedente"]');if(label)label.textContent=required?'Note del richiedente *':'Note del richiedente';}
+        function applicaRegole(){const id=parseInt(tipologia.value||'0',10);const rule=rules[id]||null;aggiornaModalita(rule);aggiornaAvviso(rule);aggiornaNotaObbligatoria(rule);}
+        ricostruisciTipologie();
+        tipologia.addEventListener('change',applicaRegole);
+        if(form)form.addEventListener('submit',function(event){const id=parseInt(tipologia.value||'0',10);const rule=rules[id]||null;if(rule&&String(rule.codice||'').toUpperCase()==='LEGGE_104'&&!utenteHa104()){event.preventDefault();tipologia.value='';applicaRegole();alert('Il dipendente selezionato non è abilitato da HR ai permessi Legge 104.');return;}if(rule&&rule.motivazione_obbligatoria&&note&&note.value.trim()===''){event.preventDefault();note.focus();alert('Compila le note del richiedente per questa tipologia.');}});
+        applicaRegole();
+    })();
     </script><?php
 }
 
