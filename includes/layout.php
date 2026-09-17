@@ -310,6 +310,17 @@ function layoutRenderAssenzeRegoleScript(): void
     $rules=layoutHrAssenzeTipologieRules();if(count($rules)===0)return;
     ?>
     <script>
+    (function(){
+        const errore=document.querySelector('.errore');
+        if(errore){
+            const testo=(errore.textContent||'').trim();
+            if(testo.indexOf('Plafond mensile Legge 104 in ore superato')!==-1){
+                errore.textContent='La richiesta supera il plafond mensile disponibile per il permesso Legge 104. Verifica le ore residue e riduci la durata del permesso.';
+            }else if(testo.indexOf('Plafond mensile Legge 104 in giorni superato')!==-1){
+                errore.textContent='La richiesta supera il plafond mensile disponibile per il permesso Legge 104. Verifica i giorni residui e riduci la durata del permesso.';
+            }
+        }
+    })();
     window.hrTipologieAssenzeRegole=<?= json_encode($rules,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
     (function(){const rules=window.hrTipologieAssenzeRegole||{};const tipologia=document.getElementById('id_tipologia_evento');const modalita=document.getElementById('modalita');const note=document.getElementById('note_richiedente');const form=document.getElementById('form-richiesta-assenza');if(!tipologia||!modalita)return;const modalitaOriginali=Array.from(modalita.options).map(function(option){return{value:option.value,text:option.textContent};});
     function ensureAvvisoBox(){let box=document.getElementById('hr-tipologia-avviso');if(!box){box=document.createElement('div');box.id='hr-tipologia-avviso';box.className='info-box';box.style.marginTop='12px';box.style.display='none';const layout=document.querySelector('.hr-request-layout');if(layout)layout.parentNode.insertBefore(box,layout.nextSibling);}return box;}
