@@ -6,11 +6,9 @@ START TRANSACTION;
 INSERT INTO hr_tipi_recapito (codice, descrizione, attivo)
 SELECT 'EMAIL_PERSONALE', 'Email personale', 1
 WHERE NOT EXISTS (SELECT 1 FROM hr_tipi_recapito WHERE codice = 'EMAIL_PERSONALE');
-
 INSERT INTO hr_tipi_recapito (codice, descrizione, attivo)
 SELECT 'EMAIL_LAVORO', 'Email di lavoro', 1
 WHERE NOT EXISTS (SELECT 1 FROM hr_tipi_recapito WHERE codice = 'EMAIL_LAVORO');
-
 INSERT INTO hr_tipi_recapito (codice, descrizione, attivo)
 SELECT 'CELLULARE_PERSONALE', 'Cellulare', 1
 WHERE NOT EXISTS (SELECT 1 FROM hr_tipi_recapito WHERE codice = 'CELLULARE_PERSONALE');
@@ -36,48 +34,38 @@ CREATE TABLE IF NOT EXISTS hr_recapiti_verifiche (
     CONSTRAINT fk_hr_recapiti_verifiche_utente FOREIGN KEY (id_utente) REFERENCES aut_utenti (id_utente)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- La pagina personale è figlia del menu Profilo e non richiede permessi di ruolo:
--- miei_recapiti.php controlla direttamente che l'utente sia autenticato.
+-- Pagina personale sotto Profilo.
 INSERT INTO aut_risorse
     (codice_risorsa, descrizione, tipo_risorsa, id_risorsa_padre, percorso, icona, visibile_menu, ordinamento, attivo)
-SELECT
-    'pagina.miei_recapiti', 'I miei recapiti', 'pagina', p.id_risorsa,
-    '/miei_recapiti.php', 'la-address-card', 1, 30, 1
+SELECT 'pagina.miei_recapiti', 'I miei recapiti', 'pagina', p.id_risorsa,
+       '/miei_recapiti.php', 'la-address-card', 1, 30, 1
 FROM aut_risorse p
 WHERE p.codice_risorsa = 'menu.profilo'
   AND NOT EXISTS (SELECT 1 FROM aut_risorse x WHERE x.codice_risorsa = 'pagina.miei_recapiti');
-
 UPDATE aut_risorse r
 JOIN aut_risorse p ON p.codice_risorsa = 'menu.profilo'
-SET r.descrizione = 'I miei recapiti',
-    r.tipo_risorsa = 'pagina',
-    r.id_risorsa_padre = p.id_risorsa,
-    r.percorso = '/miei_recapiti.php',
-    r.icona = 'la-address-card',
-    r.visibile_menu = 1,
-    r.ordinamento = 30,
-    r.attivo = 1
-WHERE r.codice_risorsa = 'pagina.miei_recapiti';
+SET r.descrizione='I miei recapiti', r.tipo_risorsa='pagina', r.id_risorsa_padre=p.id_risorsa,
+    r.percorso='/miei_recapiti.php', r.icona='la-address-card', r.visibile_menu=1, r.ordinamento=30, r.attivo=1
+WHERE r.codice_risorsa='pagina.miei_recapiti';
 
--- Permesso read per tutti i ruoli attivi: ogni ruolo può aprire la pagina,
--- ma il PHP consente sempre e soltanto la modifica del proprio utente.
 INSERT INTO aut_ruoli_permessi (id_ruolo, id_risorsa, permesso, consentito)
 SELECT ru.id_ruolo, ri.id_risorsa, 'read', 1
-FROM aut_ruoli ru
-JOIN aut_risorse ri ON ri.codice_risorsa = 'pagina.miei_recapiti'
-WHERE ru.attivo = 1
-  AND NOT EXISTS (
-      SELECT 1 FROM aut_ruoli_permessi x
-      WHERE x.id_ruolo = ru.id_ruolo AND x.id_risorsa = ri.id_risorsa AND x.permesso = 'read'
-  );
+FROM aut_ruoli ru JOIN aut_risorse ri ON ri.codice_risorsa='pagina.miei_recapiti'
+WHERE ru.attivo=1
+  AND NOT EXISTS (SELECT 1 FROM aut_ruoli_permessi x WHERE x.id_ruolo=ru.id_ruolo AND x.id_risorsa=ri.id_risorsa AND x.permesso='read');
+UPDATE aut_ruoli_permessi rp JOIN aut_risorse ri ON ri.id_risorsa=rp.id_risorsa
+SET rp.consentito=1 WHERE ri.codice_risorsa='pagina.miei_recapiti' AND rp.permesso='read';
 
-UPDATE aut_ruoli_permessi rp
-JOIN aut_risorse ri ON ri.id_risorsa = rp.id_risorsa
-SET rp.consentito = 1
-WHERE ri.codice_risorsa = 'pagina.miei_recapiti' AND rp.permesso = 'read';
+-- La voce HR/admin Recapiti utenti apre il nuovo editor del singolo utente.
+-- Conserviamo codice risorsa e permessi esistenti: Giorgia/HR e admin mantengono quindi
+-- l'accesso secondo i ruoli, senza autorizzazioni basate sul nome della persona.
+UPDATE aut_risorse
+SET descrizione='Recapiti utenti', percorso='/recapiti_utente.php', icona='la-envelope', attivo=1
+WHERE codice_risorsa='pagina.recapiti_utenti';
 
 COMMIT;
 
 SELECT codice, descrizione, attivo FROM hr_tipi_recapito
 WHERE codice IN ('EMAIL_PERSONALE','EMAIL_LAVORO','CELLULARE_PERSONALE') ORDER BY codice;
-SELECT codice_risorsa, descrizione, percorso, visibile_menu, attivo FROM aut_risorse WHERE codice_risorsa = 'pagina.miei_recapiti';
+SELECT codice_risorsa, descrizione, percorso, visibile_menu, attivo
+FROM aut_risorse WHERE codice_risorsa IN ('pagina.miei_recapiti','pagina.recapiti_utenti');
