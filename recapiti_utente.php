@@ -14,8 +14,25 @@ $idUtente = (int)($_GET['id'] ?? $_POST['id_utente'] ?? 0);
 $errore = '';
 $messaggio = '';
 
-$utenti = $pdo->query("SELECT id_utente, username, nome, cognome FROM aut_utenti WHERE attivo = 1 ORDER BY cognome, nome, username")->fetchAll(PDO::FETCH_ASSOC);
+// L'account tecnico/amministrativo non è un dipendente e non deve comparire
+// nella gestione HR dei recapiti. Il filtro non dipende dall'id dell'account.
+$stmtUtenti = $pdo->query(
+    "SELECT id_utente, username, nome, cognome
+     FROM aut_utenti
+     WHERE attivo = 1
+       AND LOWER(TRIM(username)) NOT IN ('admin', 'amministratore')
+     ORDER BY cognome, nome, username"
+);
+$utenti = $stmtUtenti->fetchAll(PDO::FETCH_ASSOC);
+$utentiConsentiti = [];
+foreach ($utenti as $u) $utentiConsentiti[(int)$u['id_utente']] = true;
 if ($idUtente <= 0 && count($utenti) > 0) $idUtente = (int)$utenti[0]['id_utente'];
+
+// Protezione anche lato server: non basta nascondere l'account dal menu a tendina.
+if ($idUtente > 0 && !isset($utentiConsentiti[$idUtente])) {
+    http_response_code(404);
+    die('Utente non disponibile nella gestione recapiti HR.');
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -25,25 +42,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'CELLULARE_PERSONALE' => trim((string)($_POST['cellulare'] ?? '')),
         ];
         $pdo->beginTransaction();
-        $verifiche = [];
         foreach ($valori as $tipo => $valore) {
-            $esito = hrRecapitiSalva($pdo, $idUtente, $tipo, $valore, $idOperatore);
-            if ($esito['richiede_verifica'] && $valore !== '') {
-                $verifiche[] = ['email' => $valore, 'token' => hrRecapitiCreaTokenVerifica($pdo, (int)$esito['id_recapito'], $idUtente)];
-            }
+            // Chi possiede il permesso di scrittura Recapiti utenti opera come HR/admin.
+            // Il dato inserito è quindi considerato confermato senza ulteriore email al dipendente.
+            hrRecapitiSalva($pdo, $idUtente, $tipo, $valore, $idOperatore, true);
         }
         $pdo->commit();
-        $inviate = 0;
-        foreach ($verifiche as $v) {
-            $esitoInvio = hrRecapitiInviaVerifica($pdo, $idUtente, $v['email'], $v['token']);
-            if ($esitoInvio['inviata']) $inviate++;
-        }
-        $messaggio = 'Recapiti aggiornati per l’utente selezionato.';
-        if (count($verifiche) > 0) {
-            $messaggio .= $inviate === count($verifiche)
-                ? ' I nuovi indirizzi email dovranno essere confermati dal destinatario.'
-                : ' I nuovi indirizzi email risultano da verificare; uno o più messaggi di verifica non sono stati inviati.';
-        }
+        $messaggio = 'Recapiti aggiornati per l’utente selezionato. Gli indirizzi email inseriti da HR/amministrazione sono considerati confermati.';
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         $errore = $e->getMessage();
