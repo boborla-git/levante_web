@@ -38,49 +38,28 @@ function normalizzaLinkNotifica(?string $link): string
     return '';
 }
 
-
 function classificaTipoNotifica(?string $tipoEvento): array
 {
     $tipo = strtoupper(trim((string)$tipoEvento));
 
     if ($tipo === '') {
-        return [
-            'label' => 'Notifica',
-            'class' => 'notification-type-generic',
-            'icon' => 'la-bell',
-        ];
+        return ['label' => 'Notifica', 'class' => 'notification-type-generic', 'icon' => 'la-bell'];
     }
 
     if (strpos($tipo, 'RIFIUT') !== false) {
-        return [
-            'label' => 'Rifiuto HR',
-            'class' => 'notification-type-rejected',
-            'icon' => 'la-times-circle',
-        ];
+        return ['label' => 'Rifiuto HR', 'class' => 'notification-type-rejected', 'icon' => 'la-times-circle'];
     }
 
     if (strpos($tipo, 'APPROV') !== false) {
-        return [
-            'label' => 'Approvazione HR',
-            'class' => 'notification-type-approved',
-            'icon' => 'la-check-circle',
-        ];
+        return ['label' => 'Approvazione HR', 'class' => 'notification-type-approved', 'icon' => 'la-check-circle'];
     }
 
     if (strpos($tipo, 'ANNULL') !== false) {
-        return [
-            'label' => 'Annullamento HR',
-            'class' => 'notification-type-cancelled',
-            'icon' => 'la-ban',
-        ];
+        return ['label' => 'Annullamento HR', 'class' => 'notification-type-cancelled', 'icon' => 'la-ban'];
     }
 
     if (strpos($tipo, 'RICHIESTA') !== false || strpos($tipo, 'ASSEN') !== false || strpos($tipo, 'HR') !== false) {
-        return [
-            'label' => 'Richiesta HR',
-            'class' => 'notification-type-request',
-            'icon' => 'la-calendar-check',
-        ];
+        return ['label' => 'Richiesta HR', 'class' => 'notification-type-request', 'icon' => 'la-calendar-check'];
     }
 
     return [
@@ -211,11 +190,13 @@ try {
             }
 
             $stmt = $pdo->prepare(
-                'UPDATE hr_notifiche_destinatari
-                 SET letta = 1,
-                     data_lettura = COALESCE(data_lettura, NOW())
-                 WHERE id_notifica_destinatario = :id_notifica_destinatario
-                   AND id_utente = :id_utente'
+                "UPDATE hr_notifiche_destinatari nd
+                 INNER JOIN hr_canali_notifica cn ON cn.id_canale_notifica = nd.id_canale_notifica
+                 SET nd.letta = 1,
+                     nd.data_lettura = COALESCE(nd.data_lettura, NOW())
+                 WHERE nd.id_notifica_destinatario = :id_notifica_destinatario
+                   AND nd.id_utente = :id_utente
+                   AND cn.codice = 'WEB'"
             );
             $stmt->execute([
                 'id_notifica_destinatario' => $idDestinatario,
@@ -228,11 +209,13 @@ try {
 
         if ($azione === 'segna_tutte_lette') {
             $stmt = $pdo->prepare(
-                'UPDATE hr_notifiche_destinatari
-                 SET letta = 1,
-                     data_lettura = COALESCE(data_lettura, NOW())
-                 WHERE id_utente = :id_utente
-                   AND letta = 0'
+                "UPDATE hr_notifiche_destinatari nd
+                 INNER JOIN hr_canali_notifica cn ON cn.id_canale_notifica = nd.id_canale_notifica
+                 SET nd.letta = 1,
+                     nd.data_lettura = COALESCE(nd.data_lettura, NOW())
+                 WHERE nd.id_utente = :id_utente
+                   AND nd.letta = 0
+                   AND cn.codice = 'WEB'"
             );
             $stmt->execute(['id_utente' => $idUtente]);
 
@@ -247,12 +230,14 @@ try {
             }
 
             $stmt = $pdo->prepare(
-                'SELECT n.link
+                "SELECT n.link
                  FROM hr_notifiche_destinatari nd
                  INNER JOIN hr_notifiche n ON n.id_notifica = nd.id_notifica
+                 INNER JOIN hr_canali_notifica cn ON cn.id_canale_notifica = nd.id_canale_notifica
                  WHERE nd.id_notifica_destinatario = :id_notifica_destinatario
                    AND nd.id_utente = :id_utente
-                 LIMIT 1'
+                   AND cn.codice = 'WEB'
+                 LIMIT 1"
             );
             $stmt->execute([
                 'id_notifica_destinatario' => $idDestinatario,
@@ -265,11 +250,13 @@ try {
             }
 
             $stmt = $pdo->prepare(
-                'UPDATE hr_notifiche_destinatari
-                 SET letta = 1,
-                     data_lettura = COALESCE(data_lettura, NOW())
-                 WHERE id_notifica_destinatario = :id_notifica_destinatario
-                   AND id_utente = :id_utente'
+                "UPDATE hr_notifiche_destinatari nd
+                 INNER JOIN hr_canali_notifica cn ON cn.id_canale_notifica = nd.id_canale_notifica
+                 SET nd.letta = 1,
+                     nd.data_lettura = COALESCE(nd.data_lettura, NOW())
+                 WHERE nd.id_notifica_destinatario = :id_notifica_destinatario
+                   AND nd.id_utente = :id_utente
+                   AND cn.codice = 'WEB'"
             );
             $stmt->execute([
                 'id_notifica_destinatario' => $idDestinatario,
@@ -290,12 +277,14 @@ try {
     }
 
     $stmtRiepilogo = $pdo->prepare(
-        'SELECT
+        "SELECT
             COUNT(*) AS totale,
-            SUM(CASE WHEN letta = 0 THEN 1 ELSE 0 END) AS non_lette,
-            SUM(CASE WHEN letta = 1 THEN 1 ELSE 0 END) AS lette
-         FROM hr_notifiche_destinatari
-         WHERE id_utente = :id_utente'
+            SUM(CASE WHEN nd.letta = 0 THEN 1 ELSE 0 END) AS non_lette,
+            SUM(CASE WHEN nd.letta = 1 THEN 1 ELSE 0 END) AS lette
+         FROM hr_notifiche_destinatari nd
+         INNER JOIN hr_canali_notifica cn ON cn.id_canale_notifica = nd.id_canale_notifica
+         WHERE nd.id_utente = :id_utente
+           AND cn.codice = 'WEB'"
     );
     $stmtRiepilogo->execute(['id_utente' => $idUtente]);
     $riepilogo = $stmtRiepilogo->fetch(PDO::FETCH_ASSOC) ?: ['totale' => 0, 'non_lette' => 0, 'lette' => 0];
@@ -317,8 +306,9 @@ try {
             DATE_FORMAT(n.data_creazione, '%d/%m/%Y %H:%i') AS data_creazione_fmt
          FROM hr_notifiche_destinatari nd
          INNER JOIN hr_notifiche n ON n.id_notifica = nd.id_notifica
-         LEFT JOIN hr_canali_notifica cn ON cn.id_canale_notifica = nd.id_canale_notifica
+         INNER JOIN hr_canali_notifica cn ON cn.id_canale_notifica = nd.id_canale_notifica
          WHERE nd.id_utente = :id_utente
+           AND cn.codice = 'WEB'
          ORDER BY nd.letta ASC, n.data_creazione DESC, nd.id_notifica_destinatario DESC
          LIMIT 80"
     );
