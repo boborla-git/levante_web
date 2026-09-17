@@ -38,18 +38,34 @@ try {
 
 layoutHeader('Benefici e diritti HR');
 ?>
+<style>
+.hr-benefici-table td { vertical-align: middle; }
+.hr-inline-field { display:flex; align-items:center; gap:.45rem; margin:.2rem 0; white-space:nowrap; }
+.hr-inline-field .hr-field-label { min-width:48px; font-weight:600; }
+.hr-inline-field input[type="date"] { width:155px; }
+.hr-inline-field input[type="number"] { width:90px; }
+.hr-equivalenza input[type="number"] { width:90px; }
+.hr-note { min-width:180px; width:100%; }
+.hr-benefici-table .col-date { min-width:225px; }
+.hr-benefici-table .col-plafond { min-width:180px; }
+.hr-benefici-table .col-equivalenza { min-width:180px; }
+@media (max-width:900px){
+  .hr-inline-field{align-items:flex-start;}
+  .hr-benefici-table .col-date,.hr-benefici-table .col-plafond,.hr-benefici-table .col-equivalenza{min-width:200px;}
+}
+</style>
 <div class="page-container">
 <div class="card card-wide"><div class="section-head"><div><h1>Benefici e diritti HR</h1><div class="meta">Abilitazioni individuali e plafond mensili. Informazioni riservate a HR e utenti autorizzati.</div></div><a class="btn btn-light" href="configurazione_assenze.php">Configurazione assenze</a></div></div>
 <?php if($messaggio): ?><div class="alert alert-success"><?=h($messaggio)?></div><?php endif; ?>
 <?php if($errore): ?><div class="alert alert-error"><?=h($errore)?></div><?php endif; ?>
 <div class="card card-wide"><h2>Permessi Legge 104</h2><p class="meta">Il plafond viene controllato contemporaneamente in giorni equivalenti e in ore. I valori sono configurati da HR per il singolo dipendente.</p>
-<div class="table-wrap"><table><thead><tr><th>Dipendente</th><th>Decorrenza</th><th>Plafond mensile</th><th>Equivalenza giornata</th><th>Note HR</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>
+<div class="table-wrap"><table class="hr-benefici-table"><thead><tr><th>Dipendente</th><th>Decorrenza</th><th>Plafond mensile</th><th>Equivalenza giornata</th><th>Note HR</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>
 <?php foreach($utenti as $u): $abilitato=$u['data_inizio']!==null; ?>
 <tr><form method="post"><td><strong><?=h(trim((string)$u['nominativo']) ?: (string)$u['username'])?></strong><input type="hidden" name="id_utente" value="<?=(int)$u['id_utente']?>"></td>
-<td><input type="date" name="data_inizio" value="<?=h((string)($u['data_inizio'] ?? date('Y-m-d')))?>"><br><span class="meta">fino a</span><br><input type="date" name="data_fine" value="<?=h((string)($u['data_fine'] ?? ''))?>"></td>
-<td><label>Giorni</label><input type="number" min="0.01" step="0.01" name="plafond_giorni_mese" value="<?=h((string)($u['plafond_giorni_mese'] ?? '3'))?>"><label>Ore</label><input type="number" min="0.01" step="0.01" name="plafond_ore_mese" value="<?=h($abilitato ? number_format(((int)$u['plafond_minuti_mese'])/60,2,'.','') : '24.00')?>"></td>
-<td><input type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" value="<?=h($abilitato ? number_format(((int)$u['minuti_giornata_equivalenza'])/60,2,'.','') : '8.00')?>"> ore</td>
-<td><textarea name="note_hr" rows="2"><?=h((string)($u['note_hr'] ?? ''))?></textarea></td>
+<td class="col-date"><div class="hr-inline-field"><span class="hr-field-label">DA:</span><input type="date" name="data_inizio" value="<?=h((string)($u['data_inizio'] ?? date('Y-m-d')))?>"></div><div class="hr-inline-field"><span class="hr-field-label">A:</span><input type="date" name="data_fine" value="<?=h((string)($u['data_fine'] ?? ''))?>"></div></td>
+<td class="col-plafond"><div class="hr-inline-field"><span class="hr-field-label">Giorni:</span><input type="number" min="0.01" step="0.01" name="plafond_giorni_mese" value="<?=h((string)($u['plafond_giorni_mese'] ?? '3'))?>"></div><div class="hr-inline-field"><span class="hr-field-label">Ore:</span><input type="number" min="0.01" step="0.01" name="plafond_ore_mese" value="<?=h($abilitato ? number_format(((int)$u['plafond_minuti_mese'])/60,2,'.','') : '24.00')?>"></div></td>
+<td class="col-equivalenza"><div class="hr-inline-field hr-equivalenza"><span class="hr-field-label">Ore:</span><input type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" value="<?=h($abilitato ? number_format(((int)$u['minuti_giornata_equivalenza'])/60,2,'.','') : '8.00')?>"></div></td>
+<td><textarea class="hr-note" name="note_hr" rows="2"><?=h((string)($u['note_hr'] ?? ''))?></textarea></td>
 <td><label><input type="checkbox" name="attivo" value="1" <?=((int)($u['beneficio_attivo'] ?? 0)===1)?'checked':''?>> abilitato</label></td>
 <td><?php if($puoScrivere): ?><button class="btn btn-primary" type="submit">Salva</button><?php else: ?><span class="meta">Sola lettura</span><?php endif; ?></td></form></tr>
 <?php endforeach; ?></tbody></table></div></div></div>
