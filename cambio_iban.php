@@ -6,9 +6,23 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/badge.php';
 
-richiediPermessoLettura('cambio_iban');
-
 $pdo = db();
+
+$stmtFunzione = $pdo->prepare(
+    "SELECT attivo
+     FROM aut_risorse
+     WHERE codice_risorsa = 'pagina.cambio_iban'
+     LIMIT 1"
+);
+$stmtFunzione->execute();
+$funzioneAttiva = (int)($stmtFunzione->fetchColumn() ?: 0) === 1;
+
+if (!$funzioneAttiva) {
+    http_response_code(404);
+    die('Funzione temporaneamente non disponibile.');
+}
+
+richiediPermessoLettura('cambio_iban');
 $idUtenteLoggato = (int)($_SESSION['id_utente'] ?? $_SESSION['utente_id'] ?? 0);
 $puoScrivere = haPermessoScrittura('cambio_iban');
 $puoGestire = haPermessoScrittura('hr_comunicazioni') || haPermessoLettura('configurazione_assenze');
