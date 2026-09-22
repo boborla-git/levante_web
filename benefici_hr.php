@@ -26,6 +26,9 @@ try {
         $oreGiornata = (float)str_replace(',', '.', (string)($_POST['ore_giornata_equivalenza'] ?? '0'));
         $note = trim((string)($_POST['note_hr'] ?? ''));
         if ($idUtente <= 0 || $dataInizio === '') throw new RuntimeException('Dipendente e data di decorrenza sono obbligatori.');
+        $stmtAdmin = $pdo->prepare("SELECT COUNT(*) FROM aut_utenti WHERE id_utente = :u AND LOWER(username) = 'admin'");
+        $stmtAdmin->execute(['u' => $idUtente]);
+        if ((int)$stmtAdmin->fetchColumn() > 0) throw new RuntimeException('L\'utente amministratore tecnico non può essere configurato nei benefici HR.');
         if ($tipoBeneficio === 'LEGGE_104' && ($giorni <= 0 || $ore <= 0 || $oreGiornata <= 0)) throw new RuntimeException('Plafond giorni, plafond ore e ore equivalenti per giornata devono essere maggiori di zero.');
         if ($tipoBeneficio === 'SMART_WORKING') { $giorni = 0; $ore = 0; $oreGiornata = 0; }
         if ($dataFine !== '' && $dataFine < $dataInizio) throw new RuntimeException('La data finale non può precedere la data iniziale.');
@@ -36,8 +39,8 @@ try {
         $messaggio = $tipoBeneficio === 'SMART_WORKING' ? 'Abilitazione smart working aggiornata correttamente.' : 'Abilitazione Legge 104 aggiornata correttamente.';
     }
 
-    $utenti = $pdo->query("SELECT u.id_utente,u.username,TRIM(CONCAT(COALESCE(u.nome,''),' ',COALESCE(u.cognome,''))) nominativo,b.data_inizio,b.data_fine,b.plafond_giorni_mese,b.plafond_minuti_mese,b.minuti_giornata_equivalenza,b.note_hr,b.attivo beneficio_attivo FROM aut_utenti u LEFT JOIN hr_benefici_utenti b ON b.id_utente=u.id_utente AND b.codice_beneficio='LEGGE_104' WHERE u.attivo=1 ORDER BY u.cognome,u.nome,u.username")->fetchAll(PDO::FETCH_ASSOC);
-    $utentiSmart = $pdo->query("SELECT u.id_utente,u.username,TRIM(CONCAT(COALESCE(u.nome,''),' ',COALESCE(u.cognome,''))) nominativo,b.data_inizio,b.data_fine,b.note_hr,b.attivo beneficio_attivo FROM aut_utenti u LEFT JOIN hr_benefici_utenti b ON b.id_utente=u.id_utente AND b.codice_beneficio='SMART_WORKING' WHERE u.attivo=1 ORDER BY u.cognome,u.nome,u.username")->fetchAll(PDO::FETCH_ASSOC);
+    $utenti = $pdo->query("SELECT u.id_utente,u.username,TRIM(CONCAT(COALESCE(u.nome,''),' ',COALESCE(u.cognome,''))) nominativo,b.data_inizio,b.data_fine,b.plafond_giorni_mese,b.plafond_minuti_mese,b.minuti_giornata_equivalenza,b.note_hr,b.attivo beneficio_attivo FROM aut_utenti u LEFT JOIN hr_benefici_utenti b ON b.id_utente=u.id_utente AND b.codice_beneficio='LEGGE_104' WHERE u.attivo=1 AND LOWER(u.username) <> 'admin' ORDER BY u.cognome,u.nome,u.username")->fetchAll(PDO::FETCH_ASSOC);
+    $utentiSmart = $pdo->query("SELECT u.id_utente,u.username,TRIM(CONCAT(COALESCE(u.nome,''),' ',COALESCE(u.cognome,''))) nominativo,b.data_inizio,b.data_fine,b.note_hr,b.attivo beneficio_attivo FROM aut_utenti u LEFT JOIN hr_benefici_utenti b ON b.id_utente=u.id_utente AND b.codice_beneficio='SMART_WORKING' WHERE u.attivo=1 AND LOWER(u.username) <> 'admin' ORDER BY u.cognome,u.nome,u.username")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) { $errore = $e->getMessage(); $utenti = $utenti ?? []; }
 
 layoutHeader('Benefici e diritti HR');
