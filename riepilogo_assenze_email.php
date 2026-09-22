@@ -25,12 +25,21 @@ try {
             throw new RuntimeException('Non hai i permessi di modifica.');
         }
 
-        $idUtente = (int)($_POST['id_utente'] ?? 0);
-        $livello = strtoupper(trim((string)($_POST['livello_dettaglio'] ?? 'NESSUNO')));
+        $azione = trim((string)($_POST['azione'] ?? 'salva_destinatario'));
 
-        if ($idUtente <= 0) {
-            throw new RuntimeException('Utente non valido.');
-        }
+        if ($azione === 'invia_test_admin') {
+            $esitoTest = hrRiepilogoAssenzeInviaTestAdmin($pdo, date('Y-m-d'));
+            if ((int)$esitoTest['errori'] > 0) {
+                throw new RuntimeException((string)($esitoTest['motivo'] ?? 'Invio di prova non riuscito.'));
+            }
+            $messaggio = 'Invio di prova eseguito: controlla l\'email di lavoro dell\'Amministratore. Sono state inviate due email, una con motivi HR e una senza motivi.';
+        } elseif ($azione === 'salva_destinatario') {
+            $idUtente = (int)($_POST['id_utente'] ?? 0);
+            $livello = strtoupper(trim((string)($_POST['livello_dettaglio'] ?? 'NESSUNO')));
+
+            if ($idUtente <= 0) {
+                throw new RuntimeException('Utente non valido.');
+            }
 
         $stmtUtente = $pdo->prepare("SELECT LOWER(username) FROM aut_utenti WHERE id_utente=:id_utente AND attivo=1 LIMIT 1");
         $stmtUtente->execute(['id_utente' => $idUtente]);
@@ -85,7 +94,10 @@ try {
             throw new RuntimeException('Livello non valido.');
         }
 
-        $messaggio = 'Destinatari del riepilogo aggiornati.';
+            $messaggio = 'Destinatari del riepilogo aggiornati.';
+        } else {
+            throw new RuntimeException('Operazione non valida.');
+        }
     }
 
     $utenti = $pdo->query(
@@ -127,7 +139,15 @@ layoutHeader('Riepilogo assenze email');
                 <h1>Riepilogo assenze via email</h1>
                 <div class="meta">Definisci chi riceve il riepilogo giornaliero. Viene usata esclusivamente l'email di lavoro verificata.</div>
             </div>
-            <a class="btn btn-light" href="configurazione_assenze.php">Torna alla configurazione</a>
+            <div class="section-head-actions">
+                <?php if ($puoScrivere): ?>
+                    <form method="post" style="display:inline">
+                        <input type="hidden" name="azione" value="invia_test_admin">
+                        <button class="btn btn-primary" type="submit">Invia prova ad Amministratore</button>
+                    </form>
+                <?php endif; ?>
+                <a class="btn btn-light" href="configurazione_assenze.php">Torna alla configurazione</a>
+            </div>
         </div>
     </section>
 
@@ -160,6 +180,7 @@ layoutHeader('Riepilogo assenze email');
                         <form method="post">
                             <td>
                                 <strong><?= h(trim((string)$utente['nome'] . ' ' . (string)$utente['cognome']) ?: (string)$utente['username']) ?></strong>
+                                <input type="hidden" name="azione" value="salva_destinatario">
                                 <input type="hidden" name="id_utente" value="<?= (int)$utente['id_utente'] ?>">
                             </td>
                             <td>
