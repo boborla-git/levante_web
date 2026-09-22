@@ -41,6 +41,16 @@ try {
                 throw new RuntimeException((string)($esitoTest['motivo'] ?? 'Invio di prova ai destinatari configurati non riuscito.'));
             }
             $messaggio = 'Invio di prova eseguito ai destinatari configurati. Le email di test non vengono registrate come invio automatico del mattino.';
+        } elseif ($azione === 'simula_invio_mattino') {
+            $esitoSimulazione = hrRiepilogoAssenzeInvia($pdo, date('Y-m-d'), 'MATTINO', null);
+            if ((int)$esitoSimulazione['errori'] > 0) {
+                throw new RuntimeException((string)($esitoSimulazione['motivo'] ?? 'Simulazione dell\'invio automatico del mattino non riuscita.'));
+            }
+            if ((int)$esitoSimulazione['inviate'] === 0 && (int)$esitoSimulazione['saltate'] > 0) {
+                $messaggio = 'Invio automatico del mattino già registrato per oggi: nessun duplicato è stato inviato.';
+            } else {
+                $messaggio = 'Simulazione dell\'invio automatico del mattino completata e registrata. Da questo momento, una nuova assenza approvata per oggi genererà il riepilogo aggiornato.';
+            }
         } elseif ($azione === 'genera_token_cron') {
             $nuovoToken = bin2hex(random_bytes(24));
             $stmtToken = $pdo->prepare(
@@ -208,7 +218,11 @@ layoutHeader('Riepilogo assenze email');
                 <strong><?= h($ultimoInvioMattino ? (string)$ultimoInvioMattino : 'Nessun invio registrato') ?></strong>
             </div>
             <?php if ($puoScrivere): ?>
-                <div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <form method="post">
+                        <input type="hidden" name="azione" value="simula_invio_mattino">
+                        <button class="btn btn-primary" type="submit">Simula invio automatico del mattino</button>
+                    </form>
                     <form method="post">
                         <input type="hidden" name="azione" value="genera_token_cron">
                         <button class="btn btn-light" type="submit"><?= $cronToken !== '' ? 'Rigenera token job' : 'Genera token job' ?></button>
