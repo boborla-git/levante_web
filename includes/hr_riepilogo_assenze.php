@@ -146,7 +146,7 @@ if (!function_exists('hrRiepilogoAssenzePeriodo')) {
             }
         }
 
-        return 'Giornata intera';
+        return '';
     }
 }
 
@@ -222,18 +222,20 @@ if (!function_exists('hrRiepilogoAssenzeHtml')) {
 }
 
 if (!function_exists('hrRiepilogoAssenzeGiaInviata')) {
-    function hrRiepilogoAssenzeGiaInviata(PDO $pdo, string $data, string $tipo, int $idUtente, ?int $idRichiesta): bool
+    function hrRiepilogoAssenzeGiaInviata(PDO $pdo, string $data, string $tipo, int $idUtente, string $livello, ?int $idRichiesta): bool
     {
         $sql = "SELECT COUNT(*)
                 FROM hr_riepilogo_assenze_invi
                 WHERE data_riepilogo = :data_riepilogo
                   AND tipo_invio = :tipo_invio
                   AND id_utente_destinatario = :id_utente
+                  AND livello_dettaglio = :livello
                   AND esito = 'INVIATA'";
         $params = [
             'data_riepilogo' => $data,
             'tipo_invio' => $tipo,
             'id_utente' => $idUtente,
+            'livello' => $livello,
         ];
 
         if ($tipo === 'AGGIORNAMENTO' && $idRichiesta !== null) {
@@ -310,60 +312,66 @@ if (!function_exists('hrRiepilogoAssenzeInvia')) {
 
         foreach ($destinatari as $destinatario) {
             $idUtente = (int)$destinatario['id_utente'];
-            $livello = strtoupper((string)$destinatario['livello_dettaglio']) === 'HR' ? 'HR' : 'BASE';
-
-            if (hrRiepilogoAssenzeGiaInviata($pdo, $data, $tipo, $idUtente, $idRichiestaTrigger)) {
-                $risultato['saltate']++;
-                continue;
-            }
+            $livelloConfigurato = strtoupper((string)$destinatario['livello_dettaglio']) === 'HR' ? 'HR' : 'BASE';
+            // Un destinatario HR riceve due messaggi distinti:
+            // il riepilogo generale senza motivi e, in aggiunta, quello riservato con motivi HR.
+            $livelliDaInviare = $livelloConfigurato === 'HR' ? ['BASE', 'HR'] : ['BASE'];
 
             $email = hrRiepilogoAssenzeEmailLavoro($pdo, $idUtente);
-            if ($email === null) {
-                $risultato['errori']++;
-                hrRiepilogoAssenzeLog($pdo, $data, $tipo, $idUtente, '', $livello, $oggetto, false, 'Email di lavoro verificata non disponibile.', $idRichiestaTrigger);
-                continue;
-            }
 
-            $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
-            $headers = [
-                'MIME-Version: 1.0',
-                'Content-Type: text/html; charset=UTF-8',
-                'Content-Transfer-Encoding: 8bit',
-                'From: ' . hrEmailEncodeHeader((string)$config['from_name']) . ' <' . $fromEmail . '>',
-                'Reply-To: ' . $fromEmail,
-                'X-Mailer: Ravioli Portale HR',
-            ];
+            foreach ($livelliDaInviare as $livello) {
+                if (hrRiepilogoAssenzeGiaInviata($pdo, $data, $tipo, $idUtente, $livello, $idRichiestaTrigger)) {
+                    $risultato['saltate']++;
+                    continue;
+                }
 
-            if ($bccAdmin !== null && empty($bccGiaUsataPerLivello[$livello]) && strcasecmp($bccAdmin, $email) !== 0) {
-                $headers[] = 'Bcc: ' . $bccAdmin;
-                $bccGiaUsataPerLivello[$livello] = true;
-            }
+                if ($email === null) {
+                    $risultato['errori']++;
+                    hrRiepilogoAssenzeLog($pdo, $data, $tipo, $idUtente, '', $livello, $oggetto, false, 'Email di lavoro verificata non disponibile.', $idRichiestaTrigger);
+                    continue;
+                }
 
-            $ok = @mail(
-                $email,
-                hrEmailEncodeHeader($oggetto),
-                $html,
-                implode("\r\n", $headers),
-                '-f' . $fromEmail
-            );
+                $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
+                $headers = [
+                    'MIME-Version: 1.0',
+                    'Content-Type: text/html; charset=UTF-8',
+                    'Content-Transfer-Encoding: 8bit',
+                    'From: ' . hrEmailEncodeHeader((string)$config['from_name']) . ' <' . $fromEmail . '>',
+                    'Reply-To: ' . $fromEmail,
+                    'X-Mailer: Ravioli Portale HR',
+                ];
 
-            hrRiepilogoAssenzeLog(
-                $pdo,
-                $data,
-                $tipo,
-                $idUtente,
-                $email,
-                $livello,
-                $oggetto,
-                (bool)$ok,
-                $ok ? null : 'Invio mail() non riuscito.',
-                $idRichiestaTrigger
-            );
+                if ($bccAdmin !== null && empty($bccGiaUsataPerLivello[$livello]) && strcasecmp($bccAdmin, $email) !== 0) {
+                    $headers[] = 'Bcc: ' . $bccAdmin;
+                    $bccGiaUsataPerLivello[$livello] = true;
+                }
 
-            if ($ok) {
-                $risultato['inviate']++;
-            } else {
-                $risultato['errori']++;
+                $ok = @mail(
+                    $email,
+                    hrEmailEncodeHeader($oggetto),
+                    $html,
+                    implode("\r\n", $headers),
+                    '-f' . $fromEmail
+                );
+
+                hrRiepilogoAssenzeLog(
+                    $pdo,
+                    $data,
+                    $tipo,
+                    $idUtente,
+                    $email,
+                    $livello,
+                    $oggetto,
+                    (bool)$ok,
+                    $ok ? null : 'Invio mail() non riuscito.',
+                    $idRichiestaTrigger
+                );
+
+                if ($ok) {
+                    $risultato['inviate']++;
+                } else {
+                    $risultato['errori']++;
+                }
             }
         }
 
