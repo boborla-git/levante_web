@@ -131,6 +131,22 @@ function hrUtenteAttivo(PDO $pdo, int $idUtente): ?array
     return $row;
 }
 
+function hrUtenteHaBeneficioAttivo(PDO $pdo, int $idUtente, string $codiceBeneficio, ?string $dataRiferimento = null): bool
+{
+    $dataRiferimento = $dataRiferimento !== null && $dataRiferimento !== '' ? $dataRiferimento : date('Y-m-d');
+    $stmt = $pdo->prepare(
+        "SELECT 1 FROM hr_benefici_utenti
+         WHERE id_utente = :id_utente
+           AND codice_beneficio = :codice
+           AND attivo = 1
+           AND data_inizio <= :data_rif
+           AND (data_fine IS NULL OR data_fine >= :data_rif)
+         LIMIT 1"
+    );
+    $stmt->execute(['id_utente'=>$idUtente,'codice'=>$codiceBeneficio,'data_rif'=>$dataRiferimento]);
+    return (bool)$stmt->fetchColumn();
+}
+
 function hrHaRecapitoEmailPersonale(PDO $pdo, int $idUtente): bool
 {
     $stmt = $pdo->prepare(
@@ -411,6 +427,18 @@ try {
             if ($tipologiaSelezionata === null) {
                 throw new RuntimeException('Tipologia non trovata.');
             }
+
+            $codiceTipologia = strtoupper(trim((string)$tipologiaSelezionata['codice']));
+            if ($codiceTipologia === 'MALATTIA' && !$puoConfigurare) {
+                throw new RuntimeException('La gestione delle assenze per malattia è riservata a HR.');
+            }
+            if ($codiceTipologia === 'LEGGE_104' && !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'LEGGE_104', $dataDa)) {
+                throw new RuntimeException('Il dipendente selezionato non è abilitato da HR ai permessi Legge 104.');
+            }
+            if ($codiceTipologia === 'SMART' && !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'SMART_WORKING', $dataDa)) {
+                throw new RuntimeException('Il dipendente selezionato non è abilitato da HR allo smart working.');
+            }
+
             if ($modalita === 'giorni' && (int)$tipologiaSelezionata['consente_giorni'] !== 1) {
                 throw new RuntimeException('Questa tipologia non consente richieste a giorni.');
             }
