@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/hr_notifiche.php';
+require_once __DIR__ . '/includes/hr_riepilogo_assenze.php';
 require_once __DIR__ . '/includes/ui.php';
 require_once __DIR__ . '/includes/badge.php';
 
@@ -286,6 +287,13 @@ try {
                 [(int)$richiesta['id_utente_richiedente']]
             );
         } catch (Throwable $emailException) {
+        }
+
+        if ($azione === 'approva_richiesta') {
+            try {
+                hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta);
+            } catch (Throwable $riepilogoException) {
+            }
         }
 
         $redirectQuery = trim((string)($_POST['redirect_query'] ?? ''));
