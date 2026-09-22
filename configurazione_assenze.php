@@ -218,6 +218,7 @@ layoutHeader('Configurazione assenze');
                 <a class="btn" href="relazioni_organizzative.php"><i class="la la-sitemap" aria-hidden="true"></i> Relazioni</a>
                 <a class="btn" href="gruppi_lavoro.php"><i class="la la-users-cog" aria-hidden="true"></i> Team</a>
                 <a class="btn" href="recapiti_utenti.php"><i class="la la-envelope" aria-hidden="true"></i> Recapiti</a>
+                <a class="btn" href="riepilogo_assenze_email.php"><i class="la la-paper-plane" aria-hidden="true"></i> Riepilogo email</a>
                 <a class="btn btn-light" href="assenze.php"><i class="la la-calendar" aria-hidden="true"></i> Vai ad assenze</a>
             </div>
         </div>
