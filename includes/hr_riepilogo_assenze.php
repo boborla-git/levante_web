@@ -196,11 +196,11 @@ if (!function_exists('hrRiepilogoAssenzeHtml')) {
         $dataTitolo = $dataObj ? $dataObj->format('d/m/Y') : $data;
         $h = static fn ($v): string => htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
-        $intestazione = '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569">Dipendente</th>';
+        $intestazione = '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Dipendente</th>';
         if ($livello === 'HR') {
-            $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569">Motivo</th>';
+            $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Motivo</th>';
         }
-        $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569">Periodo</th>';
+        $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Periodo</th>';
 
         $corpo = '';
         foreach ($righe as $riga) {
