@@ -436,6 +436,67 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestAdmin')) {
     }
 }
 
+
+if (!function_exists('hrRiepilogoAssenzeInviaTestDestinatari')) {
+    function hrRiepilogoAssenzeInviaTestDestinatari(PDO $pdo, ?string $data = null): array
+    {
+        $data = $data ?: date('Y-m-d');
+        $destinatari = hrRiepilogoAssenzeDestinatari($pdo);
+        $righe = hrRiepilogoAssenzeRighe($pdo, $data);
+        $config = hrEmailConfig($pdo);
+        $fromEmail = hrEmailValida((string)$config['from_email']);
+        if (!$config['attiva'] || $fromEmail === null) {
+            return ['inviate' => 0, 'errori' => count($destinatari), 'saltate' => 0, 'motivo' => 'Configurazione email non valida.'];
+        }
+
+        $dataObj = DateTimeImmutable::createFromFormat('Y-m-d', $data);
+        $dataOggetto = $dataObj ? $dataObj->format('d-m-Y') : $data;
+        $risultato = ['inviate' => 0, 'errori' => 0, 'saltate' => 0, 'motivo' => ''];
+        $bccAdmin = hrRiepilogoAssenzeBccAdminAttiva($pdo) ? hrRiepilogoAssenzeEmailAdmin($pdo) : null;
+        $bccGiaUsataPerLivello = [];
+
+        foreach ($destinatari as $destinatario) {
+            $idUtente = (int)$destinatario['id_utente'];
+            $livelloConfigurato = strtoupper((string)$destinatario['livello_dettaglio']) === 'HR' ? 'HR' : 'BASE';
+            $livelliDaInviare = $livelloConfigurato === 'HR' ? ['BASE', 'HR'] : ['BASE'];
+            $email = hrRiepilogoAssenzeEmailLavoro($pdo, $idUtente);
+            if ($email === null) {
+                $risultato['errori'] += count($livelliDaInviare);
+                continue;
+            }
+
+            foreach ($livelliDaInviare as $livello) {
+                $descrizione = $livello === 'HR' ? 'con motivi HR' : 'senza motivi';
+                $oggetto = '[TEST ' . $descrizione . '] Assenze del ' . $dataOggetto;
+                $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
+                $headers = [
+                    'MIME-Version: 1.0',
+                    'Content-Type: text/html; charset=UTF-8',
+                    'Content-Transfer-Encoding: 8bit',
+                    'From: ' . hrEmailEncodeHeader((string)$config['from_name']) . ' <' . $fromEmail . '>',
+                    'Reply-To: ' . $fromEmail,
+                    'X-Mailer: Ravioli Portale HR',
+                ];
+                if ($bccAdmin !== null && empty($bccGiaUsataPerLivello[$livello]) && strcasecmp($bccAdmin, $email) !== 0) {
+                    $headers[] = 'Bcc: ' . $bccAdmin;
+                    $bccGiaUsataPerLivello[$livello] = true;
+                }
+                $ok = @mail($email, hrEmailEncodeHeader($oggetto), $html, implode("\r\n", $headers), '-f' . $fromEmail);
+                if ($ok) {
+                    $risultato['inviate']++;
+                } else {
+                    $risultato['errori']++;
+                }
+            }
+        }
+
+        if ($risultato['errori'] > 0) {
+            $risultato['motivo'] = 'Uno o più invii di prova ai destinatari configurati non sono riusciti.';
+        }
+        return $risultato;
+    }
+}
+
 if (!function_exists('hrRiepilogoAssenzeRichiestaIncludeData')) {
     function hrRiepilogoAssenzeRichiestaIncludeData(PDO $pdo, int $idRichiesta, string $data): bool
     {
