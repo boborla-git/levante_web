@@ -194,7 +194,7 @@ layoutHeader('Riepilogo assenze email');
         <div class="section-head">
             <div>
                 <h2>Invio automatico del mattino</h2>
-                <div class="meta">Il job deve essere richiamato alle 07:45 dal lunedì al venerdì. Il file blocca comunque gli invii nel weekend e impedisce duplicazioni dello stesso invio.</div>
+                <div class="meta">Il job Aruba deve essere richiamato alle 05:45 e alle 06:45 UTC dal lunedì al venerdì. Levante usa il fuso Europe/Rome e accetta solo la chiamata che cade nella finestra italiana 07:30-08:15: in questo modo l'invio resta alle 07:45 circa anche al cambio tra ora legale e ora solare, senza modifiche stagionali al cron. Il file blocca inoltre weekend e duplicazioni.</div>
             </div>
         </div>
 
