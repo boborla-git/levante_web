@@ -371,6 +371,63 @@ if (!function_exists('hrRiepilogoAssenzeInvia')) {
     }
 }
 
+
+if (!function_exists('hrRiepilogoAssenzeInviaTestAdmin')) {
+    function hrRiepilogoAssenzeInviaTestAdmin(PDO $pdo, ?string $data = null): array
+    {
+        $data = $data ?: date('Y-m-d');
+        $emailAdmin = hrRiepilogoAssenzeEmailAdmin($pdo);
+        $config = hrEmailConfig($pdo);
+        $fromEmail = hrEmailValida((string)$config['from_email']);
+
+        if (!$config['attiva'] || $fromEmail === null) {
+            return ['inviate' => 0, 'errori' => 1, 'motivo' => 'Configurazione email non valida.'];
+        }
+        if ($emailAdmin === null) {
+            return ['inviate' => 0, 'errori' => 1, 'motivo' => 'Email di lavoro verificata dell\'Amministratore non disponibile.'];
+        }
+
+        $righe = hrRiepilogoAssenzeRighe($pdo, $data);
+        $dataObj = DateTimeImmutable::createFromFormat('Y-m-d', $data);
+        $dataOggetto = $dataObj ? $dataObj->format('d-m-Y') : $data;
+        $risultato = ['inviate' => 0, 'errori' => 0, 'motivo' => ''];
+
+        foreach (['HR', 'BASE'] as $livello) {
+            $descrizione = $livello === 'HR' ? 'con motivi HR' : 'senza motivi';
+            $oggetto = '[TEST ' . $descrizione . '] Assenze del ' . $dataOggetto;
+            $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
+            $headers = [
+                'MIME-Version: 1.0',
+                'Content-Type: text/html; charset=UTF-8',
+                'Content-Transfer-Encoding: 8bit',
+                'From: ' . hrEmailEncodeHeader((string)$config['from_name']) . ' <' . $fromEmail . '>',
+                'Reply-To: ' . $fromEmail,
+                'X-Mailer: Ravioli Portale HR',
+            ];
+
+            $ok = @mail(
+                $emailAdmin,
+                hrEmailEncodeHeader($oggetto),
+                $html,
+                implode("\r\n", $headers),
+                '-f' . $fromEmail
+            );
+
+            if ($ok) {
+                $risultato['inviate']++;
+            } else {
+                $risultato['errori']++;
+            }
+        }
+
+        if ($risultato['errori'] > 0) {
+            $risultato['motivo'] = 'Uno o più invii di prova non sono riusciti.';
+        }
+
+        return $risultato;
+    }
+}
+
 if (!function_exists('hrRiepilogoAssenzeRichiestaIncludeData')) {
     function hrRiepilogoAssenzeRichiestaIncludeData(PDO $pdo, int $idRichiesta, string $data): bool
     {
