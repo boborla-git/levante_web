@@ -165,6 +165,14 @@ function layoutIsActiveNode(array $node, array $childrenMap, string $currentPage
 
 function layoutNodeVisibleInMenu(array $node): bool
 {
+    // Il logout viene gestito direttamente dal menu Profilo come voce "Esci".
+    // Se esiste ancora una risorsa legacy "Logout" nel database, non la mostriamo
+    // per evitare due comandi equivalenti nello stesso menu.
+    $percorso = strtolower(trim((string)($node['percorso'] ?? '')));
+    if ($percorso !== '' && basename($percorso) === 'logout.php') {
+        return false;
+    }
+
     return (int)($node['visibile_menu'] ?? 0) === 1;
 }
 
