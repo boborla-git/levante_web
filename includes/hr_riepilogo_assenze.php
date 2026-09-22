@@ -3,6 +3,20 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/hr_email.php';
 
+if (!function_exists('hrRiepilogoAssenzeTimezone')) {
+    function hrRiepilogoAssenzeTimezone(): DateTimeZone
+    {
+        return new DateTimeZone('Europe/Rome');
+    }
+}
+
+if (!function_exists('hrRiepilogoAssenzeNow')) {
+    function hrRiepilogoAssenzeNow(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('now', hrRiepilogoAssenzeTimezone());
+    }
+}
+
 if (!function_exists('hrRiepilogoAssenzeConfigAttiva')) {
     function hrRiepilogoAssenzeConfigAttiva(PDO $pdo): bool
     {
@@ -303,7 +317,7 @@ if (!function_exists('hrRiepilogoAssenzeInvia')) {
         $dataOggetto = $dataObj ? $dataObj->format('d-m-Y') : $data;
         $oggetto = 'Assenze del ' . $dataOggetto;
         if ($tipo === 'AGGIORNAMENTO') {
-            $oggetto .= ' - Aggiornato alle ' . date('H:i');
+            $oggetto .= ' - Aggiornato alle ' . hrRiepilogoAssenzeNow()->format('H:i');
         }
 
         $risultato = ['inviate' => 0, 'errori' => 0, 'saltate' => 0];
@@ -383,7 +397,7 @@ if (!function_exists('hrRiepilogoAssenzeInvia')) {
 if (!function_exists('hrRiepilogoAssenzeInviaTestAdmin')) {
     function hrRiepilogoAssenzeInviaTestAdmin(PDO $pdo, ?string $data = null): array
     {
-        $data = $data ?: date('Y-m-d');
+        $data = $data ?: hrRiepilogoAssenzeNow()->format('Y-m-d');
         $emailAdmin = hrRiepilogoAssenzeEmailAdmin($pdo);
         $config = hrEmailConfig($pdo);
         $fromEmail = hrEmailValida((string)$config['from_email']);
@@ -440,7 +454,7 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestAdmin')) {
 if (!function_exists('hrRiepilogoAssenzeInviaTestDestinatari')) {
     function hrRiepilogoAssenzeInviaTestDestinatari(PDO $pdo, ?string $data = null): array
     {
-        $data = $data ?: date('Y-m-d');
+        $data = $data ?: hrRiepilogoAssenzeNow()->format('Y-m-d');
         $destinatari = hrRiepilogoAssenzeDestinatari($pdo);
         $righe = hrRiepilogoAssenzeRighe($pdo, $data);
         $config = hrEmailConfig($pdo);
@@ -522,7 +536,7 @@ if (!function_exists('hrRiepilogoAssenzeInviaAggiornamentoSeNecessario')) {
             return;
         }
 
-        $oggi = date('Y-m-d');
+        $oggi = hrRiepilogoAssenzeNow()->format('Y-m-d');
         if (!hrRiepilogoAssenzeRichiestaIncludeData($pdo, $idRichiesta, $oggi)) {
             return;
         }
