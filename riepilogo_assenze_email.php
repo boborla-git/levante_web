@@ -35,6 +35,12 @@ try {
                 throw new RuntimeException((string)($esitoTest['motivo'] ?? 'Invio di prova non riuscito.'));
             }
             $messaggio = 'Invio di prova eseguito: controlla l\'email di lavoro dell\'Amministratore. Sono state inviate due email, una con motivi HR e una senza motivi.';
+        } elseif ($azione === 'invia_test_destinatari') {
+            $esitoTest = hrRiepilogoAssenzeInviaTestDestinatari($pdo, date('Y-m-d'));
+            if ((int)$esitoTest['errori'] > 0) {
+                throw new RuntimeException((string)($esitoTest['motivo'] ?? 'Invio di prova ai destinatari configurati non riuscito.'));
+            }
+            $messaggio = 'Invio di prova eseguito ai destinatari configurati. Le email di test non vengono registrate come invio automatico del mattino.';
         } elseif ($azione === 'genera_token_cron') {
             $nuovoToken = bin2hex(random_bytes(24));
             $stmtToken = $pdo->prepare(
@@ -165,7 +171,11 @@ layoutHeader('Riepilogo assenze email');
                 <?php if ($puoScrivere): ?>
                     <form method="post" style="display:inline">
                         <input type="hidden" name="azione" value="invia_test_admin">
-                        <button class="btn btn-primary" type="submit">Invia prova ad Amministratore</button>
+                        <button class="btn btn-light" type="submit">Invia prova ad Amministratore</button>
+                    </form>
+                    <form method="post" style="display:inline">
+                        <input type="hidden" name="azione" value="invia_test_destinatari">
+                        <button class="btn btn-primary" type="submit">Invia prova ai destinatari configurati</button>
                     </form>
                 <?php endif; ?>
                 <a class="btn btn-light" href="configurazione_assenze.php">Torna alla configurazione</a>
