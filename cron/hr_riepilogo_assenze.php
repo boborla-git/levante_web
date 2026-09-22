@@ -19,9 +19,23 @@ if (PHP_SAPI !== 'cli') {
 
 header('Content-Type: text/plain; charset=UTF-8');
 
-$oggi = date('Y-m-d');
-if ((int)date('N') > 5) {
+$oraRoma = hrRiepilogoAssenzeNow();
+$oggi = $oraRoma->format('Y-m-d');
+
+if ((int)$oraRoma->format('N') > 5) {
     exit("Weekend: nessun invio\n");
+}
+
+// Aruba pianifica i cron in UTC. Il job deve quindi essere richiamato sia alle
+// 05:45 sia alle 06:45 UTC dal lunedi al venerdi. Solo una delle due chiamate
+// cade nella finestra italiana delle 07:45, a seconda di ora legale/solare.
+// L'altra viene ignorata. In questo modo non serve modificare il cron due volte l'anno.
+$minutiLocali = ((int)$oraRoma->format('H') * 60) + (int)$oraRoma->format('i');
+$finestraDa = (7 * 60) + 30;  // 07:30 Europe/Rome
+$finestraA = (8 * 60) + 15;   // 08:15 Europe/Rome
+
+if ($minutiLocali < $finestraDa || $minutiLocali > $finestraA) {
+    exit('Fuori finestra invio: ora italiana ' . $oraRoma->format('H:i') . " - nessun invio\n");
 }
 
 $esito = hrRiepilogoAssenzeInvia($pdo, $oggi, 'MATTINO', null);
