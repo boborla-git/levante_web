@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/hr_notifiche.php';
+require_once __DIR__ . '/includes/hr_riepilogo_assenze.php';
 
 richiediPermessoLettura('assenze');
 
@@ -670,6 +671,10 @@ try {
 
             $pdo->commit();
             hrInviaEmailWorkflowAccodate($pdo, $emailHrDaInviare);
+            try {
+                hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta);
+            } catch (Throwable $riepilogoException) {
+            }
             header('Location: assenze.php?ok=2&id_utente=' . $idUtenteTarget);
             exit;
         }
