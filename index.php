@@ -21,6 +21,10 @@ $puoLeggereCalendarioAssenze = haPermessoLettura('calendario_assenze');
 $puoLeggereConfigurazioneAssenze = haPermessoLettura('configurazione_assenze');
 $utenteSenzaRuolo = utenteSenzaRuolo();
 
+// Funzionalità presenza temporaneamente nascosta durante la fase pilota HR.
+// Impostare a true per riattivarla senza ripristinare o riscrivere il codice.
+$mostraStatoPresenza = false;
+
 $accessiRapidi = [];
 $approvazioniPendenti = 0;
 $erroreApprovalsHome = '';
@@ -105,7 +109,7 @@ function hrTimbraturaUltimoTipo(array $timbrature): string
 
 try {
     $pdoHome = db();
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['azione'] ?? '') === 'timbratura_home') {
+    if ($mostraStatoPresenza && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['azione'] ?? '') === 'timbratura_home') {
         if ($idUtenteLoggato <= 0) { throw new RuntimeException('Utente non valido.'); }
         $tipoTimbratura = strtoupper(trim((string)($_POST['tipo_timbratura'] ?? '')));
         $timbratureCorrenti = hrTimbraturaLeggiOggi($pdoHome, $idUtenteLoggato);
@@ -126,9 +130,11 @@ try {
         header('Location: index.php?timbratura=1');
         exit;
     }
-    if (isset($_GET['timbratura']) && $_GET['timbratura'] === '1') { $messaggioTimbratura = 'Registrazione presenza completata correttamente.'; }
-    $timbratureOggi = hrTimbraturaLeggiOggi($pdoHome, $idUtenteLoggato);
-    $ultimoTipoTimbratura = hrTimbraturaUltimoTipo($timbratureOggi);
+    if ($mostraStatoPresenza) {
+        if (isset($_GET['timbratura']) && $_GET['timbratura'] === '1') { $messaggioTimbratura = 'Registrazione presenza completata correttamente.'; }
+        $timbratureOggi = hrTimbraturaLeggiOggi($pdoHome, $idUtenteLoggato);
+        $ultimoTipoTimbratura = hrTimbraturaUltimoTipo($timbratureOggi);
+    }
 } catch (Throwable $e) { $erroreTimbratura = $e->getMessage(); }
 
 if ($puoLeggereUtenti) { $accessiRapidi[] = ['label'=>'Gestione utenti','href'=>'utenti.php','kicker'=>'Amministrazione','descrizione'=>'Accessi, ruoli e permessi del portale.']; }
@@ -160,6 +166,7 @@ layoutHeader('Dashboard');
     <div class="links"><a class="btn btn-light" href="cambia_password.php"><i class="la la-key" aria-hidden="true"></i> Cambia password</a></div>
 </div>
 
+<?php if ($mostraStatoPresenza): ?>
 <div class="card card-compact">
     <div class="section-head"><div><h2>Stato presenza</h2><div class="meta">Registra lo stato della giornata: presente, pausa, fuori sede o fine lavoro.</div></div><div class="section-head-actions"><div style="font-size:1.8rem;font-weight:700;" id="hrClock">--:--:--</div></div></div>
     <?php if ($messaggioTimbratura !== ''): ?><div class="alert alert-success"><?= h($messaggioTimbratura) ?></div><?php endif; ?>
@@ -186,6 +193,7 @@ layoutHeader('Dashboard');
         <div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Ora</th><th>Evento</th><th>Causale</th><th>Note</th></tr></thead><tbody><?php foreach ($timbratureOggi as $timbratura): ?><tr><td><?= h((string)$timbratura['ora']) ?></td><td><?= h(hrTimbraturaLabel((string)$timbratura['tipo'])) ?></td><td><?= h(hrTimbraturaCausaleLabel($timbratura['causale'] ?? '')) ?></td><td><?= h((string)($timbratura['note'] ?? '')) ?></td></tr><?php endforeach; ?></tbody></table></div>
     <?php endif; ?>
 </div>
+<?php endif; ?>
 
 <?php if ($puoLeggereApprovazioniAssenze): ?>
 <div class="card card-compact"><div class="section-head"><div><h2>Approvazioni HR pendenti</h2><div class="meta"><?= $puoLeggereConfigurazioneAssenze ? 'Vista HR globale sulle richieste ancora da gestire.' : 'Richieste assegnate direttamente a te come approvatore.' ?></div></div><div class="section-head-actions"><a class="btn btn-light" href="approvazioni_assenze.php"><i class="la la-check-circle" aria-hidden="true"></i> Apri approvazioni</a><?php if ($puoLeggereReportAssenze): ?><a class="btn btn-light" href="report_assenze.php"><i class="la la-file-excel" aria-hidden="true"></i> Report assenze</a><?php endif; ?></div></div><?php if ($erroreApprovalsHome !== ''): ?><div class="errore" style="margin-top:14px;"><?= h($erroreApprovalsHome) ?></div><?php elseif ($approvazioniPendenti > 0): ?><div class="hr-summary-line" style="margin-top:14px;"><span><strong><?= (int)$approvazioniPendenti ?></strong> richieste da approvare</span></div><?php else: ?><div class="info-box" style="margin-top:14px;">Non ci sono approvazioni HR pendenti.</div><?php endif; ?></div>
