@@ -304,13 +304,24 @@ function layoutHrAssenzeTipologieRules(): array
     }catch(Throwable $e){return [];}
 }
 
-function layoutHrUtentiLegge104Abilitati(): array
+function layoutHrUtentiBeneficioAbilitati(string $codiceBeneficio): array
 {
     try {
         $pdo=db();
-        $stmt=$pdo->query("SELECT DISTINCT id_utente FROM hr_benefici_utenti WHERE codice_beneficio='LEGGE_104' AND attivo=1 AND data_inizio<=CURDATE() AND (data_fine IS NULL OR data_fine>=CURDATE())");
+        $stmt=$pdo->prepare("SELECT DISTINCT id_utente FROM hr_benefici_utenti WHERE codice_beneficio=:codice AND attivo=1 AND data_inizio<=CURDATE() AND (data_fine IS NULL OR data_fine>=CURDATE())");
+        $stmt->execute(['codice'=>$codiceBeneficio]);
         return array_values(array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN)));
     }catch(Throwable $e){return [];}
+}
+
+function layoutHrUtentiLegge104Abilitati(): array
+{
+    return layoutHrUtentiBeneficioAbilitati('LEGGE_104');
+}
+
+function layoutHrUtentiSmartWorkingAbilitati(): array
+{
+    return layoutHrUtentiBeneficioAbilitati('SMART_WORKING');
 }
 
 function layoutRenderAssenzeRegoleScript(): void
@@ -318,6 +329,8 @@ function layoutRenderAssenzeRegoleScript(): void
     if(basename($_SERVER['PHP_SELF']??'')!=='assenze.php')return;
     $rules=layoutHrAssenzeTipologieRules();if(count($rules)===0)return;
     $utenti104=layoutHrUtentiLegge104Abilitati();
+    $utentiSmart=layoutHrUtentiSmartWorkingAbilitati();
+    $puoGestireMalattia=haPermessoLettura('configurazione_assenze');
     ?>
     <script>
     (function(){
@@ -333,9 +346,13 @@ function layoutRenderAssenzeRegoleScript(): void
     })();
     window.hrTipologieAssenzeRegole=<?= json_encode($rules,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
     window.hrUtentiLegge104Abilitati=<?= json_encode($utenti104,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
+    window.hrUtentiSmartWorkingAbilitati=<?= json_encode($utentiSmart,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
+    window.hrPuoGestireMalattia=<?= $puoGestireMalattia ? 'true' : 'false' ?>;
     (function(){
         const rules=window.hrTipologieAssenzeRegole||{};
         const utenti104=Array.isArray(window.hrUtentiLegge104Abilitati)?window.hrUtentiLegge104Abilitati.map(Number):[];
+        const utentiSmart=Array.isArray(window.hrUtentiSmartWorkingAbilitati)?window.hrUtentiSmartWorkingAbilitati.map(Number):[];
+        const puoGestireMalattia=window.hrPuoGestireMalattia===true;
         const tipologia=document.getElementById('id_tipologia_evento');
         const modalita=document.getElementById('modalita');
         const note=document.getElementById('note_richiedente');
@@ -345,13 +362,19 @@ function layoutRenderAssenzeRegoleScript(): void
         const tipologieOriginali=Array.from(tipologia.options).map(function(option){return{value:option.value,text:option.textContent};});
         function idUtenteSelezionato(){const campo=document.querySelector('[name="id_utente"]');return campo?parseInt(campo.value||'0',10):0;}
         function utenteHa104(){return utenti104.indexOf(idUtenteSelezionato())!==-1;}
+        function utenteHaSmart(){return utentiSmart.indexOf(idUtenteSelezionato())!==-1;}
         function ricostruisciTipologie(){
             const precedente=tipologia.value;
             tipologia.innerHTML='';
             tipologieOriginali.forEach(function(item){
                 const id=parseInt(item.value||'0',10);
                 const rule=rules[id]||null;
-                if(rule&&String(rule.codice||'').toUpperCase()==='LEGGE_104'&&!utenteHa104())return;
+                if(rule){
+                    const codice=String(rule.codice||'').toUpperCase();
+                    if(codice==='LEGGE_104'&&!utenteHa104())return;
+                    if(codice==='SMART'&&!utenteHaSmart())return;
+                    if(codice==='MALATTIA'&&!puoGestireMalattia)return;
+                }
                 const opt=document.createElement('option');opt.value=item.value;opt.textContent=item.text;tipologia.appendChild(opt);
             });
             const esiste=Array.from(tipologia.options).some(function(opt){return opt.value===precedente;});
@@ -365,7 +388,13 @@ function layoutRenderAssenzeRegoleScript(): void
         function applicaRegole(){const id=parseInt(tipologia.value||'0',10);const rule=rules[id]||null;aggiornaModalita(rule);aggiornaAvviso(rule);aggiornaNotaObbligatoria(rule);}
         ricostruisciTipologie();
         tipologia.addEventListener('change',applicaRegole);
-        if(form)form.addEventListener('submit',function(event){const id=parseInt(tipologia.value||'0',10);const rule=rules[id]||null;if(rule&&String(rule.codice||'').toUpperCase()==='LEGGE_104'&&!utenteHa104()){event.preventDefault();tipologia.value='';applicaRegole();alert('Il dipendente selezionato non è abilitato da HR ai permessi Legge 104.');return;}if(rule&&rule.motivazione_obbligatoria&&note&&note.value.trim()===''){event.preventDefault();note.focus();alert('Compila le note del richiedente per questa tipologia.');}});
+        if(form)form.addEventListener('submit',function(event){
+            const id=parseInt(tipologia.value||'0',10);const rule=rules[id]||null;const codice=rule?String(rule.codice||'').toUpperCase():'';
+            if(codice==='LEGGE_104'&&!utenteHa104()){event.preventDefault();tipologia.value='';applicaRegole();alert('Il dipendente selezionato non è abilitato da HR ai permessi Legge 104.');return;}
+            if(codice==='SMART'&&!utenteHaSmart()){event.preventDefault();tipologia.value='';applicaRegole();alert('Il dipendente selezionato non è abilitato da HR allo smart working.');return;}
+            if(codice==='MALATTIA'&&!puoGestireMalattia){event.preventDefault();tipologia.value='';applicaRegole();alert('La gestione delle assenze per malattia è riservata a HR.');return;}
+            if(rule&&rule.motivazione_obbligatoria&&note&&note.value.trim()===''){event.preventDefault();note.focus();alert('Compila le note del richiedente per questa tipologia.');}
+        });
         applicaRegole();
     })();
     </script><?php
