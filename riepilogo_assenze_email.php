@@ -159,7 +159,7 @@ layoutHeader('Riepilogo assenze email');
     <?php endif; ?>
 
     <section class="card card-wide">
-        <p class="meta">Il livello <strong>Senza motivi</strong> mostra nominativo e periodo/orario. Il livello <strong>Con motivi (HR)</strong> aggiunge la tipologia visibile a HR ed è selezionabile solo per ruoli HR/Direzione autorizzati.</p>
+        <p class="meta">Il livello <strong>Senza motivi</strong> invia il riepilogo generale con nominativo e periodo/orario. Per i ruoli HR/Direzione autorizzati, <strong>Entrambe (generale + HR)</strong> invia due email distinte: una senza motivi e una riservata con la tipologia visibile a HR.</p>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -195,7 +195,7 @@ layoutHeader('Riepilogo assenze email');
                                     <option value="NESSUNO" <?= $livello === 'NESSUNO' ? 'selected' : '' ?>>Non inviare</option>
                                     <option value="BASE" <?= $livello === 'BASE' ? 'selected' : '' ?>>Senza motivi</option>
                                     <?php if ((int)$utente['puo_hr'] === 1): ?>
-                                        <option value="HR" <?= $livello === 'HR' ? 'selected' : '' ?>>Con motivi (HR)</option>
+                                        <option value="HR" <?= $livello === 'HR' ? 'selected' : '' ?>>Entrambe (generale + HR)</option>
                                     <?php endif; ?>
                                 </select>
                             </td>
