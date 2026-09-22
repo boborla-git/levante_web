@@ -363,6 +363,18 @@ if (!function_exists('hrRiepilogoAssenzeInviaAggiornamentoSeNecessario')) {
             return;
         }
 
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*)
+             FROM hr_riepilogo_assenze_invi
+             WHERE data_riepilogo = :data_riepilogo
+               AND tipo_invio = 'MATTINO'
+               AND esito = 'INVIATA'"
+        );
+        $stmt->execute(['data_riepilogo' => $oggi]);
+        if ((int)$stmt->fetchColumn() === 0) {
+            return;
+        }
+
         hrRiepilogoAssenzeInvia($pdo, $oggi, 'AGGIORNAMENTO', $idRichiesta);
     }
 }
