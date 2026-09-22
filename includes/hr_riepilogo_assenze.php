@@ -149,7 +149,7 @@ if (!function_exists('hrRiepilogoAssenzePeriodo')) {
         if ($tipo === 'ORE') {
             $oraDa = substr((string)($riga['ora_da'] ?? ''), 0, 5);
             $oraA = substr((string)($riga['ora_a'] ?? ''), 0, 5);
-            return ($oraDa !== '' && $oraA !== '') ? $oraDa . ' - ' . $oraA : 'A ore';
+            return ($oraDa !== '' && $oraA !== '') ? 'Oggi dalle ' . $oraDa . ' alle ' . $oraA : 'Oggi - orario non disponibile';
         }
 
         if ($dataDa !== '' && $dataA !== '' && $dataDa !== $dataA) {
@@ -160,7 +160,7 @@ if (!function_exists('hrRiepilogoAssenzePeriodo')) {
             }
         }
 
-        return '';
+        return 'Giornata odierna';
     }
 }
 
@@ -415,8 +415,7 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestAdmin')) {
         $risultato = ['inviate' => 0, 'errori' => 0, 'motivo' => ''];
 
         foreach (['HR', 'BASE'] as $livello) {
-            $descrizione = $livello === 'HR' ? 'con motivi HR' : 'senza motivi';
-            $oggetto = '[TEST ' . $descrizione . '] Assenze del ' . $dataOggetto;
+            $oggetto = 'Assenze del ' . $dataOggetto;
             $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
             $headers = [
                 'MIME-Version: 1.0',
@@ -480,8 +479,7 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestDestinatari')) {
             }
 
             foreach ($livelliDaInviare as $livello) {
-                $descrizione = $livello === 'HR' ? 'con motivi HR' : 'senza motivi';
-                $oggetto = '[TEST ' . $descrizione . '] Assenze del ' . $dataOggetto;
+                $oggetto = 'Assenze del ' . $dataOggetto;
                 $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
                 $headers = [
                     'MIME-Version: 1.0',
