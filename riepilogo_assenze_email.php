@@ -13,6 +13,8 @@ $puoScrivere = haPermessoScrittura('configurazione_assenze');
 $messaggio = '';
 $errore = '';
 $utenti = [];
+$cronToken = '';
+$ultimoInvioMattino = null;
 
 function h(?string $valore): string
 {
@@ -33,6 +35,15 @@ try {
                 throw new RuntimeException((string)($esitoTest['motivo'] ?? 'Invio di prova non riuscito.'));
             }
             $messaggio = 'Invio di prova eseguito: controlla l\'email di lavoro dell\'Amministratore. Sono state inviate due email, una con motivi HR e una senza motivi.';
+        } elseif ($azione === 'genera_token_cron') {
+            $nuovoToken = bin2hex(random_bytes(24));
+            $stmtToken = $pdo->prepare(
+                "INSERT INTO hr_configurazioni (codice,valore,descrizione,attivo)
+                 VALUES ('HR_CRON_TOKEN', :valore, 'Token chiamata HTTP dei job pianificati HR', 1)
+                 ON DUPLICATE KEY UPDATE valore=VALUES(valore), descrizione=VALUES(descrizione), attivo=1"
+            );
+            $stmtToken->execute(['valore' => $nuovoToken]);
+            $messaggio = 'Token per il job automatico generato correttamente.';
         } elseif ($azione === 'salva_destinatario') {
             $idUtente = (int)($_POST['id_utente'] ?? 0);
             $livello = strtoupper(trim((string)($_POST['livello_dettaglio'] ?? 'NESSUNO')));
@@ -100,6 +111,17 @@ try {
         }
     }
 
+    $stmtCron = $pdo->query("SELECT valore FROM hr_configurazioni WHERE codice='HR_CRON_TOKEN' AND attivo=1 LIMIT 1");
+    $cronToken = trim((string)($stmtCron->fetchColumn() ?: ''));
+
+    $stmtUltimo = $pdo->query(
+        "SELECT MAX(data_invio)
+         FROM hr_riepilogo_assenze_invi
+         WHERE tipo_invio='MATTINO'
+           AND esito='INVIATA'"
+    );
+    $ultimoInvioMattino = $stmtUltimo->fetchColumn() ?: null;
+
     $utenti = $pdo->query(
         "SELECT
             u.id_utente,
@@ -157,6 +179,41 @@ layoutHeader('Riepilogo assenze email');
     <?php if ($errore !== ''): ?>
         <div class="alert alert-error"><?= h($errore) ?></div>
     <?php endif; ?>
+
+    <section class="card card-wide">
+        <div class="section-head">
+            <div>
+                <h2>Invio automatico del mattino</h2>
+                <div class="meta">Il job deve essere richiamato alle 07:45 dal lunedì al venerdì. Il file blocca comunque gli invii nel weekend e impedisce duplicazioni dello stesso invio.</div>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;align-items:end">
+            <div>
+                <div class="meta">Stato token</div>
+                <strong><?= $cronToken !== '' ? 'Configurato' : 'Da configurare' ?></strong>
+            </div>
+            <div>
+                <div class="meta">Ultimo invio mattino registrato</div>
+                <strong><?= h($ultimoInvioMattino ? (string)$ultimoInvioMattino : 'Nessun invio registrato') ?></strong>
+            </div>
+            <?php if ($puoScrivere): ?>
+                <div>
+                    <form method="post">
+                        <input type="hidden" name="azione" value="genera_token_cron">
+                        <button class="btn btn-light" type="submit"><?= $cronToken !== '' ? 'Rigenera token job' : 'Genera token job' ?></button>
+                    </form>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($cronToken !== ''): ?>
+            <div style="margin-top:16px">
+                <div class="meta">URL da usare nel job pianificato Aruba</div>
+                <code style="display:block;margin-top:6px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;overflow-wrap:anywhere">https://www.raviolispa.org/cron/hr_riepilogo_assenze.php?token=<?= h($cronToken) ?></code>
+            </div>
+        <?php endif; ?>
+    </section>
 
     <section class="card card-wide">
         <p class="meta">Il livello <strong>Senza motivi</strong> invia il riepilogo generale con nominativo e periodo/orario. Per i ruoli HR/Direzione autorizzati, <strong>Entrambe (generale + HR)</strong> invia due email distinte: una senza motivi e una riservata con la tipologia visibile a HR.</p>
