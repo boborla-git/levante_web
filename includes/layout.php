@@ -233,7 +233,7 @@ function layoutRenderDesktopMenu(array $tree, array $childrenMap, string $curren
         <div class="topnav-dropdown <?= $isActive ? 'active' : '' ?>">
             <?php if ($canOpen): ?><a href="/<?= htmlspecialchars($href) ?>" class="topnav-link topnav-parent <?= $isActive ? 'active' : '' ?>"><?php layoutRenderLabel($root); ?></a>
             <?php else: ?><button type="button" class="topnav-link topnav-parent <?= $isActive ? 'active' : '' ?>" aria-haspopup="true" aria-expanded="false"><?php layoutRenderLabel($root); ?></button><?php endif; ?>
-            <?php if (count($children) > 0): ?><div class="topnav-dropdown-menu"><?php layoutRenderDesktopDropdownItems($children, $childrenMap,$currentPage,0); ?></div><?php endif; ?>
+            <?php if (count($children) > 0): ?><div class="topnav-dropdown-menu"><?php layoutRenderDesktopDropdownItems($children, $childrenMap,$currentPage,0); ?><?php if ((string)($root['codice_risorsa'] ?? '') === 'menu.profilo'): ?><div class="topnav-menu-item level-0"><a href="/logout.php"><i class="la la-sign-out-alt menu-icon" aria-hidden="true"></i><span class="menu-text">Esci</span></a></div><?php endif; ?></div><?php endif; ?>
         </div>
         <?php
     }
@@ -252,7 +252,9 @@ function layoutRenderMobileTree(array $nodes, array $childrenMap, string $curren
         if ($hasChildren) {
             ?><details class="drawer-group level-<?= $level ?>" <?= $isActive ? 'open' : '' ?>><summary class="<?= htmlspecialchars($classes) ?>"><?php layoutRenderLabel($node); ?></summary><div class="drawer-children">
             <?php if ($canOpen): ?><a href="/<?= htmlspecialchars($href) ?>" class="drawer-direct-link"><i class="la la-external-link-alt menu-icon" aria-hidden="true"></i><span>Apri <?= htmlspecialchars($label) ?></span></a><?php endif; ?>
-            <?php layoutRenderMobileTree($children, $childrenMap, $currentPage, $level + 1); ?></div></details><?php
+            <?php layoutRenderMobileTree($children, $childrenMap, $currentPage, $level + 1); ?>
+            <?php if ((string)($node['codice_risorsa'] ?? '') === 'menu.profilo'): ?><a href="/logout.php" class="drawer-item level-<?= $level + 1 ?>"><i class="la la-sign-out-alt menu-icon" aria-hidden="true"></i><span class="menu-text">Esci</span></a><?php endif; ?>
+            </div></details><?php
             continue;
         }
         if ($canOpen) { ?><a href="/<?= htmlspecialchars($href) ?>" class="<?= htmlspecialchars($classes) ?>"><?php layoutRenderLabel($node); ?></a><?php continue; }
