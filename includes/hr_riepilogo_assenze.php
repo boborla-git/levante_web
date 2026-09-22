@@ -33,6 +33,37 @@ if (!function_exists('hrRiepilogoAssenzeEmailLavoro')) {
     }
 }
 
+if (!function_exists('hrRiepilogoAssenzeEmailAdmin')) {
+    function hrRiepilogoAssenzeEmailAdmin(PDO $pdo): ?string
+    {
+        $stmt = $pdo->query(
+            "SELECT id_utente
+             FROM aut_utenti
+             WHERE attivo = 1
+               AND LOWER(username) = 'admin'
+             LIMIT 1"
+        );
+        $idUtente = (int)($stmt->fetchColumn() ?: 0);
+
+        return $idUtente > 0 ? hrRiepilogoAssenzeEmailLavoro($pdo, $idUtente) : null;
+    }
+}
+
+if (!function_exists('hrRiepilogoAssenzeBccAdminAttiva')) {
+    function hrRiepilogoAssenzeBccAdminAttiva(PDO $pdo): bool
+    {
+        $stmt = $pdo->query(
+            "SELECT valore
+             FROM hr_configurazioni
+             WHERE codice = 'HR_RIEPILOGO_ASSENZE_BCC_ADMIN'
+               AND attivo = 1
+             LIMIT 1"
+        );
+
+        return trim((string)($stmt->fetchColumn() ?: '0')) === '1';
+    }
+}
+
 if (!function_exists('hrRiepilogoAssenzeDestinatari')) {
     function hrRiepilogoAssenzeDestinatari(PDO $pdo): array
     {
@@ -274,6 +305,8 @@ if (!function_exists('hrRiepilogoAssenzeInvia')) {
         }
 
         $risultato = ['inviate' => 0, 'errori' => 0, 'saltate' => 0];
+        $bccAdmin = hrRiepilogoAssenzeBccAdminAttiva($pdo) ? hrRiepilogoAssenzeEmailAdmin($pdo) : null;
+        $bccGiaUsataPerLivello = [];
 
         foreach ($destinatari as $destinatario) {
             $idUtente = (int)$destinatario['id_utente'];
@@ -300,6 +333,11 @@ if (!function_exists('hrRiepilogoAssenzeInvia')) {
                 'Reply-To: ' . $fromEmail,
                 'X-Mailer: Ravioli Portale HR',
             ];
+
+            if ($bccAdmin !== null && empty($bccGiaUsataPerLivello[$livello]) && strcasecmp($bccAdmin, $email) !== 0) {
+                $headers[] = 'Bcc: ' . $bccAdmin;
+                $bccGiaUsataPerLivello[$livello] = true;
+            }
 
             $ok = @mail(
                 $email,
