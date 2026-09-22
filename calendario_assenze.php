@@ -344,6 +344,8 @@ try {
                 'stato' => (string)$row['stato_richiesta'],
                 'colore_stato' => hrColoreValido((string)($row['colore_stato_richiesta'] ?? '')),
                 'tipo_periodo' => (string)$row['tipo_periodo'],
+                'data_da' => (string)$row['data_da'],
+                'data_a' => (string)$row['data_a'],
                 'ora_da' => $row['ora_da'] ? substr((string)$row['ora_da'], 0, 5) : '',
                 'ora_a' => $row['ora_a'] ? substr((string)$row['ora_a'], 0, 5) : '',
             ];
@@ -565,11 +567,17 @@ layoutHeader('Calendario assenze');
                 let meta = '';
                 if (item.tipo_periodo === 'ORE' && item.ora_da && item.ora_a) {
                     meta = escapeHtml(item.ora_da + ' - ' + item.ora_a);
-                } else {
-                    meta = 'Giornata';
+                } else if (item.data_da && item.data_a && item.data_da !== item.data_a) {
+                    meta = 'Dal ' + escapeHtml(formatDate(item.data_da)) + ' al ' + escapeHtml(formatDate(item.data_a));
+                } else if (day === new Date().toISOString().slice(0, 10)) {
+                    meta = 'Oggi';
                 }
-                const stato = item.stato ? ' · ' + escapeHtml(item.stato) : '';
-                html += '<div class="hr-detail-row"><div class="hr-detail-name">' + escapeHtml(item.nome || '') + '</div><div class="hr-detail-meta">' + meta + stato + '</div></div>';
+
+                if (item.codice_stato === 'IN_ATTESA') {
+                    meta += (meta !== '' ? ' · ' : '') + 'Da approvare';
+                }
+
+                html += '<div class="hr-detail-row"><div class="hr-detail-name">' + escapeHtml(item.nome || '') + '</div><div class="hr-detail-meta">' + meta + '</div></div>';
             });
             html += '</div>';
         });
