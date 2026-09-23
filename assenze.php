@@ -784,7 +784,6 @@ try {
                  INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
                  WHERE r.id_richiesta = :id_richiesta
                    AND r.id_utente_richiedente = :id_utente
-                 GROUP BY r.id_richiesta, sr.codice
                  LIMIT 1"
             );
             $stmtCorrente->execute([
@@ -868,6 +867,7 @@ try {
                  LEFT JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta
                  WHERE r.id_richiesta = :id_richiesta
                    AND r.id_utente_richiedente = :id_utente
+                 GROUP BY r.id_richiesta, sr.codice
                  LIMIT 1"
             );
             $stmtCheck->execute([
