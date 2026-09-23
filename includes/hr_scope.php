@@ -24,9 +24,12 @@ function hrScopeUtenteAttivo(PDO $pdo, int $idUtente): ?array
 
     $stmt = $pdo->prepare(
         "SELECT id_utente, username, nome, cognome
-         FROM aut_utenti
-         WHERE id_utente = :id_utente
-           AND attivo = 1
+         FROM aut_utenti u
+         INNER JOIN hr_profili_dipendenti hp
+            ON hp.id_utente = u.id_utente
+           AND hp.attivo = 1
+         WHERE u.id_utente = :id_utente
+           AND u.attivo = 1
          LIMIT 1"
     );
     $stmt->execute(['id_utente' => $idUtente]);
@@ -62,6 +65,9 @@ function hrScopeDirectReportIds(PDO $pdo, int $idUtente): array
          INNER JOIN aut_utenti u
             ON u.id_utente = ro.id_utente
            AND u.attivo = 1
+         INNER JOIN hr_profili_dipendenti hp
+            ON hp.id_utente = u.id_utente
+           AND hp.attivo = 1
          WHERE ro.id_utente_collegato = :id_utente
            AND ro.attiva = 1
            AND ro.data_inizio <= CURDATE()
@@ -97,6 +103,9 @@ function hrScopeCollaboratorIds(PDO $pdo, int $idUtente): array
          INNER JOIN aut_utenti u
             ON u.id_utente = gu2.id_utente
            AND u.attivo = 1
+         INNER JOIN hr_profili_dipendenti hp
+            ON hp.id_utente = u.id_utente
+           AND hp.attivo = 1
          WHERE gu1.id_utente = :id_utente
            AND gu1.attivo = 1
            AND gu1.data_inizio <= CURDATE()
@@ -133,10 +142,13 @@ function hrScopeUtentiByIds(PDO $pdo, array $ids): array
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $pdo->prepare(
         "SELECT id_utente, username, nome, cognome
-         FROM aut_utenti
-         WHERE attivo = 1
-           AND id_utente IN ($placeholders)
-         ORDER BY cognome, nome, username"
+         FROM aut_utenti u
+         INNER JOIN hr_profili_dipendenti hp
+            ON hp.id_utente = u.id_utente
+           AND hp.attivo = 1
+         WHERE u.attivo = 1
+           AND u.id_utente IN ($placeholders)
+         ORDER BY u.cognome, u.nome, u.username"
     );
     $stmt->execute($ids);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -153,9 +165,12 @@ function hrScopeUtentiGestionali(PDO $pdo, int $idUtente, bool $puoConfigurare, 
     if ($puoConfigurare) {
         $stmt = $pdo->query(
             "SELECT id_utente, username, nome, cognome
-             FROM aut_utenti
-             WHERE attivo = 1
-             ORDER BY cognome, nome, username"
+             FROM aut_utenti u
+             INNER JOIN hr_profili_dipendenti hp
+                ON hp.id_utente = u.id_utente
+               AND hp.attivo = 1
+             WHERE u.attivo = 1
+             ORDER BY u.cognome, u.nome, u.username"
         );
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         usort($rows, function (array $a, array $b): int {
