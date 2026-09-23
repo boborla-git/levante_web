@@ -1024,16 +1024,33 @@ try {
     $richieste = $stmtRichieste->fetchAll(PDO::FETCH_ASSOC);
 
     $richiesteAltroDaRiclassificare = 0;
+    $richiesteAltroDettaglio = [];
     if ($isHrResponsabile) {
         $stmtAltro = $pdo->query(
-            "SELECT COUNT(*)
+            "SELECT
+                r.id_richiesta,
+                r.id_utente_richiedente,
+                CONCAT(TRIM(COALESCE(u.cognome, '')), CASE WHEN TRIM(COALESCE(u.nome, '')) <> '' THEN CONCAT(' ', TRIM(u.nome)) ELSE '' END) AS dipendente,
+                r.data_da,
+                r.data_a,
+                r.tipo_periodo,
+                r.ora_da,
+                r.ora_a,
+                r.oggetto
              FROM hr_richieste r
              INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
              INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
+             INNER JOIN aut_utenti u ON u.id_utente = r.id_utente_richiedente
+             INNER JOIN hr_profili_dipendenti hp
+                ON hp.id_utente = u.id_utente
+               AND hp.attivo = 1
              WHERE te.codice = 'ALTRO'
-               AND sr.codice <> 'ANNULLATA'"
+               AND sr.codice <> 'ANNULLATA'
+               AND u.attivo = 1
+             ORDER BY u.cognome, u.nome, r.data_da, r.id_richiesta"
         );
-        $richiesteAltroDaRiclassificare = (int)$stmtAltro->fetchColumn();
+        $richiesteAltroDettaglio = $stmtAltro->fetchAll(PDO::FETCH_ASSOC);
+        $richiesteAltroDaRiclassificare = count($richiesteAltroDettaglio);
     }
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
@@ -1083,7 +1100,32 @@ layoutHeader('Assenze e permessi');
 
 <?php if ($isHrResponsabile && ($richiesteAltroDaRiclassificare ?? 0) > 0): ?>
     <div class="info-box" style="border-left:4px solid #ffc107;">
-        <strong>Attenzione HR:</strong> ci sono <?= (int)$richiesteAltroDaRiclassificare ?> richieste classificate come <strong>Altro</strong> da verificare e, quando opportuno, riclassificare.
+        <strong>Attenzione HR:</strong>
+        <?= (int)$richiesteAltroDaRiclassificare === 1 ? 'c\'è 1 richiesta classificata' : 'ci sono ' . (int)$richiesteAltroDaRiclassificare . ' richieste classificate' ?>
+        come <strong>Altro</strong> da verificare e, quando opportuno, riclassificare.
+        <details style="margin-top:10px;">
+            <summary style="cursor:pointer;font-weight:600;">Mostra <?= (int)$richiesteAltroDaRiclassificare === 1 ? 'richiesta' : 'richieste' ?></summary>
+            <div style="margin-top:8px;display:grid;gap:8px;">
+                <?php foreach ($richiesteAltroDettaglio as $altro): ?>
+                    <?php
+                    $periodoAltro = date('d/m/Y', strtotime((string)$altro['data_da']));
+                    if ((string)$altro['tipo_periodo'] === 'ORE' && (string)$altro['ora_da'] !== '' && (string)$altro['ora_a'] !== '') {
+                        $periodoAltro .= ' · ' . substr((string)$altro['ora_da'], 0, 5) . ' - ' . substr((string)$altro['ora_a'], 0, 5);
+                    } elseif ((string)$altro['data_a'] !== '' && (string)$altro['data_a'] !== (string)$altro['data_da']) {
+                        $periodoAltro .= ' - ' . date('d/m/Y', strtotime((string)$altro['data_a']));
+                    }
+                    ?>
+                    <div>
+                        <strong><?= h((string)$altro['dipendente']) ?></strong>
+                        · <?= h($periodoAltro) ?>
+                        <?php if (trim((string)$altro['oggetto']) !== ''): ?>
+                            · <?= h((string)$altro['oggetto']) ?>
+                        <?php endif; ?>
+                        · <a href="assenze.php?id_utente=<?= (int)$altro['id_utente_richiedente'] ?>">Apri richiesta</a>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </details>
     </div>
 <?php endif; ?>
 
