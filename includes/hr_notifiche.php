@@ -292,4 +292,3 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
         return $riepilogo;
     }
 }
-}
