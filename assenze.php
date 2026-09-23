@@ -174,10 +174,10 @@ function hrIdStatoRichiesta(PDO $pdo, string $codice): int
 function hrUtenteAttivo(PDO $pdo, int $idUtente): ?array
 {
     $stmt = $pdo->prepare(
-        "SELECT id_utente,
-                nome,
-                cognome,
-                CONCAT(TRIM(COALESCE(nome, '')), CASE WHEN TRIM(COALESCE(cognome, '')) <> '' THEN CONCAT(' ', TRIM(cognome)) ELSE '' END) AS nominativo
+        "SELECT u.id_utente,
+                u.nome,
+                u.cognome,
+                CONCAT(TRIM(COALESCE(u.nome, '')), CASE WHEN TRIM(COALESCE(u.cognome, '')) <> '' THEN CONCAT(' ', TRIM(u.cognome)) ELSE '' END) AS nominativo
          FROM aut_utenti u
          INNER JOIN hr_profili_dipendenti hp
             ON hp.id_utente = u.id_utente
@@ -298,10 +298,10 @@ function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigura
 
     if ($puoConfigurare) {
         $stmt = $pdo->query(
-            "SELECT id_utente,
-                    nome,
-                    cognome,
-                    CONCAT(TRIM(COALESCE(nome, '')), CASE WHEN TRIM(COALESCE(cognome, '')) <> '' THEN CONCAT(' ', TRIM(cognome)) ELSE '' END) AS nominativo
+            "SELECT u.id_utente,
+                    u.nome,
+                    u.cognome,
+                    CONCAT(TRIM(COALESCE(u.nome, '')), CASE WHEN TRIM(COALESCE(u.cognome, '')) <> '' THEN CONCAT(' ', TRIM(u.cognome)) ELSE '' END) AS nominativo
              FROM aut_utenti u
              INNER JOIN hr_profili_dipendenti hp
                 ON hp.id_utente = u.id_utente
