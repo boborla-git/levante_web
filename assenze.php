@@ -1031,15 +1031,16 @@ try {
                 r.id_richiesta,
                 r.id_utente_richiedente,
                 CONCAT(TRIM(COALESCE(u.cognome, '')), CASE WHEN TRIM(COALESCE(u.nome, '')) <> '' THEN CONCAT(' ', TRIM(u.nome)) ELSE '' END) AS dipendente,
-                r.data_da,
-                r.data_a,
-                r.tipo_periodo,
-                r.ora_da,
-                r.ora_a,
+                p.data_da,
+                p.data_a,
+                p.tipo_periodo,
+                p.ora_da,
+                p.ora_a,
                 r.oggetto
              FROM hr_richieste r
              INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
              INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
+             LEFT JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta AND p.ordinamento = 1
              INNER JOIN aut_utenti u ON u.id_utente = r.id_utente_richiedente
              INNER JOIN hr_profili_dipendenti hp
                 ON hp.id_utente = u.id_utente
@@ -1047,7 +1048,7 @@ try {
              WHERE te.codice = 'ALTRO'
                AND sr.codice <> 'ANNULLATA'
                AND u.attivo = 1
-             ORDER BY u.cognome, u.nome, r.data_da, r.id_richiesta"
+             ORDER BY u.cognome, u.nome, p.data_da, r.id_richiesta"
         );
         $richiesteAltroDettaglio = $stmtAltro->fetchAll(PDO::FETCH_ASSOC);
         $richiesteAltroDaRiclassificare = count($richiesteAltroDettaglio);
