@@ -23,7 +23,7 @@ function hrScopeUtenteAttivo(PDO $pdo, int $idUtente): ?array
     }
 
     $stmt = $pdo->prepare(
-        "SELECT id_utente, username, nome, cognome
+        "SELECT u.id_utente, u.username, u.nome, u.cognome
          FROM aut_utenti u
          INNER JOIN hr_profili_dipendenti hp
             ON hp.id_utente = u.id_utente
@@ -141,7 +141,7 @@ function hrScopeUtentiByIds(PDO $pdo, array $ids): array
 
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $pdo->prepare(
-        "SELECT id_utente, username, nome, cognome
+        "SELECT u.id_utente, u.username, u.nome, u.cognome
          FROM aut_utenti u
          INNER JOIN hr_profili_dipendenti hp
             ON hp.id_utente = u.id_utente
@@ -164,7 +164,7 @@ function hrScopeUtentiGestionali(PDO $pdo, int $idUtente, bool $puoConfigurare, 
 {
     if ($puoConfigurare) {
         $stmt = $pdo->query(
-            "SELECT id_utente, username, nome, cognome
+            "SELECT u.id_utente, u.username, u.nome, u.cognome
              FROM aut_utenti u
              INNER JOIN hr_profili_dipendenti hp
                 ON hp.id_utente = u.id_utente
