@@ -443,7 +443,7 @@ layoutHeader('Profili dipendenti');
                 implode(' ', array_map(static fn(array $t): string => (string)$t['nome'] . ' ' . (string)$t['codice'] . ' ' . (string)$t['ruolo'], $teams)),
             ])));
             ?>
-            <article class="hr-profile-card <?= $isTest ? 'is-test' : '' ?>" data-card-filter-item="profiliDipendenti" data-search-text="<?= h($searchText) ?>">
+            <article class="hr-profile-card <?= $isTest ? 'is-test' : '' ?><?= (int)$profilo['profilo_attivo'] === 1 ? '' : ' is-inactive' ?>" data-card-filter-item="profiliDipendenti" data-search-text="<?= h($searchText) ?>">
                 <div class="hr-profile-card-header">
                     <div class="hr-profile-person">
                         <div class="hr-profile-name"><?= h($nomeUtente) ?></div>
@@ -504,6 +504,7 @@ layoutHeader('Profili dipendenti');
                     </div>
                 </div>
 
+                <?php if ((int)$profilo['profilo_attivo'] === 1): ?>
                 <details class="hr-profile-details">
                     <summary>Dettagli e modifica profilo</summary>
                     <form method="post" action="profili_dipendenti.php" class="hr-profile-form">
@@ -579,6 +580,9 @@ layoutHeader('Profili dipendenti');
                         </div>
                     </form>
                 </details>
+                <?php else: ?>
+                    <div class="info-box" style="margin:0 16px 16px;">Utente non attivo: il profilo resta consultabile per lo storico, ma non sono disponibili azioni operative.</div>
+                <?php endif; ?>
             </article>
         <?php endforeach; ?>
     </section>
