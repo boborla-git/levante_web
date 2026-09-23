@@ -101,6 +101,7 @@ if (!function_exists('hrRiepilogoAssenzeRighe')) {
         $stmt = $pdo->prepare(
             "SELECT
                 r.id_richiesta,
+                r.oggetto,
                 u.id_utente,
                 u.nome,
                 u.cognome,
@@ -201,6 +202,7 @@ if (!function_exists('hrRiepilogoAssenzeHtml')) {
             $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Motivo</th>';
         }
         $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Periodo</th>';
+        $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Oggetto</th>';
 
         $corpo = '';
         foreach ($righe as $riga) {
@@ -215,11 +217,13 @@ if (!function_exists('hrRiepilogoAssenzeHtml')) {
                 $corpo .= '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;font:13px Arial,sans-serif;color:#0f172a">' . $h(hrRiepilogoAssenzeMotivo($riga, $livello)) . '</td>';
             }
             $corpo .= '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;font:13px Arial,sans-serif;color:#0f172a">' . $h(hrRiepilogoAssenzePeriodo($riga)) . '</td>';
+            $oggettoBreve = trim((string)($riga['oggetto'] ?? ''));
+            $corpo .= '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;font:13px Arial,sans-serif;color:#0f172a">' . ($oggettoBreve !== '' ? $h($oggettoBreve) : '&ndash;') . '</td>';
             $corpo .= '</tr>';
         }
 
         if ($corpo === '') {
-            $corpo = '<tr><td colspan="' . ($livello === 'HR' ? '3' : '2') . '" style="padding:14px 10px;font:13px Arial,sans-serif;color:#475569">Nessuna assenza prevista per oggi.</td></tr>';
+            $corpo = '<tr><td colspan="' . ($livello === 'HR' ? '4' : '3') . '" style="padding:14px 10px;font:13px Arial,sans-serif;color:#475569">Nessuna assenza prevista per oggi.</td></tr>';
         }
 
         return '<!doctype html><html><body style="margin:0;background:#f8fafc;color:#0f172a">'
@@ -528,7 +532,7 @@ if (!function_exists('hrRiepilogoAssenzeRichiestaIncludeData')) {
 }
 
 if (!function_exists('hrRiepilogoAssenzeInviaAggiornamentoSeNecessario')) {
-    function hrRiepilogoAssenzeInviaAggiornamentoSeNecessario(PDO $pdo, int $idRichiesta): void
+    function hrRiepilogoAssenzeInviaAggiornamentoSeNecessario(PDO $pdo, int $idRichiesta, bool $forzaNuovoAggiornamento = false): void
     {
         if ($idRichiesta <= 0) {
             return;
@@ -549,6 +553,22 @@ if (!function_exists('hrRiepilogoAssenzeInviaAggiornamentoSeNecessario')) {
         $stmt->execute(['data_riepilogo' => $oggi]);
         if ((int)$stmt->fetchColumn() === 0) {
             return;
+        }
+
+        if ($forzaNuovoAggiornamento) {
+            // La riclassificazione HR non genera notifiche individuali, ma deve poter
+            // aggiornare nuovamente il riepilogo della giornata anche se esiste già
+            // un precedente AGGIORNAMENTO per la stessa richiesta.
+            $stmtReset = $pdo->prepare(
+                "DELETE FROM hr_riepilogo_assenze_invi
+                 WHERE data_riepilogo = :data_riepilogo
+                   AND tipo_invio = 'AGGIORNAMENTO'
+                   AND id_richiesta_trigger = :id_richiesta"
+            );
+            $stmtReset->execute([
+                'data_riepilogo' => $oggi,
+                'id_richiesta' => $idRichiesta,
+            ]);
         }
 
         hrRiepilogoAssenzeInvia($pdo, $oggi, 'AGGIORNAMENTO', $idRichiesta);
