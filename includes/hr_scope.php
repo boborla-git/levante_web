@@ -136,7 +136,7 @@ function hrScopeUtentiByIds(PDO $pdo, array $ids): array
          FROM aut_utenti
          WHERE attivo = 1
            AND id_utente IN ($placeholders)
-         ORDER BY nome, cognome, username"
+         ORDER BY cognome, nome, username"
     );
     $stmt->execute($ids);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -155,7 +155,7 @@ function hrScopeUtentiGestionali(PDO $pdo, int $idUtente, bool $puoConfigurare, 
             "SELECT id_utente, username, nome, cognome
              FROM aut_utenti
              WHERE attivo = 1
-             ORDER BY nome, cognome, username"
+             ORDER BY cognome, nome, username"
         );
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         usort($rows, function (array $a, array $b): int {

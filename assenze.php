@@ -15,6 +15,7 @@ $puoScrivere = haPermessoScrittura('assenze');
 $puoLeggereApprovazioni = haPermessoLettura('approvazioni_assenze');
 $puoLeggereCalendario = haPermessoLettura('calendario_assenze');
 $puoConfigurare = haPermessoLettura('configurazione_assenze');
+$isHrResponsabile = in_array('hr_responsabile_personale', (array)($_SESSION['ruoli'] ?? []), true);
 
 $errore = '';
 $messaggio = '';
@@ -88,6 +89,65 @@ function hrTrovaResponsabileDiretto(PDO $pdo, int $idUtente): ?int
     return $id !== false ? (int)$id : null;
 }
 
+function hrUtenteERiportoDiretto(PDO $pdo, int $idResponsabile, int $idDipendente): bool
+{
+    if ($idResponsabile <= 0 || $idDipendente <= 0 || $idResponsabile === $idDipendente) {
+        return false;
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT 1
+         FROM hr_relazioni_organizzative ro
+         INNER JOIN hr_tipi_relazione_organizzativa tro
+            ON tro.id_tipo_relazione = ro.id_tipo_relazione
+           AND tro.codice IN ('RESPONSABILE_DIRETTO', 'RESPONSABILE_FUNZIONALE')
+           AND tro.attivo = 1
+         INNER JOIN aut_utenti u
+            ON u.id_utente = ro.id_utente
+           AND u.attivo = 1
+         WHERE ro.id_utente = :id_dipendente
+           AND ro.id_utente_collegato = :id_responsabile
+           AND ro.attiva = 1
+           AND ro.data_inizio <= CURDATE()
+           AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE())
+         LIMIT 1"
+    );
+    $stmt->execute([
+        'id_dipendente' => $idDipendente,
+        'id_responsabile' => $idResponsabile,
+    ]);
+
+    return (bool)$stmt->fetchColumn();
+}
+
+function hrMeseChiusoTraDate(PDO $pdo, string $dataDa, string $dataA): ?string
+{
+    if ($dataDa === '' || $dataA === '') {
+        return null;
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT anno, mese
+         FROM hr_chiusure_mese
+         WHERE chiuso = 1
+           AND (anno * 100 + mese) BETWEEN (YEAR(:data_da) * 100 + MONTH(:data_da))
+                                       AND (YEAR(:data_a) * 100 + MONTH(:data_a))
+         ORDER BY anno, mese
+         LIMIT 1"
+    );
+    $stmt->execute([
+        'data_da' => $dataDa,
+        'data_a' => $dataA,
+    ]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        return null;
+    }
+
+    return sprintf('%02d/%04d', (int)$row['mese'], (int)$row['anno']);
+}
+
 function hrIdStatoRichiesta(PDO $pdo, string $codice): int
 {
     static $cache = [];
@@ -112,6 +172,8 @@ function hrUtenteAttivo(PDO $pdo, int $idUtente): ?array
 {
     $stmt = $pdo->prepare(
         "SELECT id_utente,
+                nome,
+                cognome,
                 CONCAT(TRIM(COALESCE(nome, '')), CASE WHEN TRIM(COALESCE(cognome, '')) <> '' THEN CONCAT(' ', TRIM(cognome)) ELSE '' END) AS nominativo
          FROM aut_utenti
          WHERE id_utente = :id_utente
@@ -231,10 +293,12 @@ function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigura
     if ($puoConfigurare) {
         $stmt = $pdo->query(
             "SELECT id_utente,
+                    nome,
+                    cognome,
                     CONCAT(TRIM(COALESCE(nome, '')), CASE WHEN TRIM(COALESCE(cognome, '')) <> '' THEN CONCAT(' ', TRIM(cognome)) ELSE '' END) AS nominativo
              FROM aut_utenti
              WHERE attivo = 1
-             ORDER BY nome, cognome, username"
+             ORDER BY cognome, nome, username"
         );
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             if (trim((string)$row['nominativo']) === '') {
@@ -243,12 +307,17 @@ function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigura
             $utenti[(int)$row['id_utente']] = $row;
         }
 
-        uasort($utenti, static fn(array $a, array $b): int => strcmp((string)$a['nominativo'], (string)$b['nominativo']));
+        uasort($utenti, static function (array $a, array $b): int {
+            return [mb_strtolower((string)($a['cognome'] ?? '')), mb_strtolower((string)($a['nome'] ?? ''))]
+                <=> [mb_strtolower((string)($b['cognome'] ?? '')), mb_strtolower((string)($b['nome'] ?? ''))];
+        });
         return $utenti;
     }
 
     $stmtDiretti = $pdo->prepare(
         "SELECT DISTINCT u.id_utente,
+                u.nome,
+                u.cognome,
                 CONCAT(TRIM(COALESCE(u.nome, '')), CASE WHEN TRIM(COALESCE(u.cognome, '')) <> '' THEN CONCAT(' ', TRIM(u.cognome)) ELSE '' END) AS nominativo
          FROM hr_relazioni_organizzative ro
          INNER JOIN hr_tipi_relazione_organizzativa tro
@@ -270,7 +339,10 @@ function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigura
         $utenti[(int)$row['id_utente']] = $row;
     }
 
-    uasort($utenti, static fn(array $a, array $b): int => strcmp((string)$a['nominativo'], (string)$b['nominativo']));
+    uasort($utenti, static function (array $a, array $b): int {
+        return [mb_strtolower((string)($a['cognome'] ?? '')), mb_strtolower((string)($a['nome'] ?? ''))]
+            <=> [mb_strtolower((string)($b['cognome'] ?? '')), mb_strtolower((string)($b['nome'] ?? ''))];
+    });
     return $utenti;
 }
 
@@ -357,6 +429,7 @@ try {
 
     $utenteSelezionato = $utentiGestibili[$idUtenteTarget] ?? hrUtenteAttivo($pdo, $idUtenteTarget);
     $isDelegato = $idUtenteTarget !== $idUtenteLoggato;
+    $puoUsareAltro = $isDelegato && hrUtenteERiportoDiretto($pdo, $idUtenteLoggato, $idUtenteTarget);
     $form['id_utente'] = (string)$idUtenteTarget;
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -381,6 +454,7 @@ try {
 
             $utenteSelezionato = $utentiGestibili[$idUtenteTarget] ?? hrUtenteAttivo($pdo, $idUtenteTarget);
             $isDelegato = $idUtenteTarget !== $idUtenteLoggato;
+            $puoUsareAltro = $isDelegato && hrUtenteERiportoDiretto($pdo, $idUtenteLoggato, $idUtenteTarget);
 
             $idTipologia = (int)$form['id_tipologia_evento'];
             $modalita = $form['modalita'] === 'ore' ? 'ore' : 'giorni';
@@ -402,6 +476,12 @@ try {
             }
             if ($dataA < $dataDa) {
                 throw new RuntimeException('Il giorno finale non può essere precedente al giorno iniziale.');
+            }
+            if (!$isHrResponsabile) {
+                $meseChiuso = hrMeseChiusoTraDate($pdo, $dataDa, $dataA);
+                if ($meseChiuso !== null) {
+                    throw new RuntimeException('Il mese ' . $meseChiuso . ' è chiuso da HR: non è possibile inserire nuove richieste per questo periodo.');
+                }
             }
             if ($modalita === 'ore') {
                 if ($oraDa === '' || $oraA === '') {
@@ -438,6 +518,12 @@ try {
             }
             if ($codiceTipologia === 'SMART' && !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'SMART_WORKING', $dataDa)) {
                 throw new RuntimeException('Il dipendente selezionato non è abilitato da HR allo smart working.');
+            }
+            if ($codiceTipologia === 'ALTRO' && !$puoUsareAltro) {
+                throw new RuntimeException('La tipologia Altro può essere utilizzata solo da un responsabile per un proprio riporto diretto.');
+            }
+            if (in_array($codiceTipologia, ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE', 'FIERA', 'ALTRO'], true) && trim($oggetto) === '') {
+                throw new RuntimeException('Per questa tipologia è obbligatorio compilare il campo Oggetto breve.');
             }
 
             if ($modalita === 'giorni' && (int)$tipologiaSelezionata['consente_giorni'] !== 1) {
@@ -679,6 +765,91 @@ try {
             exit;
         }
 
+        if ($azione === 'riclassifica_altro') {
+            if (!$isHrResponsabile) {
+                throw new RuntimeException('La riclassificazione delle richieste Altro è riservata a HR.');
+            }
+
+            $idRichiesta = (int)($_POST['id_richiesta'] ?? 0);
+            $idUtenteTarget = (int)($_POST['id_utente'] ?? $idUtenteTarget);
+            $idNuovaTipologia = (int)($_POST['id_nuova_tipologia'] ?? 0);
+
+            if ($idRichiesta <= 0 || $idNuovaTipologia <= 0 || !isset($utentiGestibili[$idUtenteTarget])) {
+                throw new RuntimeException('Dati di riclassificazione non validi.');
+            }
+
+            $stmtCorrente = $pdo->prepare(
+                "SELECT r.id_tipologia_evento, te.codice, te.descrizione
+                 FROM hr_richieste r
+                 INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
+                 WHERE r.id_richiesta = :id_richiesta
+                   AND r.id_utente_richiedente = :id_utente
+                 GROUP BY r.id_richiesta, sr.codice
+                 LIMIT 1"
+            );
+            $stmtCorrente->execute([
+                'id_richiesta' => $idRichiesta,
+                'id_utente' => $idUtenteTarget,
+            ]);
+            $corrente = $stmtCorrente->fetch(PDO::FETCH_ASSOC);
+
+            if (!$corrente || strtoupper((string)$corrente['codice']) !== 'ALTRO') {
+                throw new RuntimeException('Solo le richieste classificate come Altro possono essere riclassificate da questa funzione.');
+            }
+
+            $stmtNuova = $pdo->prepare(
+                "SELECT id_tipologia_evento, codice, descrizione
+                 FROM hr_tipologie_evento
+                 WHERE id_tipologia_evento = :id_tipologia
+                   AND attivo = 1
+                   AND codice NOT IN ('ALTRO', 'TRASFERTA')
+                 LIMIT 1"
+            );
+            $stmtNuova->execute(['id_tipologia' => $idNuovaTipologia]);
+            $nuova = $stmtNuova->fetch(PDO::FETCH_ASSOC);
+
+            if (!$nuova) {
+                throw new RuntimeException('Nuova tipologia non valida.');
+            }
+
+            $pdo->beginTransaction();
+
+            $stmtUpdTipologia = $pdo->prepare(
+                "UPDATE hr_richieste
+                 SET id_tipologia_evento = :id_tipologia,
+                     data_aggiornamento = NOW()
+                 WHERE id_richiesta = :id_richiesta"
+            );
+            $stmtUpdTipologia->execute([
+                'id_tipologia' => (int)$nuova['id_tipologia_evento'],
+                'id_richiesta' => $idRichiesta,
+            ]);
+
+            $stmtStorico = $pdo->prepare(
+                "INSERT INTO hr_richieste_storico
+                    (id_richiesta, azione, id_utente_azione, dettagli, origine)
+                 VALUES
+                    (:id_richiesta, 'RICLASSIFICAZIONE_HR', :id_utente_azione, :dettagli, 'web')"
+            );
+            $stmtStorico->execute([
+                'id_richiesta' => $idRichiesta,
+                'id_utente_azione' => $idUtenteLoggato,
+                'dettagli' => 'Riclassificata da Altro a ' . (string)$nuova['descrizione'] . ' da HR.',
+            ]);
+
+            $pdo->commit();
+
+            // Nessuna nuova notifica individuale: si aggiorna soltanto il riepilogo giornaliero,
+            // se il riepilogo del mattino è già stato inviato e la richiesta riguarda oggi.
+            try {
+                hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta, true);
+            } catch (Throwable $riepilogoException) {
+            }
+
+            header('Location: assenze.php?riclassificata=1&id_utente=' . $idUtenteTarget);
+            exit;
+        }
+
         if ($azione === 'annulla_richiesta') {
             $idRichiesta = (int)($_POST['id_richiesta'] ?? 0);
             $idUtenteTarget = (int)($_POST['id_utente'] ?? $idUtenteTarget);
@@ -690,9 +861,11 @@ try {
             }
 
             $stmtCheck = $pdo->prepare(
-                "SELECT r.id_richiesta, sr.codice AS stato_codice
+                "SELECT r.id_richiesta, sr.codice AS stato_codice,
+                        MIN(p.data_da) AS data_da, MAX(p.data_a) AS data_a
                  FROM hr_richieste r
                  INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
+                 LEFT JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta
                  WHERE r.id_richiesta = :id_richiesta
                    AND r.id_utente_richiedente = :id_utente
                  LIMIT 1"
@@ -708,6 +881,12 @@ try {
             }
             if (!in_array((string)$riga['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true)) {
                 throw new RuntimeException('La richiesta non può essere annullata nello stato attuale.');
+            }
+            if (!$isHrResponsabile) {
+                $meseChiuso = hrMeseChiusoTraDate($pdo, (string)($riga['data_da'] ?? ''), (string)($riga['data_a'] ?? ''));
+                if ($meseChiuso !== null) {
+                    throw new RuntimeException('Il mese ' . $meseChiuso . ' è chiuso da HR: solo HR può annullare richieste relative a periodi chiusi.');
+                }
             }
 
             $idStatoAnnullata = hrIdStatoRichiesta($pdo, 'ANNULLATA');
@@ -774,6 +953,8 @@ try {
         $messaggio = 'Richiesta registrata e approvata automaticamente per il dipendente selezionato.';
     } elseif (isset($_GET['annullata']) && $_GET['annullata'] === '1') {
         $messaggio = 'Richiesta annullata correttamente.';
+    } elseif (isset($_GET['riclassificata']) && $_GET['riclassificata'] === '1') {
+        $messaggio = 'Richiesta Altro riclassificata correttamente da HR.';
     }
 
     $stmtRiepilogo = $pdo->prepare(
@@ -806,8 +987,12 @@ try {
             DATE_FORMAT(r.data_creazione, '%d/%m/%Y %H:%i:%s') AS data_creazione_fmt,
             sr.codice AS stato_codice,
             sr.descrizione AS stato,
+            te.id_tipologia_evento,
+            te.codice AS tipologia_codice,
             te.descrizione AS tipologia,
             p.tipo_periodo,
+            p.data_da AS data_da_iso,
+            p.data_a AS data_a_iso,
             DATE_FORMAT(p.data_da, '%d/%m/%Y') AS data_da,
             DATE_FORMAT(p.data_a, '%d/%m/%Y') AS data_a,
             TIME_FORMAT(p.ora_da, '%H:%i') AS ora_da,
@@ -825,6 +1010,19 @@ try {
     );
     $stmtRichieste->execute(['id_utente' => $idUtenteTarget]);
     $richieste = $stmtRichieste->fetchAll(PDO::FETCH_ASSOC);
+
+    $richiesteAltroDaRiclassificare = 0;
+    if ($isHrResponsabile) {
+        $stmtAltro = $pdo->query(
+            "SELECT COUNT(*)
+             FROM hr_richieste r
+             INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
+             INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
+             WHERE te.codice = 'ALTRO'
+               AND sr.codice <> 'ANNULLATA'"
+        );
+        $richiesteAltroDaRiclassificare = (int)$stmtAltro->fetchColumn();
+    }
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
@@ -869,6 +1067,12 @@ layoutHeader('Assenze e permessi');
 
 <?php if ($messaggio !== ''): ?>
     <div class="ok"><?= h($messaggio) ?></div>
+<?php endif; ?>
+
+<?php if ($isHrResponsabile && ($richiesteAltroDaRiclassificare ?? 0) > 0): ?>
+    <div class="info-box" style="border-left:4px solid #ffc107;">
+        <strong>Attenzione HR:</strong> ci sono <?= (int)$richiesteAltroDaRiclassificare ?> richieste classificate come <strong>Altro</strong> da verificare e, quando opportuno, riclassificare.
+    </div>
 <?php endif; ?>
 
 <div class="card card-compact hr-scope-card">
@@ -934,6 +1138,11 @@ layoutHeader('Assenze e permessi');
                         <select name="id_tipologia_evento" id="id_tipologia_evento" required>
                             <option value="">Seleziona...</option>
                             <?php foreach ($tipologie as $tipologia): ?>
+                                <?php
+                                $codiceOpzione = strtoupper(trim((string)$tipologia['codice']));
+                                if ($codiceOpzione === 'MALATTIA' && !$isHrResponsabile) { continue; }
+                                if ($codiceOpzione === 'ALTRO' && !$puoUsareAltro) { continue; }
+                                ?>
                                 <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= (int)$form['id_tipologia_evento'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
                                     <?= h((string)$tipologia['descrizione']) ?>
                                 </option>
@@ -972,8 +1181,8 @@ layoutHeader('Assenze e permessi');
 
                 <div class="hr-request-row hr-request-row-secondary">
                     <div class="form-group hr-field-oggetto">
-                        <label for="oggetto">Oggetto breve</label>
-                        <input type="text" name="oggetto" id="oggetto" maxlength="150" value="<?= h($form['oggetto']) ?>">
+                        <label for="oggetto" id="label_oggetto">Oggetto breve</label>
+                        <input type="text" name="oggetto" id="oggetto" maxlength="150" value="<?= h($form['oggetto']) ?>" title="Compilare quando richiesto dalla tipologia selezionata.">
                     </div>
 
                     <div class="form-group hr-field-note">
@@ -1033,6 +1242,11 @@ layoutHeader('Assenze e permessi');
                             $periodo .= '<br><span class="meta">' . h((string)$r['ora_da']) . ' - ' . h((string)$r['ora_a']) . '</span>';
                         }
                         $annullabile = in_array((string)$r['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true);
+                        $meseChiusoRichiesta = hrMeseChiusoTraDate($pdo, (string)($r['data_da_iso'] ?? ''), (string)($r['data_a_iso'] ?? ''));
+                        if ($meseChiusoRichiesta !== null && !$isHrResponsabile) {
+                            $annullabile = false;
+                        }
+                        $riclassificabileHr = $isHrResponsabile && strtoupper((string)($r['tipologia_codice'] ?? '')) === 'ALTRO';
                         ?>
                         <tr>
                             <td><strong><?= h((string)$r['codice_richiesta']) ?></strong></td>
@@ -1053,6 +1267,22 @@ layoutHeader('Assenze e permessi');
                                 <?php endif; ?>
                             </td>
                             <td>
+                                <?php if ($riclassificabileHr && $puoScrivere): ?>
+                                    <form method="post" action="assenze.php" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+                                        <input type="hidden" name="azione" value="riclassifica_altro">
+                                        <input type="hidden" name="id_richiesta" value="<?= (int)$r['id_richiesta'] ?>">
+                                        <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
+                                        <select name="id_nuova_tipologia" required aria-label="Nuova tipologia">
+                                            <option value="">Riclassifica...</option>
+                                            <?php foreach ($tipologie as $tipologiaRic): ?>
+                                                <?php $codRic = strtoupper(trim((string)$tipologiaRic['codice'])); ?>
+                                                <?php if (in_array($codRic, ['ALTRO', 'TRASFERTA'], true)) { continue; } ?>
+                                                <option value="<?= (int)$tipologiaRic['id_tipologia_evento'] ?>"><?= h((string)$tipologiaRic['descrizione']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-light">Aggiorna</button>
+                                    </form>
+                                <?php endif; ?>
                                 <?php if ($puoScrivere && $annullabile): ?>
                                     <form method="post" action="assenze.php" onsubmit="return confirm('Confermi l\'annullamento della richiesta?');">
                                         <input type="hidden" name="azione" value="annulla_richiesta">
@@ -1060,7 +1290,9 @@ layoutHeader('Assenze e permessi');
                                         <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="la la-times" aria-hidden="true"></i> Annulla</button>
                                     </form>
-                                <?php else: ?>
+                                <?php elseif ($meseChiusoRichiesta !== null && !$isHrResponsabile): ?>
+                                    <span class="meta">Periodo chiuso</span>
+                                <?php elseif (!$riclassificabileHr): ?>
                                     <span class="meta">-</span>
                                 <?php endif; ?>
                             </td>
@@ -1074,6 +1306,7 @@ layoutHeader('Assenze e permessi');
 </div>
 
 <script>
+window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
 (function () {
     const modalita = document.getElementById('modalita');
     if (!modalita) {

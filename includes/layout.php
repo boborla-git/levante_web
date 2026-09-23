@@ -366,7 +366,10 @@ function layoutRenderAssenzeRegoleScript(): void
         const tipologia=document.getElementById('id_tipologia_evento');
         const modalita=document.getElementById('modalita');
         const note=document.getElementById('note_richiedente');
+        const oggetto=document.getElementById('oggetto');
+        const labelOggetto=document.getElementById('label_oggetto');
         const form=document.getElementById('form-richiesta-assenza');
+        const puoUsareAltro=window.hrPuoUsareAltro===true;
         if(!tipologia||!modalita)return;
         const modalitaOriginali=Array.from(modalita.options).map(function(option){return{value:option.value,text:option.textContent};});
         const tipologieOriginali=Array.from(tipologia.options).map(function(option){return{value:option.value,text:option.textContent};});
@@ -384,6 +387,7 @@ function layoutRenderAssenzeRegoleScript(): void
                     if(codice==='LEGGE_104'&&!utenteHa104())return;
                     if(codice==='SMART'&&!utenteHaSmart())return;
                     if(codice==='MALATTIA'&&!puoGestireMalattia)return;
+                    if(codice==='ALTRO'&&!puoUsareAltro)return;
                 }
                 const opt=document.createElement('option');opt.value=item.value;opt.textContent=item.text;tipologia.appendChild(opt);
             });
@@ -395,7 +399,21 @@ function layoutRenderAssenzeRegoleScript(): void
         function aggiornaModalita(rule){const precedente=modalita.value;modalita.innerHTML='';const consentite=[];if(!rule||rule.consente_giorni)consentite.push('giorni');if(!rule||rule.consente_ore)consentite.push('ore');if(consentite.length===0)consentite.push('giorni');consentite.forEach(function(value){const opt=document.createElement('option');opt.value=value;const originale=modalitaOriginali.find(function(item){return item.value===value;});opt.textContent=originale?originale.text:optionLabel(value);modalita.appendChild(opt);});modalita.value=consentite.indexOf(precedente)!==-1?precedente:consentite[0];modalita.dispatchEvent(new Event('change',{bubbles:true}));}
         function aggiornaAvviso(rule){const box=ensureAvvisoBox();const testo=rule&&rule.avviso_richiedente?String(rule.avviso_richiedente).trim():'';if(testo!==''){box.textContent=testo;box.style.display='';}else{box.textContent='';box.style.display='none';}}
         function aggiornaNotaObbligatoria(rule){if(!note)return;const required=!!(rule&&rule.motivazione_obbligatoria);note.required=required;const label=document.querySelector('label[for="note_richiedente"]');if(label)label.textContent=required?'Note del richiedente *':'Note del richiedente';}
-        function applicaRegole(){const id=parseInt(tipologia.value||'0',10);const rule=rules[id]||null;aggiornaModalita(rule);aggiornaAvviso(rule);aggiornaNotaObbligatoria(rule);}
+        function aggiornaOggetto(rule){
+            if(!oggetto)return;
+            const codice=rule?String(rule.codice||'').toUpperCase():'';
+            const required=['VISITA_CLIENTE','VISITA_FORNITORE','FORMAZIONE','FIERA','ALTRO'].indexOf(codice)!==-1;
+            let suggerimento='Compilare quando richiesto dalla tipologia selezionata.';
+            if(codice==='VISITA_CLIENTE'||codice==='VISITA_FORNITORE')suggerimento='Indicare azienda, luogo e motivo della visita';
+            else if(codice==='FORMAZIONE')suggerimento='Indicare ente/corso, luogo e argomento';
+            else if(codice==='FIERA')suggerimento='Indicare nome della fiera e luogo';
+            else if(codice==='ALTRO')suggerimento='Descrivere sinteticamente il motivo';
+            oggetto.required=required;
+            oggetto.title=suggerimento;
+            oggetto.placeholder=required?suggerimento:'';
+            if(labelOggetto)labelOggetto.textContent=required?'Oggetto breve *':'Oggetto breve';
+        }
+        function applicaRegole(){const id=parseInt(tipologia.value||'0',10);const rule=rules[id]||null;aggiornaModalita(rule);aggiornaAvviso(rule);aggiornaNotaObbligatoria(rule);aggiornaOggetto(rule);}
         ricostruisciTipologie();
         tipologia.addEventListener('change',applicaRegole);
         if(form)form.addEventListener('submit',function(event){
@@ -403,6 +421,8 @@ function layoutRenderAssenzeRegoleScript(): void
             if(codice==='LEGGE_104'&&!utenteHa104()){event.preventDefault();tipologia.value='';applicaRegole();alert('Il dipendente selezionato non è abilitato da HR ai permessi Legge 104.');return;}
             if(codice==='SMART'&&!utenteHaSmart()){event.preventDefault();tipologia.value='';applicaRegole();alert('Il dipendente selezionato non è abilitato da HR allo smart working.');return;}
             if(codice==='MALATTIA'&&!puoGestireMalattia){event.preventDefault();tipologia.value='';applicaRegole();alert('La gestione delle assenze per malattia è riservata a HR.');return;}
+            if(codice==='ALTRO'&&!puoUsareAltro){event.preventDefault();tipologia.value='';applicaRegole();alert('La tipologia Altro può essere usata solo da un responsabile per un proprio riporto diretto.');return;}
+            if(oggetto&&oggetto.required&&oggetto.value.trim()===''){event.preventDefault();oggetto.focus();alert('Compila il campo Oggetto breve per questa tipologia.');return;}
             if(rule&&rule.motivazione_obbligatoria&&note&&note.value.trim()===''){event.preventDefault();note.focus();alert('Compila le note del richiedente per questa tipologia.');}
         });
         applicaRegole();
