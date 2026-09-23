@@ -105,6 +105,9 @@ function hrUtenteERiportoDiretto(PDO $pdo, int $idResponsabile, int $idDipendent
          INNER JOIN aut_utenti u
             ON u.id_utente = ro.id_utente
            AND u.attivo = 1
+         INNER JOIN hr_profili_dipendenti hp
+            ON hp.id_utente = u.id_utente
+           AND hp.attivo = 1
          WHERE ro.id_utente = :id_dipendente
            AND ro.id_utente_collegato = :id_responsabile
            AND ro.attiva = 1
@@ -175,9 +178,12 @@ function hrUtenteAttivo(PDO $pdo, int $idUtente): ?array
                 nome,
                 cognome,
                 CONCAT(TRIM(COALESCE(nome, '')), CASE WHEN TRIM(COALESCE(cognome, '')) <> '' THEN CONCAT(' ', TRIM(cognome)) ELSE '' END) AS nominativo
-         FROM aut_utenti
-         WHERE id_utente = :id_utente
-           AND attivo = 1
+         FROM aut_utenti u
+         INNER JOIN hr_profili_dipendenti hp
+            ON hp.id_utente = u.id_utente
+           AND hp.attivo = 1
+         WHERE u.id_utente = :id_utente
+           AND u.attivo = 1
          LIMIT 1"
     );
     $stmt->execute(['id_utente' => $idUtente]);
@@ -296,9 +302,12 @@ function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigura
                     nome,
                     cognome,
                     CONCAT(TRIM(COALESCE(nome, '')), CASE WHEN TRIM(COALESCE(cognome, '')) <> '' THEN CONCAT(' ', TRIM(cognome)) ELSE '' END) AS nominativo
-             FROM aut_utenti
-             WHERE attivo = 1
-             ORDER BY cognome, nome, username"
+             FROM aut_utenti u
+             INNER JOIN hr_profili_dipendenti hp
+                ON hp.id_utente = u.id_utente
+               AND hp.attivo = 1
+             WHERE u.attivo = 1
+             ORDER BY u.cognome, u.nome, u.username"
         );
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             if (trim((string)$row['nominativo']) === '') {
@@ -325,6 +334,9 @@ function hrUtentiNelPerimetro(PDO $pdo, int $idUtenteLoggato, bool $puoConfigura
            AND tro.codice IN ('RESPONSABILE_DIRETTO', 'RESPONSABILE_FUNZIONALE')
            AND tro.attivo = 1
          INNER JOIN aut_utenti u ON u.id_utente = ro.id_utente
+         INNER JOIN hr_profili_dipendenti hp
+            ON hp.id_utente = u.id_utente
+           AND hp.attivo = 1
          WHERE ro.id_utente_collegato = :id_utente
            AND ro.attiva = 1
            AND ro.data_inizio <= CURDATE()
