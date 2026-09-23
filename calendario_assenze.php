@@ -102,7 +102,7 @@ function hrScopeUtentiCalendario(PDO $pdo, int $idUtente, bool $puoVedereTutteAs
             "SELECT id_utente, nome, cognome, username, 0 AS scope_gerarchia, 0 AS scope_gruppo
              FROM aut_utenti
              WHERE attivo = 1
-             ORDER BY nome, cognome, username"
+             ORDER BY cognome, nome, username"
         );
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -139,7 +139,7 @@ function hrScopeUtentiCalendario(PDO $pdo, int $idUtente, bool $puoVedereTutteAs
          FROM aut_utenti
          WHERE attivo = 1
            AND id_utente IN ($placeholders)
-         ORDER BY nome, cognome, username"
+         ORDER BY cognome, nome, username"
     );
     $stmt->execute($ids);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
