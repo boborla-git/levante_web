@@ -137,14 +137,9 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
     /**
      * Crea e invia notifiche email HR per una lista di utenti.
      *
-     * Il template HTML e' un golden master:
-     * non deve degradare a plain text e non deve perdere tabella dettagli, badge, CTA e footer.
-     *
-     * Restituisce un riepilogo:
-     * - tentate
-     * - inviate
-     * - saltate
-     * - errori
+     * Regola recapiti:
+     * - il richiedente riceve le proprie conferme sulla EMAIL_PERSONALE verificata;
+     * - responsabili/HR che ricevono informazioni per ruolo usano la EMAIL_LAVORO verificata.
      */
     function hrCreaNotificaEmailPerUtenti(
         PDO $pdo,
@@ -180,13 +175,32 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
         }
 
         $idCanaleEmail = hrIdCanaleNotifica($pdo, 'EMAIL');
-
         if ($idCanaleEmail === null) {
             $riepilogo['errori'][] = 'Canale EMAIL non configurato o non attivo.';
             return $riepilogo;
         }
 
-        $emailDestinatari = hrEmailDestinatariUtenti($pdo, $destinatari);
+        $idRichiedente = 0;
+        if ($idRichiesta !== null && $idRichiesta > 0) {
+            $stmtRichiedente = $pdo->prepare('SELECT id_utente_richiedente FROM hr_richieste WHERE id_richiesta = :id_richiesta LIMIT 1');
+            $stmtRichiedente->execute(['id_richiesta' => $idRichiesta]);
+            $idRichiedente = (int)($stmtRichiedente->fetchColumn() ?: 0);
+        }
+
+        $stmtRecapito = $pdo->prepare(
+            "SELECT ru.valore
+             FROM hr_recapiti_utenti ru
+             INNER JOIN hr_tipi_recapito tr
+                ON tr.id_tipo_recapito = ru.id_tipo_recapito
+               AND tr.attivo = 1
+               AND tr.codice = :codice_recapito
+             WHERE ru.id_utente = :id_utente
+               AND ru.attivo = 1
+               AND ru.verificato = 1
+               AND TRIM(COALESCE(ru.valore, '')) <> ''
+             ORDER BY ru.principale DESC, ru.id_recapito_utente DESC
+             LIMIT 1"
+        );
 
         $stmtNotifica = $pdo->prepare(
             'INSERT INTO hr_notifiche
@@ -205,7 +219,15 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
         foreach ($destinatari as $idUtenteDest) {
             $riepilogo['tentate']++;
 
-            $email = $emailDestinatari[$idUtenteDest] ?? null;
+            $codiceRecapito = ($idRichiedente > 0 && $idUtenteDest === $idRichiedente)
+                ? 'EMAIL_PERSONALE'
+                : 'EMAIL_LAVORO';
+
+            $stmtRecapito->execute([
+                'codice_recapito' => $codiceRecapito,
+                'id_utente' => $idUtenteDest,
+            ]);
+            $email = hrEmailValida((string)($stmtRecapito->fetchColumn() ?: ''));
 
             if ($email === null) {
                 $riepilogo['saltate']++;
@@ -225,9 +247,8 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
                     'id_canale_notifica' => $idCanaleEmail,
                     'inviata' => 0,
                     'data_invio' => null,
-                    'errore_invio' => 'Nessun indirizzo email valido trovato per l\'utente.',
+                    'errore_invio' => 'Nessuna ' . ($codiceRecapito === 'EMAIL_PERSONALE' ? 'email personale' : 'email di lavoro') . ' verificata disponibile.',
                 ]);
-
                 continue;
             }
 
@@ -270,4 +291,5 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
 
         return $riepilogo;
     }
+}
 }
