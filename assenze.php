@@ -1010,6 +1010,19 @@ try {
     );
     $stmtRichieste->execute(['id_utente' => $idUtenteTarget]);
     $richieste = $stmtRichieste->fetchAll(PDO::FETCH_ASSOC);
+
+    $richiesteAltroDaRiclassificare = 0;
+    if ($isHrResponsabile) {
+        $stmtAltro = $pdo->query(
+            "SELECT COUNT(*)
+             FROM hr_richieste r
+             INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
+             INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
+             WHERE te.codice = 'ALTRO'
+               AND sr.codice <> 'ANNULLATA'"
+        );
+        $richiesteAltroDaRiclassificare = (int)$stmtAltro->fetchColumn();
+    }
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
@@ -1054,6 +1067,12 @@ layoutHeader('Assenze e permessi');
 
 <?php if ($messaggio !== ''): ?>
     <div class="ok"><?= h($messaggio) ?></div>
+<?php endif; ?>
+
+<?php if ($isHrResponsabile && ($richiesteAltroDaRiclassificare ?? 0) > 0): ?>
+    <div class="info-box" style="border-left:4px solid #ffc107;">
+        <strong>Attenzione HR:</strong> ci sono <?= (int)$richiesteAltroDaRiclassificare ?> richieste classificate come <strong>Altro</strong> da verificare e, quando opportuno, riclassificare.
+    </div>
 <?php endif; ?>
 
 <div class="card card-compact hr-scope-card">
