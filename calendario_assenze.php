@@ -217,6 +217,12 @@ if (!in_array($vista, ['giorno', 'settimane', 'mese'], true)) {
     $vista = 'settimane';
 }
 
+// Per impostazione predefinita il calendario mostra soltanto le persone che
+// hanno almeno un'assenza approvata o una richiesta in attesa nel periodo.
+// "mostra=tutti" consente di espandere temporaneamente l'elenco completo.
+$mostraTutti = strtolower(trim((string)($_GET['mostra'] ?? 'assenze'))) === 'tutti';
+$mostraParam = $mostraTutti ? '&mostra=tutti' : '';
+
 $oggi = new DateTimeImmutable('today');
 $dataParam = trim((string)($_GET['data'] ?? ''));
 try {
@@ -295,6 +301,7 @@ try {
                    te.mostra_dettaglio_colleghi, te.mostra_dettaglio_responsabili, te.mostra_dettaglio_hr,
                    sr.codice AS codice_stato_richiesta, sr.descrizione AS stato_richiesta,
                    sp.descrizione_breve AS stato_presenza_breve, sp.descrizione AS stato_presenza,
+                   r.oggetto,
                    u.nome, u.cognome, u.username
             FROM hr_richieste r
             INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta=r.id_stato_richiesta
@@ -342,6 +349,9 @@ try {
                     'ora_a'=>$row['ora_a'] ? substr((string)$row['ora_a'],0,5) : '',
                     'data_da'=>(string)$row['data_da'],
                     'data_a'=>(string)$row['data_a'],
+                    // L'oggetto breve può contenere informazioni operative: lo esponiamo
+                    // soltanto quando l'utente ha già diritto a vedere il dettaglio reale.
+                    'oggetto'=>$showDetail ? trim((string)($row['oggetto'] ?? '')) : '',
                     'dettaglio'=>$showDetail,
                 ];
             }
@@ -365,6 +375,7 @@ function hrTitoloCella(array $events): string
     foreach ($events as $e) {
         $p=(string)$e['label'];
         if (($e['tipo_periodo'] ?? '') === 'ORE' && $e['ora_da'] && $e['ora_a']) $p.=' '.$e['ora_da'].'-'.$e['ora_a'];
+        if (trim((string)($e['oggetto'] ?? '')) !== '') $p.=' · '.trim((string)$e['oggetto']);
         if (($e['stato'] ?? '') === 'IN_ATTESA') $p.=' · da approvare';
         $parts[]=$p;
     }
@@ -382,6 +393,16 @@ if ($vista === 'mese') {
     }
 }
 
+// Elenco effettivamente mostrato: per default solo persone con almeno un evento
+// nel periodo corrente; con "Vedi tutti" viene ripristinato l'intero ambito.
+$utentiVisualizzati = $scopeUtenti;
+if (!$mostraTutti) {
+    $utentiVisualizzati = array_values(array_filter(
+        $scopeUtenti,
+        static fn(array $u): bool => !empty($eventsByUserDay[(int)$u['id_utente']] ?? [])
+    ));
+}
+
 $detailsJson = json_encode($eventsByUserDay, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?: '{}';
 layoutHeader('Calendario assenze');
 ?>
@@ -393,8 +414,10 @@ layoutHeader('Calendario assenze');
 .hr-view-switch a.is-active{background:var(--rav-yellow,#ffd200)!important;color:var(--rav-blue,#0068c9)!important;border-color:var(--rav-blue,#0068c9)!important}
 .hr-period-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px}
 .hr-period-title{font-weight:800;font-size:16px;text-align:center;flex:1}
-.hr-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:0 4px;font-size:13px;color:#475569}
+.hr-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:0 4px}
+.hr-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;color:#475569}
 .hr-legend span{display:inline-flex;align-items:center;gap:6px}.hr-status-dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(15,23,42,.12)}
+.hr-empty{padding:26px 18px;text-align:center;color:#475569;background:#fff;border:1px solid #dbe3ec;border-radius:14px;font-weight:600}
 .hr-status-free{background:#e9f7ee}.hr-status-pending{background:#ffd84d}.hr-status-absent{background:#e85b5b}.hr-status-off{background:#e5e7eb}
 .hr-matrix-wrap{overflow:auto;border-radius:14px;border:1px solid #dbe3ec;background:#fff;-webkit-overflow-scrolling:touch}
 .hr-matrix{display:grid;min-width:760px;grid-template-columns:160px repeat(var(--cols),minmax(62px,1fr))}
@@ -421,7 +444,7 @@ layoutHeader('Calendario assenze');
  .hr-matrix-page{gap:10px}.hr-matrix-head{padding:14px;align-items:stretch;flex-direction:column}
  .hr-view-switch{display:grid;grid-template-columns:repeat(3,1fr)}.hr-view-switch a{padding:0 7px;font-size:12px}
  .hr-period-nav{padding:9px}.hr-period-title{font-size:14px}
- .hr-legend{gap:9px;font-size:11px}
+ .hr-toolbar{align-items:stretch}.hr-toolbar>.btn{width:100%}.hr-legend{gap:9px;font-size:11px}
  .hr-matrix{min-width:650px;grid-template-columns:112px repeat(var(--cols),minmax(52px,1fr))}
  .hr-matrix-cell{min-height:48px;padding:4px}.hr-matrix-name{font-size:12px}.hr-matrix-header{font-size:10px}.hr-matrix-header strong{font-size:13px}
  .hr-daycell .hr-status-dot{width:18px;height:18px}
@@ -436,30 +459,37 @@ layoutHeader('Calendario assenze');
   <div><h1>Calendario assenze</h1><p class="meta">Disponibilità del tuo gruppo di lavoro. Tocca o clicca un indicatore per il dettaglio.</p></div>
   <nav class="hr-view-switch" aria-label="Vista calendario">
     <?php foreach (['giorno'=>'Giorno','settimane'=>'2 settimane','mese'=>'Mese'] as $k=>$v): ?>
-      <a class="btn btn-outline <?= $vista===$k?'is-active':'' ?>" href="?vista=<?= h($k) ?>&data=<?= h($dataRif->format('Y-m-d')) ?>"><?= h($v) ?></a>
+      <a class="btn btn-outline <?= $vista===$k?'is-active':'' ?>" href="?vista=<?= h($k) ?>&data=<?= h($dataRif->format('Y-m-d')) ?><?= h($mostraParam) ?>"><?= h($v) ?></a>
     <?php endforeach; ?>
   </nav>
 </section>
 
 <section class="card hr-period-nav">
- <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($prevData->format('Y-m-d')) ?>" aria-label="Periodo precedente"><i class="la la-angle-left"></i></a>
+ <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($prevData->format('Y-m-d')) ?><?= h($mostraParam) ?>" aria-label="Periodo precedente"><i class="la la-angle-left"></i></a>
  <div class="hr-period-title"><?= h($titoloPeriodo) ?></div>
- <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($oggi->format('Y-m-d')) ?>">Oggi</a>
- <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($nextData->format('Y-m-d')) ?>" aria-label="Periodo successivo"><i class="la la-angle-right"></i></a>
+ <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($oggi->format('Y-m-d')) ?><?= h($mostraParam) ?>">Oggi</a>
+ <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($nextData->format('Y-m-d')) ?><?= h($mostraParam) ?>" aria-label="Periodo successivo"><i class="la la-angle-right"></i></a>
 </section>
 
-<div class="hr-legend">
- <span><i class="hr-status-dot hr-status-free"></i>Nessuna assenza</span>
- <span><i class="hr-status-dot hr-status-pending"></i>Da approvare</span>
- <span><i class="hr-status-dot hr-status-absent"></i>Assente</span>
+<div class="hr-toolbar">
+ <div class="hr-legend">
+  <span><i class="hr-status-dot hr-status-free"></i>Nessuna assenza</span>
+  <span><i class="hr-status-dot hr-status-pending"></i>Da approvare</span>
+  <span><i class="hr-status-dot hr-status-absent"></i>Assente</span>
+ </div>
+ <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($dataRif->format('Y-m-d')) ?><?= $mostraTutti ? '' : '&mostra=tutti' ?>">
+   <?= $mostraTutti ? 'Vedi solo assenze' : 'Vedi tutti' ?>
+ </a>
 </div>
 
-<?php if ($vista === 'giorno'): ?>
+<?php if ($utentiVisualizzati === []): ?>
+<div class="hr-empty">Nessuna assenza o richiesta nel periodo visualizzato.</div>
+<?php elseif ($vista === 'giorno'): ?>
 <div class="hr-day-view">
  <div class="hr-timeline">
   <div class="hr-time-head hr-matrix-name">Persona</div>
   <?php for($m=8*60;$m<17*60;$m+=30): ?><div class="hr-time-head"><?= h(sprintf('%02d:%02d',intdiv($m,60),$m%60)) ?></div><?php endfor; ?>
-  <?php foreach($scopeUtenti as $u): $uid=(int)$u['id_utente']; $key=$dataRif->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; ?>
+  <?php foreach($utentiVisualizzati as $u): $uid=(int)$u['id_utente']; $key=$dataRif->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; ?>
    <div class="hr-time-name <?= $uid===$idUtente?'is-me':'' ?>"><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
    <?php for($m=8*60;$m<17*60;$m+=30):
       $slotEnd=$m+30; $slotEvents=[];
@@ -480,7 +510,7 @@ layoutHeader('Calendario assenze');
  <div class="hr-matrix" style="--cols:<?= count($giorni) ?>">
   <div class="hr-matrix-cell hr-matrix-header hr-matrix-name">Persona</div>
   <?php foreach($giorni as $d): ?><div class="hr-matrix-cell hr-matrix-header <?= $d->format('Y-m-d')===$oggi->format('Y-m-d')?'is-today':'' ?>"><span><?= h(hrNomeGiornoBreve($d)) ?></span><strong><?= h($d->format('d/m')) ?></strong></div><?php endforeach; ?>
-  <?php foreach($scopeUtenti as $u): $uid=(int)$u['id_utente']; ?>
+  <?php foreach($utentiVisualizzati as $u): $uid=(int)$u['id_utente']; ?>
    <div class="hr-matrix-cell hr-matrix-name <?= $uid===$idUtente?'is-me':'' ?>"><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
    <?php foreach($giorni as $d): $key=$d->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; $st=hrStatoCella($evs); ?>
     <div tabindex="0" role="button" class="hr-matrix-cell hr-daycell <?= $key===$oggi->format('Y-m-d')?'is-today':'' ?>" data-user="<?= $uid ?>" data-day="<?= h($key) ?>" title="<?= h(hrTitoloCella($evs)) ?>"><i class="hr-status-dot hr-status-<?= h($st) ?>"></i></div>
@@ -499,7 +529,7 @@ layoutHeader('Calendario assenze');
 <script>
 (function(){
  const data=<?= $detailsJson ?>, pop=document.getElementById('hrDetailPop'), title=document.getElementById('hrDetailTitle'), body=document.getElementById('hrDetailBody');
- const names={<?php foreach($scopeUtenti as $u): ?><?= (int)$u['id_utente'] ?>:<?= json_encode(hrNomeCompatto($u,$idUtente),JSON_UNESCAPED_UNICODE) ?>,<?php endforeach; ?>};
+ const names={<?php foreach($utentiVisualizzati as $u): ?><?= (int)$u['id_utente'] ?>:<?= json_encode(hrNomeCompatto($u,$idUtente),JSON_UNESCAPED_UNICODE) ?>,<?php endforeach; ?>};
  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
  function show(el){
    const uid=el.dataset.user, day=el.dataset.day, all=(data[uid]&&data[uid][day])||[];
@@ -509,7 +539,7 @@ layoutHeader('Calendario assenze');
      evs=all.filter(e=>{if(e.tipo_periodo!=='ORE')return true;const x=e.ora_da.split(':').map(Number),y=e.ora_a.split(':').map(Number);return x[0]*60+x[1]<b&&y[0]*60+y[1]>a;});
    }
    title.textContent=(names[uid]||'Persona')+' · '+day.split('-').reverse().join('/');
-   body.innerHTML=evs.length?evs.map(e=>'<div class="hr-detail-item"><strong>'+esc(e.label)+'</strong>'+esc(e.tipo_periodo==='ORE'&&e.ora_da&&e.ora_a?e.ora_da+' - '+e.ora_a:'Giornata')+(e.stato==='IN_ATTESA'?' · Da approvare':'')+'</div>').join(''):'<div class="hr-detail-item"><strong>Nessuna assenza registrata</strong>Disponibile nel periodo selezionato.</div>';
+   body.innerHTML=evs.length?evs.map(e=>'<div class="hr-detail-item"><strong>'+esc(e.label)+'</strong>'+(e.oggetto?'<div><b>Oggetto:</b> '+esc(e.oggetto)+'</div>':'')+'<div>'+esc(e.tipo_periodo==='ORE'&&e.ora_da&&e.ora_a?e.ora_da+' - '+e.ora_a:'Giornata')+(e.stato==='IN_ATTESA'?' · Da approvare':'')+'</div></div>').join(''):'<div class="hr-detail-item"><strong>Nessuna assenza registrata</strong>Disponibile nel periodo selezionato.</div>';
    pop.classList.add('is-open');
    const r=el.getBoundingClientRect(),w=Math.min(360,window.innerWidth-24);
    pop.style.left=Math.max(12,Math.min(window.innerWidth-w-12,r.left))+'px';
