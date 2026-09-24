@@ -516,8 +516,8 @@ layoutHeader('Calendario assenze');
  <div class="hr-legend">
   <span><i class="hr-status-dot hr-status-free"></i>Nessuna assenza</span>
   <span><i class="hr-status-dot hr-status-pending"></i>Da approvare</span>
-  <span><i class="hr-status-dot hr-status-personal"></i>Personale</span>
-  <span><i class="hr-status-dot hr-status-work"></i>Lavoro</span>
+  <span><i class="hr-status-dot hr-status-personal"></i>Assenza personale</span>
+  <span><i class="hr-status-dot hr-status-work"></i>Impegno di lavoro</span>
   <?php if ($vista !== 'giorno'): ?>
   <span title="Forma indicatore"><i class="hr-status-dot hr-status-off"></i>Giornata <i class="hr-status-dot hr-status-off hr-duration-hours" style="width:14px;height:14px;border-radius:50%;box-sizing:border-box;background-color:#fff;background-image:linear-gradient(to right,#e5e7eb 0,#e5e7eb 50%,transparent 50%,transparent 100%);background-clip:padding-box;border:1px solid rgba(15,23,42,.16)"></i>Ore</span>
   <?php endif; ?>
