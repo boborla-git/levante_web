@@ -444,7 +444,9 @@ layoutHeader('Calendario assenze');
 .hr-matrix-header strong{font-size:15px;color:#172033}
 .hr-daycell{cursor:pointer}.hr-daycell.is-empty{cursor:default}.hr-daycell:not(.is-empty):hover,.hr-daycell:not(.is-empty):focus-visible{outline:none;box-shadow:inset 0 0 0 2px #0068c9}
 .hr-daycell .hr-status-dot{width:20px;height:20px;box-shadow:0 1px 2px rgba(15,23,42,.12)}
-.hr-daycell .hr-status-dot.hr-duration-hours{width:24px;height:8px;border-radius:999px}
+.hr-daycell .hr-status-dot.hr-duration-hours{width:20px;height:20px;border-radius:50%;background:linear-gradient(90deg,currentColor 0 50%,#fff 50% 100%)}
+.hr-daycell .hr-status-dot.hr-status-pending.hr-duration-hours{color:#ffd84d}
+.hr-daycell .hr-status-dot.hr-status-absent.hr-duration-hours{color:#e85b5b}
 .hr-daycell.is-today{background:#f7fbff}.hr-daycell.is-today:after{content:"";position:absolute;inset:3px;border:1px solid rgba(0,104,201,.28);border-radius:8px;pointer-events:none}
 .hr-day-view{overflow:auto;border:1px solid #dbe3ec;border-radius:14px;background:#fff}
 .hr-timeline{min-width:860px;display:grid;grid-template-columns:160px repeat(18,minmax(38px,1fr))}
@@ -463,7 +465,7 @@ layoutHeader('Calendario assenze');
  .hr-toolbar{align-items:stretch}.hr-toolbar>.btn{width:100%}.hr-legend{gap:9px;font-size:11px}
  .hr-matrix{min-width:650px;grid-template-columns:112px repeat(var(--cols),minmax(52px,1fr))}
  .hr-matrix-cell{min-height:48px;padding:4px}.hr-matrix-name{font-size:12px}.hr-matrix-header{font-size:10px}.hr-matrix-header strong{font-size:13px}
- .hr-daycell .hr-status-dot{width:18px;height:18px}.hr-daycell .hr-status-dot.hr-duration-hours{width:22px;height:8px}
+ .hr-daycell .hr-status-dot{width:18px;height:18px}.hr-daycell .hr-status-dot.hr-duration-hours{width:18px;height:18px}
  .hr-timeline{min-width:760px;grid-template-columns:112px repeat(18,minmax(36px,1fr))}
  .hr-time-name{font-size:12px}
 }
@@ -493,7 +495,7 @@ layoutHeader('Calendario assenze');
   <span><i class="hr-status-dot hr-status-pending"></i>Da approvare</span>
   <span><i class="hr-status-dot hr-status-absent"></i>Assente</span>
   <?php if ($vista !== 'giorno'): ?>
-  <span title="Forma indicatore"><i class="hr-status-dot hr-status-off"></i>Giornata <i class="hr-status-dot hr-status-off hr-duration-hours" style="width:20px;height:7px;border-radius:999px"></i>Ore</span>
+  <span title="Forma indicatore"><i class="hr-status-dot hr-status-off"></i>Giornata <i class="hr-status-dot hr-status-off hr-duration-hours" style="width:14px;height:14px;border-radius:50%;background:linear-gradient(90deg,#e5e7eb 0 50%,#fff 50% 100%)"></i>Ore</span>
   <?php endif; ?>
  </div>
  <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($dataRif->format('Y-m-d')) ?><?= $mostraTutti ? '' : '&mostra=tutti' ?>">
