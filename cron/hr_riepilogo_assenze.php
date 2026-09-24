@@ -26,13 +26,14 @@ if ((int)$oraRoma->format('N') > 5) {
     exit("Weekend: nessun invio\n");
 }
 
-// Aruba pianifica i cron in UTC. Il job deve quindi essere richiamato sia alle
-// 05:45 sia alle 06:45 UTC dal lunedi al venerdi. Solo una delle due chiamate
-// cade nella finestra italiana delle 07:45, a seconda di ora legale/solare.
-// L'altra viene ignorata. In questo modo non serve modificare il cron due volte l'anno.
+// Aruba pianifica i cron in UTC. Per mantenere l'invio alle 09:00 italiane
+// sia con ora legale sia con ora solare, il job deve essere richiamato alle
+// 07:00 e alle 08:00 UTC dal lunedi al venerdi. Solo una delle due chiamate
+// cade nella finestra italiana delle 09:00; l'altra viene ignorata.
+// In questo modo non serve modificare il cron due volte l'anno.
 $minutiLocali = ((int)$oraRoma->format('H') * 60) + (int)$oraRoma->format('i');
-$finestraDa = (7 * 60) + 30;  // 07:30 Europe/Rome
-$finestraA = (8 * 60) + 15;   // 08:15 Europe/Rome
+$finestraDa = (8 * 60) + 55;  // 08:55 Europe/Rome
+$finestraA = (9 * 60) + 15;   // 09:15 Europe/Rome
 
 if ($minutiLocali < $finestraDa || $minutiLocali > $finestraA) {
     exit('Fuori finestra invio: ora italiana ' . $oraRoma->format('H:i') . " - nessun invio\n");
