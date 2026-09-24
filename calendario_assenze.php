@@ -211,29 +211,44 @@ function hrPeriodoEvento(array $event): string
     return 'Giornata';
 }
 
-$anno = (int)($_GET['anno'] ?? date('Y'));
-$mese = (int)($_GET['mese'] ?? date('n'));
 
-if ($mese < 1 || $mese > 12) {
-    $mese = (int)date('n');
-}
-if ($anno < 2020 || $anno > 2100) {
-    $anno = (int)date('Y');
+$vista = strtolower(trim((string)($_GET['vista'] ?? 'settimane')));
+if (!in_array($vista, ['giorno', 'settimane', 'mese'], true)) {
+    $vista = 'settimane';
 }
 
-$primoDelMese = new DateTimeImmutable(sprintf('%04d-%02d-01', $anno, $mese));
-$ultimoDelMese = $primoDelMese->modify('last day of this month');
-$inizioGriglia = $primoDelMese->modify('-' . ((int)$primoDelMese->format('N') - 1) . ' days');
-$fineGriglia = $ultimoDelMese->modify('+' . (7 - (int)$ultimoDelMese->format('N')) . ' days');
-$prev = $primoDelMese->modify('-1 month');
-$next = $primoDelMese->modify('+1 month');
-$annoDa = max(2020, $anno - 2);
-$annoA = min(2100, $anno + 2);
+$oggi = new DateTimeImmutable('today');
+$dataParam = trim((string)($_GET['data'] ?? ''));
+try {
+    $dataRif = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataParam) ? new DateTimeImmutable($dataParam) : $oggi;
+} catch (Throwable $e) {
+    $dataRif = $oggi;
+}
+
+if ($vista === 'giorno') {
+    $inizioPeriodo = $dataRif;
+    $finePeriodo = $dataRif;
+    $prevData = $dataRif->modify('-1 day');
+    $nextData = $dataRif->modify('+1 day');
+    $titoloPeriodo = hrNomeGiornoBreve($dataRif) . ' ' . $dataRif->format('d/m/Y');
+} elseif ($vista === 'mese') {
+    $inizioPeriodo = $dataRif->modify('first day of this month');
+    $finePeriodo = $dataRif->modify('last day of this month');
+    $prevData = $dataRif->modify('-1 month');
+    $nextData = $dataRif->modify('+1 month');
+    $titoloPeriodo = hrNomeMese((int)$dataRif->format('n'), (int)$dataRif->format('Y'));
+} else {
+    $inizioPeriodo = $dataRif->modify('-' . ((int)$dataRif->format('N') - 1) . ' days');
+    $finePeriodo = $inizioPeriodo->modify('+11 days');
+    // due settimane lavorative: lun-ven + lun-ven; il range SQL include il weekend intermedio.
+    $prevData = $dataRif->modify('-7 days');
+    $nextData = $dataRif->modify('+7 days');
+    $titoloPeriodo = $inizioPeriodo->format('d/m') . ' - ' . $finePeriodo->format('d/m/Y');
+}
 
 $scopeUtenti = hrScopeUtentiCalendario($pdo, $idUtente, $puoVedereTutteAssenze);
 $scopeMap = [];
 $scopeIds = [];
-
 foreach ($scopeUtenti as $u) {
     $uid = (int)$u['id_utente'];
     $scopeIds[] = $uid;
@@ -244,119 +259,91 @@ foreach ($scopeUtenti as $u) {
     ];
 }
 
-$eventsByDay = [];
-$daysWithEvents = [];
-$legendMap = [];
-$error = '';
-$totalUsers = count($scopeIds);
+// Ordine righe: utente corrente, riporti diretti, membri team non duplicati.
+// Per HR con visione globale: utente corrente, poi gli altri alfabeticamente.
+usort($scopeUtenti, static function(array $a, array $b) use ($idUtente): int {
+    $aid = (int)$a['id_utente'];
+    $bid = (int)$b['id_utente'];
+    if ($aid === $idUtente) return -1;
+    if ($bid === $idUtente) return 1;
+    $ag = (int)($a['scope_gerarchia'] ?? 0);
+    $bg = (int)($b['scope_gerarchia'] ?? 0);
+    if ($ag !== $bg) return $bg <=> $ag;
+    $at = (int)($a['scope_gruppo'] ?? 0);
+    $bt = (int)($b['scope_gruppo'] ?? 0);
+    if ($at !== $bt) return $bt <=> $at;
+    return strcasecmp(hrNomeUtente($a), hrNomeUtente($b));
+});
 
+function hrNomeCompatto(array $u, int $corrente): string
+{
+    $nome = trim((string)($u['nome'] ?? ''));
+    $cognome = trim((string)($u['cognome'] ?? ''));
+    $label = $cognome !== '' ? $cognome . ($nome !== '' ? ' ' . mb_strtoupper(mb_substr($nome, 0, 1, 'UTF-8'), 'UTF-8') . '.' : '') : hrNomeUtente($u);
+    return $label . ((int)$u['id_utente'] === $corrente ? ' (tu)' : '');
+}
+
+$eventsByUserDay = [];
+$error = '';
 try {
-    if ($totalUsers > 0) {
+    if ($scopeIds !== []) {
         $placeholders = implode(',', array_fill(0, count($scopeIds), '?'));
         $sql = "
-            SELECT
-                r.id_richiesta,
-                r.id_utente_richiedente,
-                p.data_da,
-                p.data_a,
-                p.ora_da,
-                p.ora_a,
-                p.tipo_periodo,
-                te.codice AS codice_tipologia,
-                te.descrizione AS tipologia,
-                te.descrizione_calendario,
-                te.colore_calendario,
-                te.disturbabile,
-                te.mostra_dettaglio_colleghi,
-                te.mostra_dettaglio_responsabili,
-                te.mostra_dettaglio_hr,
-                sr.codice AS codice_stato_richiesta,
-                sr.descrizione AS stato_richiesta,
-                sr.colore AS colore_stato_richiesta,
-                sp.descrizione_breve AS stato_presenza_breve,
-                sp.descrizione AS stato_presenza,
-                u.nome,
-                u.cognome,
-                u.username
+            SELECT r.id_richiesta, r.id_utente_richiedente,
+                   p.data_da, p.data_a, p.ora_da, p.ora_a, p.tipo_periodo,
+                   te.descrizione AS tipologia, te.descrizione_calendario,
+                   te.mostra_dettaglio_colleghi, te.mostra_dettaglio_responsabili, te.mostra_dettaglio_hr,
+                   sr.codice AS codice_stato_richiesta, sr.descrizione AS stato_richiesta,
+                   sp.descrizione_breve AS stato_presenza_breve, sp.descrizione AS stato_presenza,
+                   u.nome, u.cognome, u.username
             FROM hr_richieste r
-            INNER JOIN hr_stati_richiesta sr
-                ON sr.id_stato_richiesta = r.id_stato_richiesta
-               AND sr.codice IN ('APPROVATA', 'IN_ATTESA')
-            LEFT JOIN hr_richieste_approvazioni ra
-                ON ra.id_richiesta = r.id_richiesta
-               AND ra.id_approvatore_assegnato = ?
-               AND ra.stato_approvazione = 'IN_ATTESA'
-            INNER JOIN hr_richieste_periodi p
-                ON p.id_richiesta = r.id_richiesta
-            INNER JOIN hr_tipologie_evento te
-                ON te.id_tipologia_evento = r.id_tipologia_evento
-               AND te.visibile_calendario = 1
-               AND te.attivo = 1
-            INNER JOIN hr_stati_presenza sp
-                ON sp.id_stato_presenza = te.id_stato_presenza
-            INNER JOIN aut_utenti u
-                ON u.id_utente = r.id_utente_richiedente
+            INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta=r.id_stato_richiesta
+                AND sr.codice IN ('APPROVATA','IN_ATTESA')
+            LEFT JOIN hr_richieste_approvazioni ra ON ra.id_richiesta=r.id_richiesta
+                AND ra.id_approvatore_assegnato=? AND ra.stato_approvazione='IN_ATTESA'
+            INNER JOIN hr_richieste_periodi p ON p.id_richiesta=r.id_richiesta
+            INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento=r.id_tipologia_evento
+                AND te.visibile_calendario=1 AND te.attivo=1
+            INNER JOIN hr_stati_presenza sp ON sp.id_stato_presenza=te.id_stato_presenza
+            INNER JOIN aut_utenti u ON u.id_utente=r.id_utente_richiedente
             WHERE r.id_utente_richiedente IN ($placeholders)
-              AND p.data_da <= ?
-              AND p.data_a >= ?
-              AND (
-                    sr.codice = 'APPROVATA'
-                    OR (
-                        sr.codice = 'IN_ATTESA'
-                        AND (
-                            r.id_utente_richiedente = ?
-                            OR ? = 1
-                            OR ra.id_richiesta_approvazione IS NOT NULL
-                        )
-                    )
-                  )
-            ORDER BY p.data_da, p.ora_da, u.nome, u.cognome, u.username
-        ";
-
+              AND p.data_da<=? AND p.data_a>=?
+              AND (sr.codice='APPROVATA' OR
+                  (sr.codice='IN_ATTESA' AND
+                   (r.id_utente_richiedente=? OR ?=1 OR ra.id_richiesta_approvazione IS NOT NULL)))
+            ORDER BY p.data_da,p.ora_da,u.cognome,u.nome";
         $params = [$idUtente];
         $params = array_merge($params, $scopeIds);
-        $params[] = $fineGriglia->format('Y-m-d');
-        $params[] = $inizioGriglia->format('Y-m-d');
+        $params[] = $finePeriodo->format('Y-m-d');
+        $params[] = $inizioPeriodo->format('Y-m-d');
         $params[] = $idUtente;
         $params[] = $puoVederePendentiGlobali ? 1 : 0;
-
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($rows as $row) {
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $start = new DateTimeImmutable((string)$row['data_da']);
             $end = new DateTimeImmutable((string)$row['data_a']);
-            $label = hrEtichettaCalendario($row, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologieAssenze);
-            $color = hrColoreValido((string)($row['colore_calendario'] ?? ''));
-
-            $legendMap[$label] = $color;
-
-            $event = [
-                'id_richiesta' => (int)$row['id_richiesta'],
-                'id_utente' => (int)$row['id_utente_richiedente'],
-                'nome' => hrNomeUtente($row),
-                'tipologia' => $label,
-                'colore' => $color,
-                'stato_presenza' => (string)($row['stato_presenza_breve'] ?: $row['stato_presenza']),
-                'disturbabile' => (int)$row['disturbabile'] === 1,
-                'codice_stato' => (string)$row['codice_stato_richiesta'],
-                'stato' => (string)$row['stato_richiesta'],
-                'colore_stato' => hrColoreValido((string)($row['colore_stato_richiesta'] ?? '')),
-                'tipo_periodo' => (string)$row['tipo_periodo'],
-                'data_da' => (string)$row['data_da'],
-                'data_a' => (string)$row['data_a'],
-                'ora_da' => $row['ora_da'] ? substr((string)$row['ora_da'], 0, 5) : '',
-                'ora_a' => $row['ora_a'] ? substr((string)$row['ora_a'], 0, 5) : '',
-            ];
-
-            for ($day = $start; $day <= $end; $day = $day->modify('+1 day')) {
-                $key = $day->format('Y-m-d');
-                if ($key < $inizioGriglia->format('Y-m-d') || $key > $fineGriglia->format('Y-m-d')) {
-                    continue;
-                }
-                $eventsByDay[$key][] = $event;
-                $daysWithEvents[$key] = true;
+            $uid = (int)$row['id_utente_richiedente'];
+            $showDetail = hrMostraDettaglioCalendario($row, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologieAssenze);
+            $label = $showDetail
+                ? trim((string)($row['descrizione_calendario'] ?: $row['tipologia'] ?: 'Assenza'))
+                : trim((string)($row['stato_presenza_breve'] ?: $row['stato_presenza'] ?: 'Assente'));
+            for ($d=$start; $d<=$end; $d=$d->modify('+1 day')) {
+                $key=$d->format('Y-m-d');
+                if ($key<$inizioPeriodo->format('Y-m-d') || $key>$finePeriodo->format('Y-m-d')) continue;
+                $eventsByUserDay[$uid][$key][] = [
+                    'id'=>(int)$row['id_richiesta'],
+                    'label'=>$label !== '' ? $label : 'Assenza',
+                    'stato'=>(string)$row['codice_stato_richiesta'],
+                    'stato_label'=>(string)$row['stato_richiesta'],
+                    'tipo_periodo'=>(string)$row['tipo_periodo'],
+                    'ora_da'=>$row['ora_da'] ? substr((string)$row['ora_da'],0,5) : '',
+                    'ora_a'=>$row['ora_a'] ? substr((string)$row['ora_a'],0,5) : '',
+                    'data_da'=>(string)$row['data_da'],
+                    'data_a'=>(string)$row['data_a'],
+                    'dettaglio'=>$showDetail,
+                ];
             }
         }
     }
@@ -364,298 +351,176 @@ try {
     $error = $e->getMessage();
 }
 
-$daySummaries = [];
-$dayDetailsJson = [];
+function hrStatoCella(array $events): string
+{
+    if ($events === []) return 'free';
+    foreach ($events as $e) if (($e['stato'] ?? '') === 'IN_ATTESA') return 'pending';
+    return 'absent';
+}
 
-foreach ($eventsByDay as $dayKey => $events) {
-    $summaryMap = [];
-    $detailMap = [];
-
-    foreach ($events as $event) {
-        $label = trim((string)$event['tipologia']);
-        if ($label === '') {
-            $label = 'Assenza';
-        }
-
-        if (!isset($summaryMap[$label])) {
-            $summaryMap[$label] = ['count' => 0, 'pending' => 0, 'approved' => 0, 'color' => $event['colore']];
-        }
-        $summaryMap[$label]['count']++;
-        if (($event['codice_stato'] ?? '') === 'IN_ATTESA') {
-            $summaryMap[$label]['pending']++;
-        } elseif (($event['codice_stato'] ?? '') === 'APPROVATA') {
-            $summaryMap[$label]['approved']++;
-        }
-
-        if (!isset($detailMap[$label])) {
-            $detailMap[$label] = [
-                'color' => $event['colore'],
-                'items' => [],
-            ];
-        }
-        $detailMap[$label]['items'][] = $event;
+function hrTitoloCella(array $events): string
+{
+    if ($events === []) return 'Nessuna assenza registrata';
+    $parts=[];
+    foreach ($events as $e) {
+        $p=(string)$e['label'];
+        if (($e['tipo_periodo'] ?? '') === 'ORE' && $e['ora_da'] && $e['ora_a']) $p.=' '.$e['ora_da'].'-'.$e['ora_a'];
+        if (($e['stato'] ?? '') === 'IN_ATTESA') $p.=' · da approvare';
+        $parts[]=$p;
     }
-
-    ksort($summaryMap);
-    ksort($detailMap);
-    $daySummaries[$dayKey] = $summaryMap;
-    $dayDetailsJson[$dayKey] = $detailMap;
+    return implode(' | ', $parts);
 }
 
-ksort($legendMap);
-$dayDetailsJsonEncoded = json_encode($dayDetailsJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-if ($dayDetailsJsonEncoded === false) {
-    $dayDetailsJsonEncoded = '{}';
+$giorni=[];
+if ($vista === 'mese') {
+    for ($d=$inizioPeriodo; $d<=$finePeriodo; $d=$d->modify('+1 day')) {
+        if ((int)$d->format('N') <= 5) $giorni[]=$d;
+    }
+} elseif ($vista === 'settimane') {
+    for ($d=$inizioPeriodo; $d<=$finePeriodo; $d=$d->modify('+1 day')) {
+        if ((int)$d->format('N') <= 5) $giorni[]=$d;
+    }
 }
 
-$todayKey = date('Y-m-d');
-$selectedDay = trim((string)($_GET['giorno'] ?? ''));
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDay)) {
-    $selectedDay = ($todayKey >= $inizioGriglia->format('Y-m-d') && $todayKey <= $fineGriglia->format('Y-m-d'))
-        ? $todayKey
-        : $primoDelMese->format('Y-m-d');
-}
-$selectedDateForJs = json_encode($selectedDay, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-if ($selectedDateForJs === false) {
-    $selectedDateForJs = 'null';
-}
-
+$detailsJson = json_encode($eventsByUserDay, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?: '{}';
 layoutHeader('Calendario assenze');
 ?>
+<style>
+.hr-matrix-page{display:flex;flex-direction:column;gap:14px}
+.hr-matrix-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 22px}
+.hr-matrix-head h1{margin:0 0 4px}.hr-matrix-head .meta{margin:0}
+.hr-view-switch{display:flex;gap:6px;flex-wrap:wrap}.hr-view-switch a{min-height:34px;padding:0 12px}
+.hr-view-switch a.is-active{background:var(--rav-yellow,#ffd200)!important;color:var(--rav-blue,#0068c9)!important;border-color:var(--rav-blue,#0068c9)!important}
+.hr-period-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px}
+.hr-period-title{font-weight:800;font-size:16px;text-align:center;flex:1}
+.hr-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:0 4px;font-size:13px;color:#475569}
+.hr-legend span{display:inline-flex;align-items:center;gap:6px}.hr-status-dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(15,23,42,.12)}
+.hr-status-free{background:#e9f7ee}.hr-status-pending{background:#ffd84d}.hr-status-absent{background:#e85b5b}.hr-status-off{background:#e5e7eb}
+.hr-matrix-wrap{overflow:auto;border-radius:14px;border:1px solid #dbe3ec;background:#fff;-webkit-overflow-scrolling:touch}
+.hr-matrix{display:grid;min-width:760px;grid-template-columns:160px repeat(var(--cols),minmax(62px,1fr))}
+.hr-matrix-cell{min-height:54px;border-right:1px solid #e5eaf0;border-bottom:1px solid #e5eaf0;display:flex;align-items:center;justify-content:center;padding:6px;position:relative;background:#fff}
+.hr-matrix-name{justify-content:flex-start;font-weight:700;position:sticky;left:0;z-index:3;background:#fff;white-space:nowrap}
+.hr-matrix-name.is-me{background:#f4f8fc;color:#005aa9}
+.hr-matrix-header{min-height:58px;position:sticky;top:0;z-index:2;background:#f7f9fc;flex-direction:column;font-size:12px;font-weight:800;color:#334155}
+.hr-matrix-header.hr-matrix-name{z-index:4;align-items:flex-start;justify-content:center}
+.hr-matrix-header strong{font-size:15px;color:#172033}
+.hr-daycell{cursor:pointer}.hr-daycell:hover,.hr-daycell:focus-visible{outline:none;box-shadow:inset 0 0 0 2px #0068c9}
+.hr-daycell .hr-status-dot{width:20px;height:20px;box-shadow:0 1px 2px rgba(15,23,42,.12)}
+.hr-daycell.is-today{background:#f7fbff}.hr-daycell.is-today:after{content:"";position:absolute;inset:3px;border:1px solid rgba(0,104,201,.28);border-radius:8px;pointer-events:none}
+.hr-day-view{overflow:auto;border:1px solid #dbe3ec;border-radius:14px;background:#fff}
+.hr-timeline{min-width:860px;display:grid;grid-template-columns:160px repeat(18,minmax(38px,1fr))}
+.hr-time-head{min-height:48px;background:#f7f9fc;font-size:11px;font-weight:700;color:#475569;border-bottom:1px solid #e5eaf0;border-right:1px solid #e5eaf0;display:flex;align-items:flex-start;justify-content:flex-start;padding:8px 0 0 3px}
+.hr-time-head:last-child:after{content:"17:00";position:absolute;right:-17px}.hr-time-head{position:relative}
+.hr-time-cell{height:48px;border-right:1px solid #edf0f4;border-bottom:1px solid #e5eaf0;background:#e9f7ee;cursor:pointer}
+.hr-time-cell.is-pending{background:#ffd84d}.hr-time-cell.is-absent{background:#e85b5b}
+.hr-time-name{height:48px;display:flex;align-items:center;padding:0 8px;font-weight:700;border-right:1px solid #e5eaf0;border-bottom:1px solid #e5eaf0;position:sticky;left:0;z-index:3;background:#fff;white-space:nowrap}
+.hr-detail-pop{position:fixed;z-index:5000;display:none;width:min(360px,calc(100vw - 24px));background:#fff;border:1px solid #ccd7e3;border-radius:14px;box-shadow:0 18px 45px rgba(15,23,42,.22);padding:14px}
+.hr-detail-pop.is-open{display:block}.hr-detail-pop h3{margin:0 28px 8px 0;font-size:16px}.hr-detail-close{position:absolute;right:8px;top:8px;border:0!important;background:transparent!important;color:#475569!important;min-height:28px!important;padding:0 8px!important}
+.hr-detail-item{padding:9px 0;border-top:1px solid #edf0f4;font-size:13px}.hr-detail-item:first-of-type{border-top:0}.hr-detail-item strong{display:block;margin-bottom:3px}
+@media(max-width:700px){
+ .hr-matrix-page{gap:10px}.hr-matrix-head{padding:14px;align-items:stretch;flex-direction:column}
+ .hr-view-switch{display:grid;grid-template-columns:repeat(3,1fr)}.hr-view-switch a{padding:0 7px;font-size:12px}
+ .hr-period-nav{padding:9px}.hr-period-title{font-size:14px}
+ .hr-legend{gap:9px;font-size:11px}
+ .hr-matrix{min-width:650px;grid-template-columns:112px repeat(var(--cols),minmax(52px,1fr))}
+ .hr-matrix-cell{min-height:48px;padding:4px}.hr-matrix-name{font-size:12px}.hr-matrix-header{font-size:10px}.hr-matrix-header strong{font-size:13px}
+ .hr-daycell .hr-status-dot{width:18px;height:18px}
+ .hr-timeline{min-width:760px;grid-template-columns:112px repeat(18,minmax(36px,1fr))}
+ .hr-time-name{font-size:12px}
+}
+</style>
 
-
-<div class="hr-cal-page">
+<div class="hr-matrix-page">
 <?php renderHrAlert($error, 'danger'); ?>
-
-<section class="hr-cal-layout">
-    <aside class="card hr-day-panel" aria-live="polite">
-        <div class="hr-day-panel-head">
-            <h2 id="hrDayPanelTitle">Situazione giorno</h2>
-            <div class="hr-day-nav" aria-label="Navigazione giorno">
-                <button type="button" class="btn hr-icon-btn hr-icon-btn-primary" id="hrPrevDay" title="Giorno precedente" aria-label="Giorno precedente"><i class="la la-angle-left" aria-hidden="true"></i></button>
-                <button type="button" class="btn hr-icon-btn hr-icon-btn-secondary" id="hrTodayDay" title="Oggi" aria-label="Oggi"><i class="la la-calendar" aria-hidden="true"></i></button>
-                <button type="button" class="btn hr-icon-btn hr-icon-btn-primary" id="hrNextDay" title="Giorno successivo" aria-label="Giorno successivo"><i class="la la-angle-right" aria-hidden="true"></i></button>
-            </div>
-        </div>
-        <div id="hrDayPanelBody"></div>
-    </aside>
-
-    <div class="card">
-        <div class="hr-calendar-head">
-            <div>
-                <h1><?= h(hrNomeMese($mese, $anno)) ?></h1>
-                <div class="hr-calendar-subtitle">Clicca su un giorno per vedere il dettaglio raggruppato per tipologia.</div>
-            </div>
-            <div class="hr-cal-toolbar" aria-label="Navigazione mese">
-                <a class="btn hr-icon-btn hr-icon-btn-primary" href="calendario_assenze.php?mese=<?= (int)$prev->format('n') ?>&anno=<?= (int)$prev->format('Y') ?>" title="Mese precedente" aria-label="Mese precedente"><i class="la la-angle-left" aria-hidden="true"></i></a>
-                <a class="btn hr-cal-today-btn" href="calendario_assenze.php" title="Torna al mese corrente" aria-label="Torna al mese corrente"><i class="la la-calendar" aria-hidden="true"></i><span>Oggi</span></a>
-                <a class="btn hr-icon-btn hr-icon-btn-primary" href="calendario_assenze.php?mese=<?= (int)$next->format('n') ?>&anno=<?= (int)$next->format('Y') ?>" title="Mese successivo" aria-label="Mese successivo"><i class="la la-angle-right" aria-hidden="true"></i></a>
-                <form class="hr-month-jump" method="get" action="calendario_assenze.php" aria-label="Vai a un mese specifico">
-                    <select name="mese" aria-label="Mese">
-                        <?php for ($m = 1; $m <= 12; $m++): ?>
-                            <option value="<?= $m ?>" <?= $m === $mese ? 'selected' : '' ?>><?= h(hrNomeMese($m, $anno)) ?></option>
-                        <?php endfor; ?>
-                    </select>
-                    <select name="anno" aria-label="Anno">
-                        <?php for ($a = $annoDa; $a <= $annoA; $a++): ?>
-                            <option value="<?= $a ?>" <?= $a === $anno ? 'selected' : '' ?>><?= $a ?></option>
-                        <?php endfor; ?>
-                    </select>
-                    <button type="submit" class="btn">Vai</button>
-                </form>
-            </div>
-        </div>
-        <div class="hr-cal-grid" aria-label="Calendario mensile">
-            <?php foreach (['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] as $giorno): ?>
-                <div class="hr-cal-weekday"><?= h($giorno) ?></div>
-            <?php endforeach; ?>
-            <?php for ($day = $inizioGriglia; $day <= $fineGriglia; $day = $day->modify('+1 day')): ?>
-                <?php
-                $key = $day->format('Y-m-d');
-                $isCurrentMonth = (int)$day->format('n') === $mese;
-                $isToday = $key === date('Y-m-d');
-                $summaries = $daySummaries[$key] ?? [];
-                $hasEvents = count($summaries) > 0;
-                $isWeekend = (int)$day->format('N') >= 6;
-                $classes = 'hr-cal-day' . (!$isCurrentMonth ? ' is-muted' : '') . ($isWeekend ? ' is-weekend' : '') . ($isToday ? ' is-today' : '') . ($key === $selectedDay ? ' is-selected' : '') . ($hasEvents ? ' has-events' : '');
-                ?>
-                <div class="<?= h($classes) ?>" data-day="<?= h($key) ?>" role="button" tabindex="0" aria-pressed="<?= $key === $selectedDay ? 'true' : 'false' ?>" aria-label="<?= h(hrNomeGiornoBreve($day) . ' ' . $day->format('d/m/Y')) ?>">
-                    <span class="hr-cal-date-line">
-                        <span class="hr-cal-day-number"><?= h($day->format('j')) ?></span>
-                        <span class="hr-cal-mobile-weekday"><?= h(hrNomeGiornoBreve($day)) ?></span>
-                        <?php if ($isToday): ?><span class="hr-cal-today-badge">Oggi</span><?php endif; ?>
-                    </span>
-                    <?php foreach ($summaries as $label => $summary): ?>
-                        <span class="hr-cal-event-line">
-                            <span class="hr-dot" style="--dot-color: <?= h($summary['color']) ?>"></span>
-                            <span><?= h(mb_strtolower((string)$label, 'UTF-8')) ?>: <strong><?= (int)$summary['count'] ?></strong><?php if (!empty($summary['pending'])): ?> · <?= (int)$summary['pending'] ?> in attesa<?php endif; ?></span>
-                        </span>
-                    <?php endforeach; ?>
-                </div>
-            <?php endfor; ?>
-        </div>
-    </div>
+<section class="card hr-matrix-head">
+  <div><h1>Calendario assenze</h1><p class="meta">Disponibilità del tuo gruppo di lavoro. Tocca o clicca un indicatore per il dettaglio.</p></div>
+  <nav class="hr-view-switch" aria-label="Vista calendario">
+    <?php foreach (['giorno'=>'Giorno','settimane'=>'2 settimane','mese'=>'Mese'] as $k=>$v): ?>
+      <a class="btn btn-outline <?= $vista===$k?'is-active':'' ?>" href="?vista=<?= h($k) ?>&data=<?= h($dataRif->format('Y-m-d')) ?>"><?= h($v) ?></a>
+    <?php endforeach; ?>
+  </nav>
 </section>
+
+<section class="card hr-period-nav">
+ <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($prevData->format('Y-m-d')) ?>" aria-label="Periodo precedente"><i class="la la-angle-left"></i></a>
+ <div class="hr-period-title"><?= h($titoloPeriodo) ?></div>
+ <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($oggi->format('Y-m-d')) ?>">Oggi</a>
+ <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($nextData->format('Y-m-d')) ?>" aria-label="Periodo successivo"><i class="la la-angle-right"></i></a>
+</section>
+
+<div class="hr-legend">
+ <span><i class="hr-status-dot hr-status-free"></i>Nessuna assenza</span>
+ <span><i class="hr-status-dot hr-status-pending"></i>Da approvare</span>
+ <span><i class="hr-status-dot hr-status-absent"></i>Assente</span>
+</div>
+
+<?php if ($vista === 'giorno'): ?>
+<div class="hr-day-view">
+ <div class="hr-timeline">
+  <div class="hr-time-head hr-matrix-name">Persona</div>
+  <?php for($m=8*60;$m<17*60;$m+=30): ?><div class="hr-time-head"><?= h(sprintf('%02d:%02d',intdiv($m,60),$m%60)) ?></div><?php endfor; ?>
+  <?php foreach($scopeUtenti as $u): $uid=(int)$u['id_utente']; $key=$dataRif->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; ?>
+   <div class="hr-time-name <?= $uid===$idUtente?'is-me':'' ?>"><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
+   <?php for($m=8*60;$m<17*60;$m+=30):
+      $slotEnd=$m+30; $slotEvents=[];
+      foreach($evs as $e){
+        if(($e['tipo_periodo']??'')!=='ORE'){ $slotEvents[]=$e; continue; }
+        [$hh1,$mm1]=array_map('intval',explode(':',$e['ora_da']?:'00:00'));
+        [$hh2,$mm2]=array_map('intval',explode(':',$e['ora_a']?:'00:00'));
+        $a=$hh1*60+$mm1; $b=$hh2*60+$mm2;
+        if($a<$slotEnd && $b>$m) $slotEvents[]=$e;
+      }
+      $st=hrStatoCella($slotEvents);
+   ?><div tabindex="0" class="hr-time-cell <?= $st==='pending'?'is-pending':($st==='absent'?'is-absent':'') ?>" data-user="<?= $uid ?>" data-day="<?= h($key) ?>" data-slot="<?= $m ?>" title="<?= h(hrTitoloCella($slotEvents)) ?>"></div><?php endfor; ?>
+  <?php endforeach; ?>
+ </div>
+</div>
+<?php else: ?>
+<div class="hr-matrix-wrap">
+ <div class="hr-matrix" style="--cols:<?= count($giorni) ?>">
+  <div class="hr-matrix-cell hr-matrix-header hr-matrix-name">Persona</div>
+  <?php foreach($giorni as $d): ?><div class="hr-matrix-cell hr-matrix-header <?= $d->format('Y-m-d')===$oggi->format('Y-m-d')?'is-today':'' ?>"><span><?= h(hrNomeGiornoBreve($d)) ?></span><strong><?= h($d->format('d/m')) ?></strong></div><?php endforeach; ?>
+  <?php foreach($scopeUtenti as $u): $uid=(int)$u['id_utente']; ?>
+   <div class="hr-matrix-cell hr-matrix-name <?= $uid===$idUtente?'is-me':'' ?>"><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
+   <?php foreach($giorni as $d): $key=$d->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; $st=hrStatoCella($evs); ?>
+    <div tabindex="0" role="button" class="hr-matrix-cell hr-daycell <?= $key===$oggi->format('Y-m-d')?'is-today':'' ?>" data-user="<?= $uid ?>" data-day="<?= h($key) ?>" title="<?= h(hrTitoloCella($evs)) ?>"><i class="hr-status-dot hr-status-<?= h($st) ?>"></i></div>
+   <?php endforeach; ?>
+  <?php endforeach; ?>
+ </div>
+</div>
+<?php endif; ?>
+</div>
+
+<div class="hr-detail-pop" id="hrDetailPop" role="dialog" aria-modal="false" aria-live="polite">
+ <button type="button" class="hr-detail-close" id="hrDetailClose" aria-label="Chiudi">×</button>
+ <h3 id="hrDetailTitle">Dettaglio</h3><div id="hrDetailBody"></div>
 </div>
 
 <script>
-(function () {
-    const details = <?= $dayDetailsJsonEncoded ?>;
-    const selectedInitialDay = <?= $selectedDateForJs ?>;
-    const title = document.getElementById('hrDayPanelTitle');
-    const body = document.getElementById('hrDayPanelBody');
-
-    function escapeHtml(value) {
-        return String(value).replace(/[&<>'"]/g, function (char) {
-            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'}[char];
-        });
-    }
-
-    function formatDate(isoDate) {
-        const parts = String(isoDate).split('-');
-        if (parts.length !== 3) return isoDate;
-        return parts[2] + '/' + parts[1] + '/' + parts[0];
-    }
-
-    function renderDay(day) {
-        const groups = details[day] || {};
-        title.textContent = 'Situazione del ' + formatDate(day);
-        let html = '';
-
-        const labels = Object.keys(groups);
-        if (labels.length === 0) {
-            body.innerHTML = '<p class="hr-day-panel-empty">Nessuna assenza visibile per questo giorno.</p>';
-            return;
-        }
-
-        let totalItems = 0;
-        let utenti = {};
-        let eventiOre = 0;
-        let eventiGiornata = 0;
-
-        labels.forEach(function (label) {
-            const group = groups[label];
-            const items = group.items || [];
-            totalItems += items.length;
-            items.forEach(function (item) {
-                const nome = String(item.nome || '');
-                if (nome !== '') {
-                    utenti[nome] = true;
-                }
-                if (item.tipo_periodo === 'ORE' && item.ora_da && item.ora_a) {
-                    eventiOre++;
-                } else {
-                    eventiGiornata++;
-                }
-            });
-        });
-
-        html += '<div class="hr-day-kpi" aria-label="Riepilogo giorno selezionato">';
-        html += '<span><strong>' + totalItems + '</strong> eventi visibili</span>';
-        html += '<span><strong>' + Object.keys(utenti).length + '</strong> persone</span>';
-        html += '<span><strong>' + eventiGiornata + '</strong> giornata</span>';
-        html += '<span><strong>' + eventiOre + '</strong> a ore</span>';
-        html += '</div>';
-
-        labels.forEach(function (label) {
-            const group = groups[label];
-            const color = group.color || '#6c757d';
-            const items = group.items || [];
-            html += '<div class="hr-detail-group">';
-            html += '<div class="hr-detail-group-title"><span class="hr-dot hr-dot-lg" style="--dot-color:' + escapeHtml(color) + '"></span>' + escapeHtml(label) + ' <span class="badge">' + items.length + '</span></div>';
-            items.forEach(function (item) {
-                let meta = '';
-                if (item.tipo_periodo === 'ORE' && item.ora_da && item.ora_a) {
-                    meta = escapeHtml(item.ora_da + ' - ' + item.ora_a);
-                } else if (item.data_da && item.data_a && item.data_da !== item.data_a) {
-                    meta = 'Dal ' + escapeHtml(formatDate(item.data_da)) + ' al ' + escapeHtml(formatDate(item.data_a));
-                } else if (day === new Date().toISOString().slice(0, 10)) {
-                    meta = 'Oggi';
-                }
-
-                if (item.codice_stato === 'IN_ATTESA') {
-                    meta += (meta !== '' ? ' · ' : '') + 'Da approvare';
-                }
-
-                html += '<div class="hr-detail-row"><div class="hr-detail-name">' + escapeHtml(item.nome || '') + '</div><div class="hr-detail-meta">' + meta + '</div></div>';
-            });
-            html += '</div>';
-        });
-
-        body.innerHTML = html;
-    }
-
-    function monthUrlForDay(day) {
-        const date = new Date(day + 'T12:00:00');
-        return 'calendario_assenze.php?mese=' + (date.getMonth() + 1) + '&anno=' + date.getFullYear() + '&giorno=' + encodeURIComponent(day);
-    }
-
-    function addDays(day, delta) {
-        const date = new Date(day + 'T12:00:00');
-        date.setDate(date.getDate() + delta);
-        return date.toISOString().slice(0, 10);
-    }
-
-    let currentDay = selectedInitialDay || new Date().toISOString().slice(0, 10);
-
-    function updateDayUrl(day) {
-        if (!window.history || !window.history.replaceState) {
-            return;
-        }
-        const url = new URL(window.location.href);
-        url.searchParams.set('mese', '<?= (int)$mese ?>');
-        url.searchParams.set('anno', '<?= (int)$anno ?>');
-        url.searchParams.set('giorno', day);
-        window.history.replaceState({}, '', url.toString());
-    }
-
-    function selectDay(day, updateUrl) {
-        currentDay = day;
-        document.querySelectorAll('.hr-cal-day.is-selected').forEach(function (cell) {
-            cell.classList.remove('is-selected');
-            cell.setAttribute('aria-pressed', 'false');
-        });
-        const cell = document.querySelector('.hr-cal-day[data-day="' + day + '"]');
-        if (cell) {
-            cell.classList.add('is-selected');
-            cell.setAttribute('aria-pressed', 'true');
-        }
-        renderDay(day);
-        if (updateUrl) {
-            updateDayUrl(day);
-        }
-    }
-
-    function goToDay(day) {
-        const cell = document.querySelector('.hr-cal-day[data-day="' + day + '"]');
-        if (!cell) {
-            window.location.href = monthUrlForDay(day);
-            return;
-        }
-        selectDay(day, true);
-    }
-
-    const prevDayButton = document.getElementById('hrPrevDay');
-    const nextDayButton = document.getElementById('hrNextDay');
-    const todayDayButton = document.getElementById('hrTodayDay');
-    if (prevDayButton) prevDayButton.addEventListener('click', function () { goToDay(addDays(currentDay, -1)); });
-    if (nextDayButton) nextDayButton.addEventListener('click', function () { goToDay(addDays(currentDay, 1)); });
-    if (todayDayButton) todayDayButton.addEventListener('click', function () { goToDay(new Date().toISOString().slice(0, 10)); });
-
-    document.querySelectorAll('.hr-cal-day').forEach(function (cell) {
-        cell.addEventListener('click', function () {
-            selectDay(cell.getAttribute('data-day'), true);
-        });
-        cell.addEventListener('keydown', function (event) {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                selectDay(cell.getAttribute('data-day'), true);
-            }
-        });
-    });
-
-    selectDay(selectedInitialDay || new Date().toISOString().slice(0, 10), false);
-}());
+(function(){
+ const data=<?= $detailsJson ?>, pop=document.getElementById('hrDetailPop'), title=document.getElementById('hrDetailTitle'), body=document.getElementById('hrDetailBody');
+ const names={<?php foreach($scopeUtenti as $u): ?><?= (int)$u['id_utente'] ?>:<?= json_encode(hrNomeCompatto($u,$idUtente),JSON_UNESCAPED_UNICODE) ?>,<?php endforeach; ?>};
+ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
+ function show(el){
+   const uid=el.dataset.user, day=el.dataset.day, all=(data[uid]&&data[uid][day])||[];
+   let evs=all;
+   if(el.dataset.slot!==undefined){
+     const a=Number(el.dataset.slot),b=a+30;
+     evs=all.filter(e=>{if(e.tipo_periodo!=='ORE')return true;const x=e.ora_da.split(':').map(Number),y=e.ora_a.split(':').map(Number);return x[0]*60+x[1]<b&&y[0]*60+y[1]>a;});
+   }
+   title.textContent=(names[uid]||'Persona')+' · '+day.split('-').reverse().join('/');
+   body.innerHTML=evs.length?evs.map(e=>'<div class="hr-detail-item"><strong>'+esc(e.label)+'</strong>'+esc(e.tipo_periodo==='ORE'&&e.ora_da&&e.ora_a?e.ora_da+' - '+e.ora_a:'Giornata')+(e.stato==='IN_ATTESA'?' · Da approvare':'')+'</div>').join(''):'<div class="hr-detail-item"><strong>Nessuna assenza registrata</strong>Disponibile nel periodo selezionato.</div>';
+   pop.classList.add('is-open');
+   const r=el.getBoundingClientRect(),w=Math.min(360,window.innerWidth-24);
+   pop.style.left=Math.max(12,Math.min(window.innerWidth-w-12,r.left))+'px';
+   pop.style.top=Math.max(12,Math.min(window.innerHeight-pop.offsetHeight-12,r.bottom+8))+'px';
+ }
+ document.querySelectorAll('.hr-daycell,.hr-time-cell').forEach(el=>{
+   el.addEventListener('click',()=>show(el));
+   el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show(el);}});
+ });
+ document.getElementById('hrDetailClose').addEventListener('click',()=>pop.classList.remove('is-open'));
+ document.addEventListener('click',e=>{if(pop.classList.contains('is-open')&&!pop.contains(e.target)&&!e.target.closest('.hr-daycell,.hr-time-cell'))pop.classList.remove('is-open');});
+})();
 </script>
-
 <?php layoutFooter(); ?>
