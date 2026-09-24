@@ -444,7 +444,7 @@ layoutHeader('Calendario assenze');
 .hr-matrix-header strong{font-size:15px;color:#172033}
 .hr-daycell{cursor:pointer}.hr-daycell.is-empty{cursor:default}.hr-daycell:not(.is-empty):hover,.hr-daycell:not(.is-empty):focus-visible{outline:none;box-shadow:inset 0 0 0 2px #0068c9}
 .hr-daycell .hr-status-dot{width:20px;height:20px;box-shadow:0 1px 2px rgba(15,23,42,.12)}
-.hr-daycell .hr-status-dot.hr-duration-hours{width:20px;height:20px;border-radius:50%;background:linear-gradient(90deg,currentColor 0 50%,#fff 50% 100%)}
+.hr-daycell .hr-status-dot.hr-duration-hours{width:20px;height:20px;border-radius:50%;box-sizing:border-box;background-color:#fff;background-image:linear-gradient(to right,currentColor 0,currentColor 50%,transparent 50%,transparent 100%);background-clip:padding-box;border:1px solid rgba(15,23,42,.16)}
 .hr-daycell .hr-status-dot.hr-status-pending.hr-duration-hours{color:#ffd84d}
 .hr-daycell .hr-status-dot.hr-status-absent.hr-duration-hours{color:#e85b5b}
 .hr-daycell.is-today{background:#f7fbff}.hr-daycell.is-today:after{content:"";position:absolute;inset:3px;border:1px solid rgba(0,104,201,.28);border-radius:8px;pointer-events:none}
@@ -495,7 +495,7 @@ layoutHeader('Calendario assenze');
   <span><i class="hr-status-dot hr-status-pending"></i>Da approvare</span>
   <span><i class="hr-status-dot hr-status-absent"></i>Assente</span>
   <?php if ($vista !== 'giorno'): ?>
-  <span title="Forma indicatore"><i class="hr-status-dot hr-status-off"></i>Giornata <i class="hr-status-dot hr-status-off hr-duration-hours" style="width:14px;height:14px;border-radius:50%;background:linear-gradient(90deg,#e5e7eb 0 50%,#fff 50% 100%)"></i>Ore</span>
+  <span title="Forma indicatore"><i class="hr-status-dot hr-status-off"></i>Giornata <i class="hr-status-dot hr-status-off hr-duration-hours" style="width:14px;height:14px;border-radius:50%;box-sizing:border-box;background-color:#fff;background-image:linear-gradient(to right,#e5e7eb 0,#e5e7eb 50%,transparent 50%,transparent 100%);background-clip:padding-box;border:1px solid rgba(15,23,42,.16)"></i>Ore</span>
   <?php endif; ?>
  </div>
  <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($dataRif->format('Y-m-d')) ?><?= $mostraTutti ? '' : '&mostra=tutti' ?>">
