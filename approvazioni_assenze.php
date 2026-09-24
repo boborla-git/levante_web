@@ -289,11 +289,17 @@ try {
         } catch (Throwable $emailException) {
         }
 
-        if ($azione === 'approva_richiesta') {
-            try {
-                hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta);
-            } catch (Throwable $riepilogoException) {
+        try {
+            if ($azione === 'approva_richiesta') {
+                // HR aveva gia visibilita della richiesta IN_ATTESA; con l'approvazione
+                // la richiesta diventa visibile anche ai destinatari BASE.
+                hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta, false, 'BASE');
+            } else {
+                // Una richiesta rifiutata sparisce dal riepilogo HR; i destinatari BASE
+                // non l'avevano mai vista.
+                hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta, true, 'HR');
             }
+        } catch (Throwable $riepilogoException) {
         }
 
         $redirectQuery = trim((string)($_POST['redirect_query'] ?? ''));
