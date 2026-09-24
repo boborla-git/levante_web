@@ -24,6 +24,7 @@ function caricaContestoUtenteSessione(int $idUtente): void
             username,
             nome,
             cognome,
+            email,
             attivo,
             deve_cambiare_password
         FROM aut_utenti
@@ -38,7 +39,7 @@ function caricaContestoUtenteSessione(int $idUtente): void
     }
 
     $stmtRuoli = $pdo->prepare("
-        SELECT ar.codice_ruolo
+        SELECT ar.codice_ruolo, ar.descrizione
         FROM aut_utenti_ruoli aur
         INNER JOIN aut_ruoli ar
             ON ar.id_ruolo = aur.id_ruolo
@@ -51,24 +52,55 @@ function caricaContestoUtenteSessione(int $idUtente): void
     $stmtRuoli->execute(['id_utente' => $idUtente]);
 
     $ruoli = [];
+    $ruoliDescrizioni = [];
     while ($rigaRuolo = $stmtRuoli->fetch()) {
         $codiceRuolo = trim((string)($rigaRuolo['codice_ruolo'] ?? ''));
+        $descrizioneRuolo = trim((string)($rigaRuolo['descrizione'] ?? ''));
         if ($codiceRuolo !== '') {
             $ruoli[] = $codiceRuolo;
         }
+        if ($descrizioneRuolo !== '') {
+            $ruoliDescrizioni[] = $descrizioneRuolo;
+        }
     }
 
-    $nomeCompleto = trim(((string)$utente['nome']) . ' ' . ((string)$utente['cognome']));
+    $nome = trim((string)$utente['nome']);
+    $cognome = trim((string)$utente['cognome']);
+    $nomeCompleto = trim($nome . ' ' . $cognome);
 
     $_SESSION['utente_id'] = (int)$utente['id_utente'];
     $_SESSION['id_utente'] = (int)$utente['id_utente'];
     $_SESSION['username'] = (string)$utente['username'];
-    $_SESSION['nome'] = $nomeCompleto !== '' ? $nomeCompleto : (string)$utente['username'];
+    $_SESSION['nome'] = $nome;
+    $_SESSION['cognome'] = $cognome;
+    $_SESSION['nome_completo'] = $nomeCompleto !== '' ? $nomeCompleto : (string)$utente['username'];
+    $_SESSION['email'] = (string)($utente['email'] ?? '');
     $_SESSION['ruolo'] = $ruoli[0] ?? '';
     $_SESSION['ruoli'] = $ruoli;
+    $_SESSION['ruoli_descrizioni'] = $ruoliDescrizioni;
+    $_SESSION['ha_ruoli'] = count($ruoli) > 0;
+    $_SESSION['ruolo_attivo'] = $ruoli[0] ?? null;
+    $_SESSION['ruolo_attivo_descrizione'] = $ruoliDescrizioni[0] ?? null;
     $_SESSION['deve_cambiare_password'] = (int)$utente['deve_cambiare_password'];
     $_SESSION['permessi'] = [];
     $_SESSION['utente_senza_ruolo'] = count($ruoli) === 0 ? 1 : 0;
+}
+
+function impersonazioneAttiva(): bool
+{
+    return !empty($_SESSION['impersonazione_attiva'])
+        && isset($_SESSION['impersonazione_origine'])
+        && is_array($_SESSION['impersonazione_origine']);
+}
+
+function utentePuoImpersonare(): bool
+{
+    if (impersonazioneAttiva()) {
+        return false;
+    }
+
+    $ruoli = $_SESSION['ruoli'] ?? [];
+    return is_array($ruoli) && in_array('admin_portale', $ruoli, true);
 }
 
 function utenteSenzaRuolo(): bool
@@ -86,6 +118,7 @@ function richiediLogin(): void
     $paginaCorrente = basename($_SERVER['PHP_SELF'] ?? '');
 
     if (
+        !impersonazioneAttiva() &&
         isset($_SESSION['deve_cambiare_password']) &&
         (int)$_SESSION['deve_cambiare_password'] === 1 &&
         $paginaCorrente !== 'cambia_password.php' &&
@@ -93,6 +126,17 @@ function richiediLogin(): void
     ) {
         header('Location: cambia_password.php');
         exit;
+    }
+
+    // "Visualizza come" e' volutamente in sola lettura: l'amministratore vede
+    // menu, dati e controlli dell'utente, ma non puo' produrre modifiche a suo nome.
+    if (
+        impersonazioneAttiva() &&
+        strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST' &&
+        !in_array($paginaCorrente, ['visualizza_come.php', 'logout.php'], true)
+    ) {
+        http_response_code(403);
+        die('Modalita Visualizza come: operazioni di modifica disabilitate. Torna amministratore per eseguire operazioni.');
     }
 }
 
