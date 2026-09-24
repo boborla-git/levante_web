@@ -34,7 +34,7 @@ try {
             if ((int)$esitoTest['errori'] > 0) {
                 throw new RuntimeException((string)($esitoTest['motivo'] ?? 'Invio di prova non riuscito.'));
             }
-            $messaggio = 'Invio di prova eseguito: controlla l\'email di lavoro dell\'Amministratore. Sono state inviate due email, una con motivi HR e una senza motivi.';
+            $messaggio = 'Invio di prova eseguito: controlla l\'email di lavoro dell\'Amministratore. Il test invia separatamente i due modelli BASE e HR per consentirne il controllo.';
         } elseif ($azione === 'invia_test_destinatari') {
             $esitoTest = hrRiepilogoAssenzeInviaTestDestinatari($pdo, date('Y-m-d'));
             if ((int)$esitoTest['errori'] > 0) {
@@ -240,7 +240,7 @@ layoutHeader('Riepilogo assenze email');
     </section>
 
     <section class="card card-wide">
-        <p class="meta">Il livello <strong>Senza motivi</strong> invia il riepilogo generale con nominativo e periodo/orario. Per i ruoli HR/Direzione autorizzati, <strong>Entrambe (generale + HR)</strong> invia due email distinte: una senza motivi e una riservata con la tipologia visibile a HR.</p>
+        <p class="meta">Il livello <strong>Senza motivi</strong> invia un solo riepilogo generale con nominativo, periodo/orario e oggetto, mostrando solo richieste approvate. Il livello <strong>Dettaglio HR</strong> invia un solo riepilogo riservato con anche il motivo e comprende sia le richieste approvate sia quelle ancora in attesa di approvazione.</p>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -276,7 +276,7 @@ layoutHeader('Riepilogo assenze email');
                                     <option value="NESSUNO" <?= $livello === 'NESSUNO' ? 'selected' : '' ?>>Non inviare</option>
                                     <option value="BASE" <?= $livello === 'BASE' ? 'selected' : '' ?>>Senza motivi</option>
                                     <?php if ((int)$utente['puo_hr'] === 1): ?>
-                                        <option value="HR" <?= $livello === 'HR' ? 'selected' : '' ?>>Entrambe (generale + HR)</option>
+                                        <option value="HR" <?= $livello === 'HR' ? 'selected' : '' ?>>Dettaglio HR</option>
                                     <?php endif; ?>
                                 </select>
                             </td>
