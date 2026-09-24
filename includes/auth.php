@@ -82,7 +82,53 @@ function caricaContestoUtenteSessione(int $idUtente): void
     $_SESSION['ruolo_attivo'] = $ruoli[0] ?? null;
     $_SESSION['ruolo_attivo_descrizione'] = $ruoliDescrizioni[0] ?? null;
     $_SESSION['deve_cambiare_password'] = (int)$utente['deve_cambiare_password'];
-    $_SESSION['permessi'] = [];
+
+    // Ricostruisce anche la mappa legacy dei permessi esattamente come avviene
+    // nel login reale. E' necessaria per le risorse che hanno ancora righe
+    // view/edit e vengono risolte tramite il fallback legacy.
+    $permessiLegacy = [];
+    $stmtPermessiLegacy = $pdo->prepare("
+        SELECT
+            ars.codice_risorsa,
+            arp.permesso,
+            arp.consentito
+        FROM aut_utenti_ruoli ur
+        INNER JOIN aut_ruoli r
+            ON r.id_ruolo = ur.id_ruolo
+           AND r.attivo = 1
+        INNER JOIN aut_ruoli_permessi arp
+            ON arp.id_ruolo = r.id_ruolo
+        INNER JOIN aut_risorse ars
+            ON ars.id_risorsa = arp.id_risorsa
+           AND ars.attivo = 1
+        WHERE ur.id_utente = :id_utente
+          AND ur.attivo = 1
+          AND (ur.data_fine IS NULL OR ur.data_fine >= NOW())
+    ");
+    $stmtPermessiLegacy->execute(['id_utente' => $idUtente]);
+
+    while ($rigaPermesso = $stmtPermessiLegacy->fetch(PDO::FETCH_ASSOC)) {
+        $codiceRisorsa = (string)($rigaPermesso['codice_risorsa'] ?? '');
+        $permesso = (string)($rigaPermesso['permesso'] ?? '');
+        $consentito = (int)($rigaPermesso['consentito'] ?? 0) === 1;
+
+        if (!$consentito || strpos($codiceRisorsa, 'pagina.') !== 0) {
+            continue;
+        }
+
+        $codiceModulo = substr($codiceRisorsa, 7);
+        if ($codiceModulo === '') {
+            continue;
+        }
+
+        if (in_array($permesso, ['edit', 'write', 'create', 'delete', 'execute'], true)) {
+            $permessiLegacy[$codiceModulo] = 'write';
+        } elseif (!isset($permessiLegacy[$codiceModulo]) && in_array($permesso, ['view', 'read'], true)) {
+            $permessiLegacy[$codiceModulo] = 'read';
+        }
+    }
+
+    $_SESSION['permessi'] = $permessiLegacy;
     $_SESSION['utente_senza_ruolo'] = count($ruoli) === 0 ? 1 : 0;
 }
 
