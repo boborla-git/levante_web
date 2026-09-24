@@ -96,8 +96,13 @@ if (!function_exists('hrRiepilogoAssenzeDestinatari')) {
 }
 
 if (!function_exists('hrRiepilogoAssenzeRighe')) {
-    function hrRiepilogoAssenzeRighe(PDO $pdo, string $data): array
+    function hrRiepilogoAssenzeRighe(PDO $pdo, string $data, string $livello = 'BASE'): array
     {
+        $livello = strtoupper(trim($livello));
+        $filtroStato = $livello === 'HR'
+            ? "IN ('APPROVATA', 'IN_ATTESA')"
+            : "= 'APPROVATA'";
+
         $stmt = $pdo->prepare(
             "SELECT
                 r.id_richiesta,
@@ -119,7 +124,7 @@ if (!function_exists('hrRiepilogoAssenzeRighe')) {
              FROM hr_richieste r
              INNER JOIN hr_stati_richiesta sr
                 ON sr.id_stato_richiesta = r.id_stato_richiesta
-               AND sr.codice = 'APPROVATA'
+               AND sr.codice {$filtroStato}
              INNER JOIN hr_richieste_periodi p
                 ON p.id_richiesta = r.id_richiesta
              INNER JOIN hr_tipologie_evento te
@@ -301,15 +306,20 @@ if (!function_exists('hrRiepilogoAssenzeLog')) {
 }
 
 if (!function_exists('hrRiepilogoAssenzeInvia')) {
-    function hrRiepilogoAssenzeInvia(PDO $pdo, string $data, string $tipo = 'MATTINO', ?int $idRichiestaTrigger = null): array
+    function hrRiepilogoAssenzeInvia(PDO $pdo, string $data, string $tipo = 'MATTINO', ?int $idRichiestaTrigger = null, ?string $soloLivello = null): array
     {
         if (!hrRiepilogoAssenzeConfigAttiva($pdo)) {
             return ['inviate' => 0, 'errori' => 0, 'saltate' => 0, 'motivo' => 'Riepilogo disattivato'];
         }
 
         $tipo = strtoupper($tipo);
+        $soloLivello = $soloLivello !== null ? strtoupper(trim($soloLivello)) : null;
+        if ($soloLivello !== null && !in_array($soloLivello, ['BASE', 'HR'], true)) {
+            $soloLivello = null;
+        }
+
         $destinatari = hrRiepilogoAssenzeDestinatari($pdo);
-        $righe = hrRiepilogoAssenzeRighe($pdo, $data);
+        $righePerLivello = [];
         $config = hrEmailConfig($pdo);
         $fromEmail = hrEmailValida((string)$config['from_email']);
 
@@ -331,9 +341,16 @@ if (!function_exists('hrRiepilogoAssenzeInvia')) {
         foreach ($destinatari as $destinatario) {
             $idUtente = (int)$destinatario['id_utente'];
             $livelloConfigurato = strtoupper((string)$destinatario['livello_dettaglio']) === 'HR' ? 'HR' : 'BASE';
-            // Un destinatario HR riceve due messaggi distinti:
-            // il riepilogo generale senza motivi e, in aggiunta, quello riservato con motivi HR.
-            $livelliDaInviare = $livelloConfigurato === 'HR' ? ['BASE', 'HR'] : ['BASE'];
+            // Ogni destinatario riceve una sola versione:
+            // HR = dettagliata con motivo e anche richieste IN_ATTESA;
+            // BASE = senza motivo e solo richieste APPROVATE.
+            $livelliDaInviare = [$livelloConfigurato];
+            if ($soloLivello !== null) {
+                $livelliDaInviare = array_values(array_filter(
+                    $livelliDaInviare,
+                    static fn (string $livello): bool => $livello === $soloLivello
+                ));
+            }
 
             $email = hrRiepilogoAssenzeEmailLavoro($pdo, $idUtente);
 
@@ -349,7 +366,10 @@ if (!function_exists('hrRiepilogoAssenzeInvia')) {
                     continue;
                 }
 
-                $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
+                if (!isset($righePerLivello[$livello])) {
+                    $righePerLivello[$livello] = hrRiepilogoAssenzeRighe($pdo, $data, $livello);
+                }
+                $html = hrRiepilogoAssenzeHtml($data, $righePerLivello[$livello], $livello);
                 $headers = [
                     'MIME-Version: 1.0',
                     'Content-Type: text/html; charset=UTF-8',
@@ -413,13 +433,13 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestAdmin')) {
             return ['inviate' => 0, 'errori' => 1, 'motivo' => 'Email di lavoro verificata dell\'Amministratore non disponibile.'];
         }
 
-        $righe = hrRiepilogoAssenzeRighe($pdo, $data);
         $dataObj = DateTimeImmutable::createFromFormat('Y-m-d', $data);
         $dataOggetto = $dataObj ? $dataObj->format('d-m-Y') : $data;
         $risultato = ['inviate' => 0, 'errori' => 0, 'motivo' => ''];
 
         foreach (['HR', 'BASE'] as $livello) {
             $oggetto = 'Assenze del ' . $dataOggetto;
+            $righe = hrRiepilogoAssenzeRighe($pdo, $data, $livello);
             $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
             $headers = [
                 'MIME-Version: 1.0',
@@ -459,7 +479,7 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestDestinatari')) {
     {
         $data = $data ?: hrRiepilogoAssenzeNow()->format('Y-m-d');
         $destinatari = hrRiepilogoAssenzeDestinatari($pdo);
-        $righe = hrRiepilogoAssenzeRighe($pdo, $data);
+        $righePerLivello = [];
         $config = hrEmailConfig($pdo);
         $fromEmail = hrEmailValida((string)$config['from_email']);
         if (!$config['attiva'] || $fromEmail === null) {
@@ -475,7 +495,7 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestDestinatari')) {
         foreach ($destinatari as $destinatario) {
             $idUtente = (int)$destinatario['id_utente'];
             $livelloConfigurato = strtoupper((string)$destinatario['livello_dettaglio']) === 'HR' ? 'HR' : 'BASE';
-            $livelliDaInviare = $livelloConfigurato === 'HR' ? ['BASE', 'HR'] : ['BASE'];
+            $livelliDaInviare = [$livelloConfigurato];
             $email = hrRiepilogoAssenzeEmailLavoro($pdo, $idUtente);
             if ($email === null) {
                 $risultato['errori'] += count($livelliDaInviare);
@@ -484,7 +504,10 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestDestinatari')) {
 
             foreach ($livelliDaInviare as $livello) {
                 $oggetto = 'Assenze del ' . $dataOggetto;
-                $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
+                if (!isset($righePerLivello[$livello])) {
+                    $righePerLivello[$livello] = hrRiepilogoAssenzeRighe($pdo, $data, $livello);
+                }
+                $html = hrRiepilogoAssenzeHtml($data, $righePerLivello[$livello], $livello);
                 $headers = [
                     'MIME-Version: 1.0',
                     'Content-Type: text/html; charset=UTF-8',
@@ -532,7 +555,7 @@ if (!function_exists('hrRiepilogoAssenzeRichiestaIncludeData')) {
 }
 
 if (!function_exists('hrRiepilogoAssenzeInviaAggiornamentoSeNecessario')) {
-    function hrRiepilogoAssenzeInviaAggiornamentoSeNecessario(PDO $pdo, int $idRichiesta, bool $forzaNuovoAggiornamento = false): void
+    function hrRiepilogoAssenzeInviaAggiornamentoSeNecessario(PDO $pdo, int $idRichiesta, bool $forzaNuovoAggiornamento = false, ?string $soloLivello = null): void
     {
         if ($idRichiesta <= 0) {
             return;
@@ -556,21 +579,28 @@ if (!function_exists('hrRiepilogoAssenzeInviaAggiornamentoSeNecessario')) {
         }
 
         if ($forzaNuovoAggiornamento) {
-            // La riclassificazione HR non genera notifiche individuali, ma deve poter
-            // aggiornare nuovamente il riepilogo della giornata anche se esiste già
-            // un precedente AGGIORNAMENTO per la stessa richiesta.
-            $stmtReset = $pdo->prepare(
-                "DELETE FROM hr_riepilogo_assenze_invi
-                 WHERE data_riepilogo = :data_riepilogo
-                   AND tipo_invio = 'AGGIORNAMENTO'
-                   AND id_richiesta_trigger = :id_richiesta"
-            );
-            $stmtReset->execute([
+            // Una modifica successiva della stessa richiesta deve poter generare
+            // un nuovo riepilogo; se l'aggiornamento riguarda solo HR, non si toccano
+            // gli invii BASE già registrati.
+            $sqlReset = "DELETE FROM hr_riepilogo_assenze_invi
+                         WHERE data_riepilogo = :data_riepilogo
+                           AND tipo_invio = 'AGGIORNAMENTO'
+                           AND id_richiesta_trigger = :id_richiesta";
+            $paramsReset = [
                 'data_riepilogo' => $oggi,
                 'id_richiesta' => $idRichiesta,
-            ]);
+            ];
+
+            $soloLivelloNormalizzato = $soloLivello !== null ? strtoupper(trim($soloLivello)) : null;
+            if (in_array($soloLivelloNormalizzato, ['BASE', 'HR'], true)) {
+                $sqlReset .= ' AND livello_dettaglio = :livello';
+                $paramsReset['livello'] = $soloLivelloNormalizzato;
+            }
+
+            $stmtReset = $pdo->prepare($sqlReset);
+            $stmtReset->execute($paramsReset);
         }
 
-        hrRiepilogoAssenzeInvia($pdo, $oggi, 'AGGIORNAMENTO', $idRichiesta);
+        hrRiepilogoAssenzeInvia($pdo, $oggi, 'AGGIORNAMENTO', $idRichiesta, $soloLivello);
     }
 }
