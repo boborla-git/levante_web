@@ -427,14 +427,14 @@ layoutHeader('Calendario assenze');
 .hr-matrix-header{min-height:58px;position:sticky;top:0;z-index:2;background:#f7f9fc;flex-direction:column;font-size:12px;font-weight:800;color:#334155}
 .hr-matrix-header.hr-matrix-name{z-index:4;align-items:flex-start;justify-content:center}
 .hr-matrix-header strong{font-size:15px;color:#172033}
-.hr-daycell{cursor:pointer}.hr-daycell:hover,.hr-daycell:focus-visible{outline:none;box-shadow:inset 0 0 0 2px #0068c9}
+.hr-daycell{cursor:pointer}.hr-daycell.is-empty{cursor:default}.hr-daycell:not(.is-empty):hover,.hr-daycell:not(.is-empty):focus-visible{outline:none;box-shadow:inset 0 0 0 2px #0068c9}
 .hr-daycell .hr-status-dot{width:20px;height:20px;box-shadow:0 1px 2px rgba(15,23,42,.12)}
 .hr-daycell.is-today{background:#f7fbff}.hr-daycell.is-today:after{content:"";position:absolute;inset:3px;border:1px solid rgba(0,104,201,.28);border-radius:8px;pointer-events:none}
 .hr-day-view{overflow:auto;border:1px solid #dbe3ec;border-radius:14px;background:#fff}
 .hr-timeline{min-width:860px;display:grid;grid-template-columns:160px repeat(18,minmax(38px,1fr))}
 .hr-time-head{min-height:48px;background:#f7f9fc;font-size:11px;font-weight:700;color:#475569;border-bottom:1px solid #e5eaf0;border-right:1px solid #e5eaf0;display:flex;align-items:flex-start;justify-content:flex-start;padding:8px 0 0 3px}
 .hr-time-head:last-child:after{content:"17:00";position:absolute;right:-17px}.hr-time-head{position:relative}
-.hr-time-cell{height:48px;border-right:1px solid #edf0f4;border-bottom:1px solid #e5eaf0;background:#e9f7ee;cursor:pointer}
+.hr-time-cell{height:48px;border-right:1px solid #edf0f4;border-bottom:1px solid #e5eaf0;background:#e9f7ee;cursor:pointer}.hr-time-cell.is-empty{cursor:default}
 .hr-time-cell.is-pending{background:#ffd84d}.hr-time-cell.is-absent{background:#e85b5b}
 .hr-time-name{height:48px;display:flex;align-items:center;padding:0 8px;font-weight:700;border-right:1px solid #e5eaf0;border-bottom:1px solid #e5eaf0;position:sticky;left:0;z-index:3;background:#fff;white-space:nowrap}
 .hr-detail-pop{position:fixed;z-index:5000;display:none;width:min(360px,calc(100vw - 24px));background:#fff;border:1px solid #ccd7e3;border-radius:14px;box-shadow:0 18px 45px rgba(15,23,42,.22);padding:14px}
@@ -501,7 +501,7 @@ layoutHeader('Calendario assenze');
         if($a<$slotEnd && $b>$m) $slotEvents[]=$e;
       }
       $st=hrStatoCella($slotEvents);
-   ?><div tabindex="0" class="hr-time-cell <?= $st==='pending'?'is-pending':($st==='absent'?'is-absent':'') ?>" data-user="<?= $uid ?>" data-day="<?= h($key) ?>" data-slot="<?= $m ?>" title="<?= h(hrTitoloCella($slotEvents)) ?>"></div><?php endfor; ?>
+   ?><div<?= $slotEvents !== [] ? ' tabindex="0"' : '' ?> class="hr-time-cell<?= $slotEvents === [] ? ' is-empty' : '' ?> <?= $st==='pending'?'is-pending':($st==='absent'?'is-absent':'') ?>"<?= $slotEvents !== [] ? ' data-user="'.$uid.'" data-day="'.h($key).'" data-slot="'.$m.'" title="'.h(hrTitoloCella($slotEvents)).'"' : '' ?>></div><?php endfor; ?>
   <?php endforeach; ?>
  </div>
 </div>
@@ -513,7 +513,7 @@ layoutHeader('Calendario assenze');
   <?php foreach($utentiVisualizzati as $u): $uid=(int)$u['id_utente']; ?>
    <div class="hr-matrix-cell hr-matrix-name <?= $uid===$idUtente?'is-me':'' ?>"><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
    <?php foreach($giorni as $d): $key=$d->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; $st=hrStatoCella($evs); ?>
-    <div tabindex="0" role="button" class="hr-matrix-cell hr-daycell <?= $key===$oggi->format('Y-m-d')?'is-today':'' ?>" data-user="<?= $uid ?>" data-day="<?= h($key) ?>" title="<?= h(hrTitoloCella($evs)) ?>"><i class="hr-status-dot hr-status-<?= h($st) ?>"></i></div>
+    <div<?= $evs !== [] ? ' tabindex="0" role="button"' : '' ?> class="hr-matrix-cell hr-daycell<?= $evs === [] ? ' is-empty' : '' ?> <?= $key===$oggi->format('Y-m-d')?'is-today':'' ?>"<?= $evs !== [] ? ' data-user="'.$uid.'" data-day="'.h($key).'" title="'.h(hrTitoloCella($evs)).'"' : '' ?>><i class="hr-status-dot hr-status-<?= h($st) ?>"></i></div>
    <?php endforeach; ?>
   <?php endforeach; ?>
  </div>
@@ -545,7 +545,7 @@ layoutHeader('Calendario assenze');
    pop.style.left=Math.max(12,Math.min(window.innerWidth-w-12,r.left))+'px';
    pop.style.top=Math.max(12,Math.min(window.innerHeight-pop.offsetHeight-12,r.bottom+8))+'px';
  }
- document.querySelectorAll('.hr-daycell,.hr-time-cell').forEach(el=>{
+ document.querySelectorAll('.hr-daycell:not(.is-empty),.hr-time-cell:not(.is-empty)').forEach(el=>{
    el.addEventListener('click',()=>show(el));
    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show(el);}});
  });
