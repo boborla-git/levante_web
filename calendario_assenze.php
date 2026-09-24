@@ -297,7 +297,7 @@ try {
         $sql = "
             SELECT r.id_richiesta, r.id_utente_richiedente,
                    p.data_da, p.data_a, p.ora_da, p.ora_a, p.tipo_periodo,
-                   te.descrizione AS tipologia, te.descrizione_calendario,
+                   te.codice AS codice_tipologia, te.descrizione AS tipologia, te.descrizione_calendario,
                    te.mostra_dettaglio_colleghi, te.mostra_dettaglio_responsabili, te.mostra_dettaglio_hr,
                    sr.codice AS codice_stato_richiesta, sr.descrizione AS stato_richiesta,
                    sp.descrizione_breve AS stato_presenza_breve, sp.descrizione AS stato_presenza,
@@ -342,6 +342,7 @@ try {
                 $eventsByUserDay[$uid][$key][] = [
                     'id'=>(int)$row['id_richiesta'],
                     'label'=>$label !== '' ? $label : 'Assenza',
+                    'codice_tipologia'=>strtoupper(trim((string)($row['codice_tipologia'] ?? ''))),
                     'stato'=>(string)$row['codice_stato_richiesta'],
                     'stato_label'=>(string)$row['stato_richiesta'],
                     'tipo_periodo'=>(string)$row['tipo_periodo'],
@@ -364,8 +365,29 @@ try {
 function hrStatoCella(array $events): string
 {
     if ($events === []) return 'free';
-    foreach ($events as $e) if (($e['stato'] ?? '') === 'IN_ATTESA') return 'pending';
-    return 'absent';
+    foreach ($events as $e) {
+        if (($e['stato'] ?? '') === 'IN_ATTESA') return 'pending';
+    }
+
+    // Rosso = indisponibilita personale / non disturbare.
+    // Azzurro = assenza o impegno di lavoro: il dettaglio chiarisce se e come contattare la persona.
+    // ALTRO resta volutamente personale finche HR non riclassifica la richiesta con una tipologia specifica.
+    $tipologieLavoro = ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE', 'FIERA', 'SMART'];
+    $haPersonale = false;
+    $haLavoro = false;
+    foreach ($events as $e) {
+        if (in_array(strtoupper((string)($e['codice_tipologia'] ?? '')), $tipologieLavoro, true)) {
+            $haLavoro = true;
+        } else {
+            $haPersonale = true;
+        }
+    }
+
+    // In caso di sovrapposizione nello stesso intervallo, il personale prevale:
+    // il rosso mantiene il significato prudenziale "non disturbare".
+    if ($haPersonale) return 'personal';
+    if ($haLavoro) return 'work';
+    return 'personal';
 }
 
 function hrFormaIndicatoreCella(array $events): string
@@ -433,7 +455,7 @@ layoutHeader('Calendario assenze');
 .hr-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;color:#475569}
 .hr-legend span{display:inline-flex;align-items:center;gap:6px}.hr-status-dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(15,23,42,.12)}
 .hr-empty{padding:26px 18px;text-align:center;color:#475569;background:#fff;border:1px solid #dbe3ec;border-radius:14px;font-weight:600}
-.hr-status-free{background:#e9f7ee}.hr-status-pending{background:#ffd84d}.hr-status-absent{background:#e85b5b}.hr-status-off{background:#e5e7eb}
+.hr-status-free{background:#e9f7ee}.hr-status-pending{background:#ffd84d}.hr-status-personal,.hr-status-absent{background:#e85b5b}.hr-status-work{background:#42a5e8}.hr-status-off{background:#e5e7eb}
 .hr-matrix-wrap{overflow:auto;border-radius:14px;border:1px solid #dbe3ec;background:#fff;-webkit-overflow-scrolling:touch}
 .hr-matrix{display:grid;min-width:760px;grid-template-columns:160px repeat(var(--cols),minmax(62px,1fr))}
 .hr-matrix-cell{min-height:54px;border-right:1px solid #e5eaf0;border-bottom:1px solid #e5eaf0;display:flex;align-items:center;justify-content:center;padding:6px;position:relative;background:#fff}
@@ -446,14 +468,15 @@ layoutHeader('Calendario assenze');
 .hr-daycell .hr-status-dot{width:20px;height:20px;box-shadow:0 1px 2px rgba(15,23,42,.12)}
 .hr-daycell .hr-status-dot.hr-duration-hours{width:20px;height:20px;border-radius:50%;box-sizing:border-box;background-color:#fff;background-image:linear-gradient(to right,currentColor 0,currentColor 50%,transparent 50%,transparent 100%);background-clip:padding-box;border:1px solid rgba(15,23,42,.16)}
 .hr-daycell .hr-status-dot.hr-status-pending.hr-duration-hours{color:#ffd84d}
-.hr-daycell .hr-status-dot.hr-status-absent.hr-duration-hours{color:#e85b5b}
+.hr-daycell .hr-status-dot.hr-status-personal.hr-duration-hours,.hr-daycell .hr-status-dot.hr-status-absent.hr-duration-hours{color:#e85b5b}
+.hr-daycell .hr-status-dot.hr-status-work.hr-duration-hours{color:#42a5e8}
 .hr-daycell.is-today{background:#f7fbff}.hr-daycell.is-today:after{content:"";position:absolute;inset:3px;border:1px solid rgba(0,104,201,.28);border-radius:8px;pointer-events:none}
 .hr-day-view{overflow:auto;border:1px solid #dbe3ec;border-radius:14px;background:#fff}
 .hr-timeline{min-width:860px;display:grid;grid-template-columns:160px repeat(18,minmax(38px,1fr))}
 .hr-time-head{min-height:48px;background:#f7f9fc;font-size:11px;font-weight:700;color:#475569;border-bottom:1px solid #e5eaf0;border-right:1px solid #e5eaf0;display:flex;align-items:flex-start;justify-content:flex-start;padding:8px 0 0 3px}
 .hr-time-head:last-child:after{content:"17:00";position:absolute;right:-17px}.hr-time-head{position:relative}
 .hr-time-cell{height:48px;border-right:1px solid #edf0f4;border-bottom:1px solid #e5eaf0;background:#e9f7ee;cursor:pointer}.hr-time-cell.is-empty{cursor:default}
-.hr-time-cell.is-pending{background:#ffd84d}.hr-time-cell.is-absent{background:#e85b5b}
+.hr-time-cell.is-pending{background:#ffd84d}.hr-time-cell.is-personal,.hr-time-cell.is-absent{background:#e85b5b}.hr-time-cell.is-work{background:#42a5e8}
 .hr-time-name{height:48px;display:flex;align-items:center;padding:0 8px;font-weight:700;border-right:1px solid #e5eaf0;border-bottom:1px solid #e5eaf0;position:sticky;left:0;z-index:3;background:#fff;white-space:nowrap}
 .hr-detail-pop{position:fixed;z-index:5000;display:none;width:min(360px,calc(100vw - 24px));background:#fff;border:1px solid #ccd7e3;border-radius:14px;box-shadow:0 18px 45px rgba(15,23,42,.22);padding:14px}
 .hr-detail-pop.is-open{display:block}.hr-detail-pop h3{margin:0 28px 8px 0;font-size:16px}.hr-detail-close{position:absolute;right:8px;top:8px;border:0!important;background:transparent!important;color:#475569!important;min-height:28px!important;padding:0 8px!important}
@@ -493,7 +516,8 @@ layoutHeader('Calendario assenze');
  <div class="hr-legend">
   <span><i class="hr-status-dot hr-status-free"></i>Nessuna assenza</span>
   <span><i class="hr-status-dot hr-status-pending"></i>Da approvare</span>
-  <span><i class="hr-status-dot hr-status-absent"></i>Assente</span>
+  <span><i class="hr-status-dot hr-status-personal"></i>Personale</span>
+  <span><i class="hr-status-dot hr-status-work"></i>Lavoro</span>
   <?php if ($vista !== 'giorno'): ?>
   <span title="Forma indicatore"><i class="hr-status-dot hr-status-off"></i>Giornata <i class="hr-status-dot hr-status-off hr-duration-hours" style="width:14px;height:14px;border-radius:50%;box-sizing:border-box;background-color:#fff;background-image:linear-gradient(to right,#e5e7eb 0,#e5e7eb 50%,transparent 50%,transparent 100%);background-clip:padding-box;border:1px solid rgba(15,23,42,.16)"></i>Ore</span>
   <?php endif; ?>
@@ -522,7 +546,7 @@ layoutHeader('Calendario assenze');
         if($a<$slotEnd && $b>$m) $slotEvents[]=$e;
       }
       $st=hrStatoCella($slotEvents);
-   ?><div<?= $slotEvents !== [] ? ' tabindex="0"' : '' ?> class="hr-time-cell<?= $slotEvents === [] ? ' is-empty' : '' ?> <?= $st==='pending'?'is-pending':($st==='absent'?'is-absent':'') ?>"<?= $slotEvents !== [] ? ' data-user="'.$uid.'" data-day="'.h($key).'" data-slot="'.$m.'" title="'.h(hrTitoloCella($slotEvents)).'"' : '' ?>></div><?php endfor; ?>
+   ?><div<?= $slotEvents !== [] ? ' tabindex="0"' : '' ?> class="hr-time-cell<?= $slotEvents === [] ? ' is-empty' : '' ?> <?= $st==='pending'?'is-pending':($st==='work'?'is-work':($st==='personal'?'is-personal':'')) ?>"<?= $slotEvents !== [] ? ' data-user="'.$uid.'" data-day="'.h($key).'" data-slot="'.$m.'" title="'.h(hrTitoloCella($slotEvents)).'"' : '' ?>></div><?php endfor; ?>
   <?php endforeach; ?>
  </div>
 </div>
