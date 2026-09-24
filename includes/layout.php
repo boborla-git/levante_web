@@ -163,6 +163,67 @@ function layoutIsActiveNode(array $node, array $childrenMap, string $currentPage
     return false;
 }
 
+function layoutRoleMenuOverrides(): array
+{
+    static $cache = null;
+    if (is_array($cache)) {
+        return $cache;
+    }
+
+    $cache = [];
+
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    $idUtente = 0;
+    if (isset($_SESSION['id_utente']) && (int)$_SESSION['id_utente'] > 0) {
+        $idUtente = (int)$_SESSION['id_utente'];
+    } elseif (isset($_SESSION['utente_id']) && (int)$_SESSION['utente_id'] > 0) {
+        $idUtente = (int)$_SESSION['utente_id'];
+    }
+
+    if ($idUtente <= 0) {
+        return $cache;
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare("
+            SELECT
+                ars.codice_risorsa,
+                MAX(CASE WHEN arp.consentito = 1 THEN 1 ELSE 0 END) AS consentito
+            FROM aut_utenti_ruoli aur
+            INNER JOIN aut_ruoli ar
+                ON ar.id_ruolo = aur.id_ruolo
+               AND ar.attivo = 1
+            INNER JOIN aut_ruoli_permessi arp
+                ON arp.id_ruolo = ar.id_ruolo
+               AND arp.permesso = 'menu'
+            INNER JOIN aut_risorse ars
+                ON ars.id_risorsa = arp.id_risorsa
+               AND ars.attivo = 1
+            WHERE aur.id_utente = :id_utente
+              AND aur.attivo = 1
+              AND (aur.data_fine IS NULL OR aur.data_fine >= NOW())
+            GROUP BY ars.codice_risorsa
+        ");
+        $stmt->execute(['id_utente' => $idUtente]);
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $codice = trim((string)($row['codice_risorsa'] ?? ''));
+            if ($codice !== '') {
+                $cache[$codice] = (int)($row['consentito'] ?? 0) === 1;
+            }
+        }
+    } catch (Throwable $e) {
+        // In caso di problemi si mantiene il comportamento legacy.
+        $cache = [];
+    }
+
+    return $cache;
+}
+
 function layoutNodeVisibleInMenu(array $node): bool
 {
     // Il logout viene gestito direttamente dal menu Profilo come voce "Esci".
@@ -171,6 +232,14 @@ function layoutNodeVisibleInMenu(array $node): bool
     $percorso = strtolower(trim((string)($node['percorso'] ?? '')));
     if ($percorso !== '' && basename($percorso) === 'logout.php') {
         return false;
+    }
+
+    $codice = trim((string)($node['codice_risorsa'] ?? ''));
+    if ($codice !== '') {
+        $override = layoutRoleMenuOverrides();
+        if (array_key_exists($codice, $override)) {
+            return $override[$codice];
+        }
     }
 
     return (int)($node['visibile_menu'] ?? 0) === 1;
