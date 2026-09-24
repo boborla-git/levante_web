@@ -727,6 +727,15 @@ try {
 
                 $pdo->commit();
                 hrInviaEmailWorkflowAccodate($pdo, $emailHrDaInviare);
+
+                // Se il riepilogo del mattino e gia partito e la richiesta riguarda oggi,
+                // HR deve ricevere il riepilogo dettagliato aggiornato anche mentre
+                // la richiesta e ancora IN_ATTESA. I destinatari BASE non la vedono.
+                try {
+                    hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta, false, 'HR');
+                } catch (Throwable $riepilogoException) {
+                }
+
                 header('Location: assenze.php?ok=1&id_utente=' . $idUtenteTarget);
                 exit;
             }
@@ -853,7 +862,7 @@ try {
             // Nessuna nuova notifica individuale: si aggiorna soltanto il riepilogo giornaliero,
             // se il riepilogo del mattino è già stato inviato e la richiesta riguarda oggi.
             try {
-                hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta, true);
+                hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta, true, 'HR');
             } catch (Throwable $riepilogoException) {
             }
 
@@ -952,8 +961,23 @@ try {
                 $destinatariAnnullamento
             );
 
+            $statoPrecedente = (string)$riga['stato_codice'];
+
             $pdo->commit();
             hrInviaEmailWorkflowAccodate($pdo, $emailHrDaInviare);
+
+            // Se una richiesta odierna viene annullata dopo il riepilogo del mattino:
+            // - se era IN_ATTESA, solo HR deve ricevere il riepilogo aggiornato;
+            // - se era APPROVATA, va aggiornato sia HR sia il riepilogo BASE.
+            try {
+                if ($statoPrecedente === 'IN_ATTESA') {
+                    hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta, true, 'HR');
+                } elseif ($statoPrecedente === 'APPROVATA') {
+                    hrRiepilogoAssenzeInviaAggiornamentoSeNecessario($pdo, $idRichiesta, true);
+                }
+            } catch (Throwable $riepilogoException) {
+            }
+
             header('Location: assenze.php?annullata=1&id_utente=' . $idUtenteTarget);
             exit;
         }
