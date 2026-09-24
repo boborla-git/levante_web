@@ -28,6 +28,19 @@ function livelloCorrenteRuolo(array $permessiRuoliMappa, int $idRuolo, int $idRi
     return 'none';
 }
 
+function menuCorrenteRuolo(array $permessiRuoliMappa, int $idRuolo, array $risorsa): bool
+{
+    $idRisorsa = (int)($risorsa['id_risorsa'] ?? 0);
+
+    if (isset($permessiRuoliMappa[$idRuolo][$idRisorsa]['menu'])) {
+        return (int)$permessiRuoliMappa[$idRuolo][$idRisorsa]['menu'] === 1;
+    }
+
+    // Compatibilita con la configurazione precedente: finche non viene salvato
+    // il ruolo, eredita il flag globale storico della risorsa.
+    return (int)($risorsa['visibile_menu'] ?? 0) === 1;
+}
+
 function appiattisciAlberoRisorse(array $nodiPerPadre, ?int $idPadre = null, int $depth = 0): array
 {
     $output = [];
@@ -120,7 +133,7 @@ if ($idRuoloSelezionato <= 0 || !isset($ruoliPerId[$idRuoloSelezionato])) {
 }
 
 if (isset($_GET['ok']) && (string)$_GET['ok'] === '1') {
-    $messaggio = 'Permessi del ruolo e impostazioni menu aggiornati correttamente.';
+    $messaggio = 'Permessi e menu aggiornati esclusivamente per il ruolo selezionato.';
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salva_permessi'])) {
@@ -132,10 +145,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salva_permessi'])) {
 
             if (risorsaGestibileNelMenu($risorsa)) {
                 $menuVisibile = isset($_POST['menu_risorsa_' . $idRisorsa]) ? 1 : 0;
-                $stmtMenu = $pdo->prepare("\n                    UPDATE aut_risorse\n                    SET visibile_menu = :visibile_menu\n                    WHERE id_risorsa = :id_risorsa\n                ");
+                $stmtMenu = $pdo->prepare("\n                    INSERT INTO aut_ruoli_permessi\n                    (id_ruolo, id_risorsa, permesso, consentito)\n                    VALUES (:id_ruolo, :id_risorsa, 'menu', :consentito)\n                    ON DUPLICATE KEY UPDATE\n                        consentito = VALUES(consentito)\n                ");
                 $stmtMenu->execute([
-                    'visibile_menu' => $menuVisibile,
+                    'id_ruolo' => $idRuoloSelezionato,
                     'id_risorsa' => $idRisorsa,
+                    'consentito' => $menuVisibile,
                 ]);
             }
 
@@ -239,7 +253,7 @@ $totaleScrittura = 0;
 foreach ($risorseGerarchiche as $risorsaConteggio) {
     if (risorsaContenitorePuro($risorsaConteggio)) {
         $totaleContenitori++;
-        if ((int)($risorsaConteggio['visibile_menu'] ?? 0) === 1) {
+        if (menuCorrenteRuolo($permessiRuoliMappa, $idRuoloSelezionato, $risorsaConteggio)) {
             $totaleVisibiliMenu++;
         }
         continue;
@@ -255,7 +269,7 @@ foreach ($risorseGerarchiche as $risorsaConteggio) {
         $totaleNessuno++;
     }
 
-    if ((int)($risorsaConteggio['visibile_menu'] ?? 0) === 1) {
+    if (menuCorrenteRuolo($permessiRuoliMappa, $idRuoloSelezionato, $risorsaConteggio)) {
         $totaleVisibiliMenu++;
     }
 }
@@ -268,7 +282,7 @@ layoutHeader('Permessi ruoli');
     <div class="section-head">
         <div>
             <h1>Permessi ruoli</h1>
-            <div class="meta">Gestione dei permessi associati ai ruoli del portale: accesso negato, sola lettura, scrittura e presenza nel menu.</div>
+            <div class="meta">Gestione dei permessi associati ai ruoli del portale: accesso negato, sola lettura, scrittura e presenza nel menu per il solo ruolo selezionato.</div>
         </div>
         <div class="section-head-actions">
             <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Dashboard</a>
@@ -304,7 +318,7 @@ layoutHeader('Permessi ruoli');
             <select name="id_ruolo" id="id_ruolo" onchange="this.form.submit()">
                 <?php foreach ($ruoli as $ruolo): ?>
                     <option value="<?= (int)$ruolo['id_ruolo'] ?>" <?= (int)$ruolo['id_ruolo'] === $idRuoloSelezionato ? 'selected' : '' ?>>
-                        <?= htmlspecialchars((string)$ruolo['descrizione']) ?>
+                        <?= htmlspecialchars((string)$ruolo['codice_ruolo']) ?> — <?= htmlspecialchars((string)$ruolo['descrizione']) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -326,7 +340,7 @@ layoutHeader('Permessi ruoli');
         <div class="hr-filter-toolbar admin-section-toolbar">
             <div class="admin-section-title">
                 <h2>Albero permessi e menu</h2>
-                <div class="meta">Vista gerarchica delle risorse. La colonna Menu stabilisce se la risorsa compare nella navigazione del portale.</div>
+                <div class="meta">Vista gerarchica delle risorse. La colonna Menu stabilisce se la risorsa compare nella navigazione del ruolo selezionato.</div>
             </div>
 
             <div class="form-group hr-filter-search-group">
@@ -362,7 +376,7 @@ layoutHeader('Permessi ruoli');
                         $depthClass = 'resource-depth-' . min($depth, 8);
                         $contenitorePuro = risorsaContenitorePuro($risorsa);
                         $menuGestibile = risorsaGestibileNelMenu($risorsa);
-                        $visibileMenu = (int)($risorsa['visibile_menu'] ?? 0) === 1;
+                        $visibileMenu = menuCorrenteRuolo($permessiRuoliMappa, $idRuoloSelezionato, $risorsa);
                         $searchText = trim((string)$risorsa['descrizione'] . ' ' . (string)$risorsa['codice_risorsa'] . ' ' . $tipo . ' ' . $percorso . ' ' . adminPermissionLevelLabel($livelloCorrente) . ' ' . ($visibileMenu ? 'menu si' : 'menu no'));
                         ?>
                         <tr class="<?= $contenitorePuro ? 'permissions-row-container' : 'permissions-row-resource' ?>" data-search="<?= htmlspecialchars(mb_strtolower($searchText, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?>">
