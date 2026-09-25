@@ -59,7 +59,7 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Le richieste approvate devono essere visibili secondo ruolo, gruppo e relazione organizzativa.
 - La visibilita' gerarchica deve fermarsi al primo livello inferiore, non deve essere ricorsiva.
 - Lo smart working deve essere rappresentato in verde pieno, distinto dal verde tenue della presenza, sia per giornata intera sia per assenze/impegni a ore.
-- Ordine righe calendario: utente corrente; riporti diretti per cognome crescente; membri dei gruppi non gia' presenti come riporti diretti per cognome decrescente; eventuali altri utenti visibili globalmente per cognome crescente.
+- Ordine righe calendario: utente corrente; riporti diretti per cognome crescente; membri dei gruppi non gia' presenti come riporti diretti per cognome crescente; eventuali altri utenti visibili globalmente per cognome crescente.
 - I nominativi restano nel formato "Cognome N.".
 - Accanto ai riporti diretti deve comparire un'icona gerarchica; accanto ai membri dei gruppi un'icona gruppo. L'utente corrente non necessita di icona aggiuntiva.
 
