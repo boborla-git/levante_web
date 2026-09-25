@@ -6,7 +6,7 @@
 - Richieste a ore: `Al giorno` sincronizzato con `Dal giorno`.
 - Orari consentiti 08:00-17:00 a step di 15 minuti.
 - `Alle ore` proposto a `Dalle ore + 1h`.
-- Blocco retrodatate per utenti non HR; selettore data limitato a oggi/futuro e mesi aperti; HR mantiene l'override per rettifiche autorizzate.
+- Richieste personali non HR: niente retrodate. Inserimenti delegati dei responsabili per riporti diretti: retrodate consentite solo nei mesi aperti. Mesi chiusi sempre bloccati a utenti/responsabili; HR mantiene l'override per rettifiche autorizzate.
 - Controllo sovrapposizioni distinto per giorni e ore.
 - Annullamento richiesta con storico, notifiche e email dopo commit.
 
