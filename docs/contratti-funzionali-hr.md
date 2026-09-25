@@ -30,7 +30,9 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 
 ### Validazioni
 
-- Non devono essere accettate richieste retrodatate se la regola applicativa lo vieta.
+- Per gli utenti non HR non devono essere accettate richieste retrodatate: la prima data selezionabile e' oggi, oppure il primo giorno del primo mese aperto se il mese corrente e' gia' chiuso.
+- I mesi chiusi da HR non devono essere selezionabili operativamente dagli utenti non HR; il controllo deve esistere sia lato interfaccia sia lato server.
+- HR mantiene la possibilita' tecnica di operare sui periodi chiusi per le rettifiche autorizzate.
 - Non devono essere accettate sovrapposizioni non consentite.
 - I messaggi di errore devono essere chiari e coerenti con gli alert del sito.
 
@@ -55,6 +57,9 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Le richieste approvate devono essere visibili secondo ruolo, gruppo e relazione organizzativa.
 - La visibilita' gerarchica deve fermarsi al primo livello inferiore, non deve essere ricorsiva.
 - Lo smart working deve essere rappresentato in verde pieno, distinto dal verde tenue della presenza, sia per giornata intera sia per assenze/impegni a ore.
+- Ordine righe calendario: utente corrente; riporti diretti per cognome crescente; membri dei gruppi non gia' presenti come riporti diretti per cognome decrescente; eventuali altri utenti visibili globalmente per cognome crescente.
+- I nominativi restano nel formato "Cognome N.".
+- Accanto ai riporti diretti deve comparire un'icona gerarchica; accanto ai membri dei gruppi un'icona gruppo. L'utente corrente non necessita di icona aggiuntiva.
 
 ## Contratti dati HR
 
