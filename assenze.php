@@ -153,18 +153,14 @@ function hrPrimaDataInseribile(PDO $pdo): string
     return $candidato->format('Y-m-d');
 }
 
-function hrMesiChiusiDaOggi(PDO $pdo): array
+function hrMesiChiusiInserimento(PDO $pdo): array
 {
-    $oggi = new DateTimeImmutable('today', new DateTimeZone('Europe/Rome'));
-    $chiaveOggi = ((int)$oggi->format('Y') * 100) + (int)$oggi->format('n');
-    $stmt = $pdo->prepare(
+    $stmt = $pdo->query(
         "SELECT anno, mese
          FROM hr_chiusure_mese
          WHERE chiuso = 1
-           AND (anno * 100 + mese) >= :chiave_oggi
          ORDER BY anno, mese"
     );
-    $stmt->execute(['chiave_oggi' => $chiaveOggi]);
 
     $mesi = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
@@ -541,8 +537,8 @@ try {
             }
             if (!$isHrResponsabile) {
                 $oggiItalia = (new DateTimeImmutable('today', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
-                if ($dataDa < $oggiItalia) {
-                    throw new RuntimeException('Non è possibile inserire richieste per un giorno già trascorso. Seleziona oggi o una data futura.');
+                if (!$isDelegato && $dataDa < $oggiItalia) {
+                    throw new RuntimeException('Non è possibile inserire richieste personali per un giorno già trascorso. Seleziona oggi o una data futura.');
                 }
 
                 $meseChiuso = hrMeseChiusoTraDate($pdo, $dataDa, $dataA);
@@ -1155,12 +1151,14 @@ try {
 
 if (!$isHrResponsabile) {
     try {
-        $primaDataInseribile = hrPrimaDataInseribile($pdo);
-        $mesiChiusiInserimento = hrMesiChiusiDaOggi($pdo);
+        $primaDataInseribile = $isDelegato ? '' : hrPrimaDataInseribile($pdo);
+        $mesiChiusiInserimento = hrMesiChiusiInserimento($pdo);
     } catch (Throwable $e) {
         // In caso di problema nella lettura delle chiusure, resta comunque
         // attivo il controllo server al salvataggio.
-        $primaDataInseribile = (new DateTimeImmutable('today', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
+        $primaDataInseribile = $isDelegato
+            ? ''
+            : (new DateTimeImmutable('today', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
         $mesiChiusiInserimento = [];
     }
 }
@@ -1247,7 +1245,7 @@ layoutHeader('Assenze e permessi');
 
     <?php if ($isDelegato): ?>
         <div class="info-box" style="margin-top:16px;">
-            Le richieste inserite per un altro dipendente vengono registrate come già approvate, con storico dell'operatore che le ha create.
+            Le richieste inserite per un altro dipendente vengono registrate come già approvate, con storico dell'operatore che le ha create. È consentito anche un inserimento retroattivo, purché il periodo appartenga a un mese non ancora chiuso da HR.
         </div>
     <?php elseif ($infoRecapitoMancante): ?>
         <div class="errore" style="margin-top:16px;">
@@ -1528,7 +1526,7 @@ window.hrMesiChiusiInserimento = <?= json_encode($mesiChiusiInserimento, JSON_UN
         if (!campo || !campo.value) return true;
 
         if (DATA_MIN && campo.value < DATA_MIN) {
-            alert('Non puoi selezionare un giorno già trascorso o appartenente a un mese già chiuso da HR.');
+            alert('Per una richiesta personale non puoi selezionare un giorno già trascorso.');
             campo.value = '';
             return false;
         }
