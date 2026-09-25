@@ -268,7 +268,7 @@ foreach ($scopeUtenti as $u) {
 // Ordine righe:
  // 1) utente corrente
  // 2) riporti diretti, per cognome crescente
- // 3) membri dei gruppi non gia' presenti come riporti diretti, per cognome decrescente
+ // 3) membri dei gruppi non gia' presenti come riporti diretti, per cognome crescente
  // 4) eventuali altri utenti visibili per permesso globale, per cognome crescente.
 usort($scopeUtenti, static function(array $a, array $b) use ($idUtente): int {
     $categoria = static function(array $u) use ($idUtente): int {
@@ -295,8 +295,7 @@ usort($scopeUtenti, static function(array $a, array $b) use ($idUtente): int {
         $cmp = strcasecmp((string)($a['username'] ?? ''), (string)($b['username'] ?? ''));
     }
 
-    // Per i membri di gruppo l'ordinamento richiesto e' decrescente.
-    return $ca === 2 ? -$cmp : $cmp;
+    return $cmp;
 });
 
 function hrNomeCompatto(array $u, int $corrente): string
