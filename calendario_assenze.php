@@ -265,20 +265,38 @@ foreach ($scopeUtenti as $u) {
     ];
 }
 
-// Ordine righe: utente corrente, riporti diretti, membri team non duplicati.
-// Per HR con visione globale: utente corrente, poi gli altri alfabeticamente.
+// Ordine righe:
+ // 1) utente corrente
+ // 2) riporti diretti, per cognome crescente
+ // 3) membri dei gruppi non gia' presenti come riporti diretti, per cognome decrescente
+ // 4) eventuali altri utenti visibili per permesso globale, per cognome crescente.
 usort($scopeUtenti, static function(array $a, array $b) use ($idUtente): int {
-    $aid = (int)$a['id_utente'];
-    $bid = (int)$b['id_utente'];
-    if ($aid === $idUtente) return -1;
-    if ($bid === $idUtente) return 1;
-    $ag = (int)($a['scope_gerarchia'] ?? 0);
-    $bg = (int)($b['scope_gerarchia'] ?? 0);
-    if ($ag !== $bg) return $bg <=> $ag;
-    $at = (int)($a['scope_gruppo'] ?? 0);
-    $bt = (int)($b['scope_gruppo'] ?? 0);
-    if ($at !== $bt) return $bt <=> $at;
-    return strcasecmp(hrNomeUtente($a), hrNomeUtente($b));
+    $categoria = static function(array $u) use ($idUtente): int {
+        if ((int)$u['id_utente'] === $idUtente) return 0;
+        if ((int)($u['scope_gerarchia'] ?? 0) === 1) return 1;
+        if ((int)($u['scope_gruppo'] ?? 0) === 1) return 2;
+        return 3;
+    };
+
+    $ca = $categoria($a);
+    $cb = $categoria($b);
+    if ($ca !== $cb) return $ca <=> $cb;
+
+    $cognomeA = trim((string)($a['cognome'] ?? ''));
+    $cognomeB = trim((string)($b['cognome'] ?? ''));
+    $nomeA = trim((string)($a['nome'] ?? ''));
+    $nomeB = trim((string)($b['nome'] ?? ''));
+
+    $cmp = strcasecmp($cognomeA, $cognomeB);
+    if ($cmp === 0) {
+        $cmp = strcasecmp($nomeA, $nomeB);
+    }
+    if ($cmp === 0) {
+        $cmp = strcasecmp((string)($a['username'] ?? ''), (string)($b['username'] ?? ''));
+    }
+
+    // Per i membri di gruppo l'ordinamento richiesto e' decrescente.
+    return $ca === 2 ? -$cmp : $cmp;
 });
 
 function hrNomeCompatto(array $u, int $corrente): string
@@ -287,6 +305,20 @@ function hrNomeCompatto(array $u, int $corrente): string
     $cognome = trim((string)($u['cognome'] ?? ''));
     $label = $cognome !== '' ? $cognome . ($nome !== '' ? ' ' . mb_strtoupper(mb_substr($nome, 0, 1, 'UTF-8'), 'UTF-8') . '.' : '') : hrNomeUtente($u);
     return $label . ((int)$u['id_utente'] === $corrente ? ' (tu)' : '');
+}
+
+function hrIconaScopeCalendario(array $u, int $corrente): string
+{
+    if ((int)($u['id_utente'] ?? 0) === $corrente) {
+        return '';
+    }
+    if ((int)($u['scope_gerarchia'] ?? 0) === 1) {
+        return '<i class="la la-sitemap hr-scope-icon hr-scope-icon-direct" title="Riporto diretto" aria-label="Riporto diretto"></i>';
+    }
+    if ((int)($u['scope_gruppo'] ?? 0) === 1) {
+        return '<i class="la la-users hr-scope-icon hr-scope-icon-group" title="Membro del gruppo" aria-label="Membro del gruppo"></i>';
+    }
+    return '';
 }
 
 $eventsByUserDay = [];
@@ -473,6 +505,9 @@ layoutHeader('Calendario assenze');
 .hr-matrix{display:grid;min-width:760px;grid-template-columns:160px repeat(var(--cols),minmax(62px,1fr))}
 .hr-matrix-cell{min-height:54px;border-right:1px solid #e5eaf0;border-bottom:1px solid #e5eaf0;display:flex;align-items:center;justify-content:center;padding:6px;position:relative;background:#fff}
 .hr-matrix-name{justify-content:flex-start;font-weight:700;position:sticky;left:0;z-index:3;background:#fff;white-space:nowrap}
+.hr-scope-icon{font-size:15px;margin-right:6px;vertical-align:-1px}
+.hr-scope-icon-direct{color:#0068c9}
+.hr-scope-icon-group{color:#64748b}
 .hr-matrix-name.is-me{background:#f4f8fc;color:#005aa9}
 .hr-matrix-header{min-height:58px;position:sticky;top:0;z-index:2;background:#f7f9fc;flex-direction:column;font-size:12px;font-weight:800;color:#334155}
 .hr-matrix-header.hr-matrix-name{z-index:4;align-items:flex-start;justify-content:center}
@@ -536,6 +571,8 @@ layoutHeader('Calendario assenze');
   <?php if ($vista !== 'giorno'): ?>
   <span title="Forma indicatore"><i class="hr-status-dot hr-status-off"></i>Giornata <i class="hr-status-dot hr-status-off hr-duration-hours" style="width:14px;height:14px;border-radius:50%;box-sizing:border-box;background-color:#fff;background-image:linear-gradient(to right,#e5e7eb 0,#e5e7eb 50%,transparent 50%,transparent 100%);background-clip:padding-box;border:1px solid rgba(15,23,42,.16)"></i>Ore</span>
   <?php endif; ?>
+  <span><i class="la la-sitemap hr-scope-icon hr-scope-icon-direct" aria-hidden="true"></i>Riporto diretto</span>
+  <span><i class="la la-users hr-scope-icon hr-scope-icon-group" aria-hidden="true"></i>Gruppo</span>
  </div>
  <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($dataRif->format('Y-m-d')) ?><?= $mostraTutti ? '' : '&mostra=tutti' ?>">
    <?= $mostraTutti ? 'Vedi solo assenze' : 'Vedi tutti' ?>
@@ -550,7 +587,7 @@ layoutHeader('Calendario assenze');
   <div class="hr-time-head hr-matrix-name">Persona</div>
   <?php for($m=8*60;$m<17*60;$m+=15): ?><div class="hr-time-head"><?= ($m % 30) === 0 ? h(sprintf('%02d:%02d',intdiv($m,60),$m%60)) : '&nbsp;' ?></div><?php endfor; ?>
   <?php foreach($utentiVisualizzati as $u): $uid=(int)$u['id_utente']; $key=$dataRif->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; ?>
-   <div class="hr-time-name <?= $uid===$idUtente?'is-me':'' ?>"><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
+   <div class="hr-time-name <?= $uid===$idUtente?'is-me':'' ?>"><?= hrIconaScopeCalendario($u,$idUtente) ?><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
    <?php for($m=8*60;$m<17*60;$m+=15):
       $slotEnd=$m+15; $slotEvents=[];
       foreach($evs as $e){
@@ -571,7 +608,7 @@ layoutHeader('Calendario assenze');
   <div class="hr-matrix-cell hr-matrix-header hr-matrix-name">Persona</div>
   <?php foreach($giorni as $d): ?><div class="hr-matrix-cell hr-matrix-header <?= $d->format('Y-m-d')===$oggi->format('Y-m-d')?'is-today':'' ?>"><span><?= h(hrNomeGiornoBreve($d)) ?></span><strong><?= h($d->format('d/m')) ?></strong></div><?php endforeach; ?>
   <?php foreach($utentiVisualizzati as $u): $uid=(int)$u['id_utente']; ?>
-   <div class="hr-matrix-cell hr-matrix-name <?= $uid===$idUtente?'is-me':'' ?>"><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
+   <div class="hr-matrix-cell hr-matrix-name <?= $uid===$idUtente?'is-me':'' ?>"><?= hrIconaScopeCalendario($u,$idUtente) ?><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
    <?php foreach($giorni as $d): $key=$d->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; $st=hrStatoCella($evs); $forma=hrFormaIndicatoreCella($evs); ?>
     <div<?= $evs !== [] ? ' tabindex="0" role="button"' : '' ?> class="hr-matrix-cell hr-daycell<?= $evs === [] ? ' is-empty' : '' ?> <?= $key===$oggi->format('Y-m-d')?'is-today':'' ?>"<?= $evs !== [] ? ' data-user="'.$uid.'" data-day="'.h($key).'" title="'.h(hrTitoloCella($evs)).'"' : '' ?>><i class="hr-status-dot hr-status-<?= h($st) ?> hr-duration-<?= h($forma) ?>"></i></div>
    <?php endforeach; ?>
