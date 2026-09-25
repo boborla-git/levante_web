@@ -365,14 +365,27 @@ try {
 function hrStatoCella(array $events): string
 {
     if ($events === []) return 'free';
+
+    // Lo smart working deve essere immediatamente riconoscibile come situazione
+    // in cui la persona e' lavorativamente disponibile: verde pieno, distinto
+    // dal verde tenue della normale disponibilita'.
+    $soloSmart = true;
+    foreach ($events as $e) {
+        if (strtoupper((string)($e['codice_tipologia'] ?? '')) !== 'SMART') {
+            $soloSmart = false;
+            break;
+        }
+    }
+    if ($soloSmart) return 'smart';
+
     foreach ($events as $e) {
         if (($e['stato'] ?? '') === 'IN_ATTESA') return 'pending';
     }
 
     // Rosso = indisponibilita personale / non disturbare.
-    // Azzurro = assenza o impegno di lavoro: il dettaglio chiarisce se e come contattare la persona.
+    // Azzurro = altro impegno di lavoro.
     // ALTRO resta volutamente personale finche HR non riclassifica la richiesta con una tipologia specifica.
-    $tipologieLavoro = ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE', 'FIERA', 'SMART'];
+    $tipologieLavoro = ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE', 'FIERA'];
     $haPersonale = false;
     $haLavoro = false;
     foreach ($events as $e) {
@@ -455,7 +468,7 @@ layoutHeader('Calendario assenze');
 .hr-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;color:#475569}
 .hr-legend span{display:inline-flex;align-items:center;gap:6px}.hr-status-dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(15,23,42,.12)}
 .hr-empty{padding:26px 18px;text-align:center;color:#475569;background:#fff;border:1px solid #dbe3ec;border-radius:14px;font-weight:600}
-.hr-status-free{background:#e9f7ee}.hr-status-pending{background:#ffd84d}.hr-status-personal,.hr-status-absent{background:#e85b5b}.hr-status-work{background:#42a5e8}.hr-status-off{background:#e5e7eb}
+.hr-status-free{background:#e9f7ee}.hr-status-pending{background:#ffd84d}.hr-status-personal,.hr-status-absent{background:#e85b5b}.hr-status-work{background:#42a5e8}.hr-status-smart{background:#22a447}.hr-status-off{background:#e5e7eb}
 .hr-matrix-wrap{overflow:auto;border-radius:14px;border:1px solid #dbe3ec;background:#fff;-webkit-overflow-scrolling:touch}
 .hr-matrix{display:grid;min-width:760px;grid-template-columns:160px repeat(var(--cols),minmax(62px,1fr))}
 .hr-matrix-cell{min-height:54px;border-right:1px solid #e5eaf0;border-bottom:1px solid #e5eaf0;display:flex;align-items:center;justify-content:center;padding:6px;position:relative;background:#fff}
@@ -470,13 +483,14 @@ layoutHeader('Calendario assenze');
 .hr-daycell .hr-status-dot.hr-status-pending.hr-duration-hours{color:#ffd84d}
 .hr-daycell .hr-status-dot.hr-status-personal.hr-duration-hours,.hr-daycell .hr-status-dot.hr-status-absent.hr-duration-hours{color:#e85b5b}
 .hr-daycell .hr-status-dot.hr-status-work.hr-duration-hours{color:#42a5e8}
+.hr-daycell .hr-status-dot.hr-status-smart.hr-duration-hours{color:#22a447}
 .hr-daycell.is-today{background:#f7fbff}.hr-daycell.is-today:after{content:"";position:absolute;inset:3px;border:1px solid rgba(0,104,201,.28);border-radius:8px;pointer-events:none}
 .hr-day-view{overflow:auto;border:1px solid #dbe3ec;border-radius:14px;background:#fff}
-.hr-timeline{min-width:860px;display:grid;grid-template-columns:160px repeat(18,minmax(38px,1fr))}
+.hr-timeline{min-width:1180px;display:grid;grid-template-columns:160px repeat(36,minmax(28px,1fr))}
 .hr-time-head{min-height:48px;background:#f7f9fc;font-size:11px;font-weight:700;color:#475569;border-bottom:1px solid #e5eaf0;border-right:1px solid #e5eaf0;display:flex;align-items:flex-start;justify-content:flex-start;padding:8px 0 0 3px}
 .hr-time-head:last-child:after{content:"17:00";position:absolute;right:-17px}.hr-time-head{position:relative}
 .hr-time-cell{height:48px;border-right:1px solid #edf0f4;border-bottom:1px solid #e5eaf0;background:#e9f7ee;cursor:pointer}.hr-time-cell.is-empty{cursor:default}
-.hr-time-cell.is-pending{background:#ffd84d}.hr-time-cell.is-personal,.hr-time-cell.is-absent{background:#e85b5b}.hr-time-cell.is-work{background:#42a5e8}
+.hr-time-cell.is-pending{background:#ffd84d}.hr-time-cell.is-personal,.hr-time-cell.is-absent{background:#e85b5b}.hr-time-cell.is-work{background:#42a5e8}.hr-time-cell.is-smart{background:#22a447}
 .hr-time-name{height:48px;display:flex;align-items:center;padding:0 8px;font-weight:700;border-right:1px solid #e5eaf0;border-bottom:1px solid #e5eaf0;position:sticky;left:0;z-index:3;background:#fff;white-space:nowrap}
 .hr-detail-pop{position:fixed;z-index:5000;display:none;width:min(360px,calc(100vw - 24px));background:#fff;border:1px solid #ccd7e3;border-radius:14px;box-shadow:0 18px 45px rgba(15,23,42,.22);padding:14px}
 .hr-detail-pop.is-open{display:block}.hr-detail-pop h3{margin:0 28px 8px 0;font-size:16px}.hr-detail-close{position:absolute;right:8px;top:8px;border:0!important;background:transparent!important;color:#475569!important;min-height:28px!important;padding:0 8px!important}
@@ -489,7 +503,7 @@ layoutHeader('Calendario assenze');
  .hr-matrix{min-width:650px;grid-template-columns:112px repeat(var(--cols),minmax(52px,1fr))}
  .hr-matrix-cell{min-height:48px;padding:4px}.hr-matrix-name{font-size:12px}.hr-matrix-header{font-size:10px}.hr-matrix-header strong{font-size:13px}
  .hr-daycell .hr-status-dot{width:18px;height:18px}.hr-daycell .hr-status-dot.hr-duration-hours{width:18px;height:18px}
- .hr-timeline{min-width:760px;grid-template-columns:112px repeat(18,minmax(36px,1fr))}
+ .hr-timeline{min-width:1080px;grid-template-columns:112px repeat(36,minmax(26px,1fr))}
  .hr-time-name{font-size:12px}
 }
 </style>
@@ -517,6 +531,7 @@ layoutHeader('Calendario assenze');
   <span><i class="hr-status-dot hr-status-free"></i>Nessuna assenza</span>
   <span><i class="hr-status-dot hr-status-pending"></i>Da approvare</span>
   <span><i class="hr-status-dot hr-status-personal"></i>Assenza personale</span>
+  <span><i class="hr-status-dot hr-status-smart"></i>Smart working</span>
   <span><i class="hr-status-dot hr-status-work"></i>Impegno di lavoro</span>
   <?php if ($vista !== 'giorno'): ?>
   <span title="Forma indicatore"><i class="hr-status-dot hr-status-off"></i>Giornata <i class="hr-status-dot hr-status-off hr-duration-hours" style="width:14px;height:14px;border-radius:50%;box-sizing:border-box;background-color:#fff;background-image:linear-gradient(to right,#e5e7eb 0,#e5e7eb 50%,transparent 50%,transparent 100%);background-clip:padding-box;border:1px solid rgba(15,23,42,.16)"></i>Ore</span>
@@ -533,11 +548,11 @@ layoutHeader('Calendario assenze');
 <div class="hr-day-view">
  <div class="hr-timeline">
   <div class="hr-time-head hr-matrix-name">Persona</div>
-  <?php for($m=8*60;$m<17*60;$m+=30): ?><div class="hr-time-head"><?= h(sprintf('%02d:%02d',intdiv($m,60),$m%60)) ?></div><?php endfor; ?>
+  <?php for($m=8*60;$m<17*60;$m+=15): ?><div class="hr-time-head"><?= ($m % 30) === 0 ? h(sprintf('%02d:%02d',intdiv($m,60),$m%60)) : '&nbsp;' ?></div><?php endfor; ?>
   <?php foreach($utentiVisualizzati as $u): $uid=(int)$u['id_utente']; $key=$dataRif->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; ?>
    <div class="hr-time-name <?= $uid===$idUtente?'is-me':'' ?>"><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
-   <?php for($m=8*60;$m<17*60;$m+=30):
-      $slotEnd=$m+30; $slotEvents=[];
+   <?php for($m=8*60;$m<17*60;$m+=15):
+      $slotEnd=$m+15; $slotEvents=[];
       foreach($evs as $e){
         if(($e['tipo_periodo']??'')!=='ORE'){ $slotEvents[]=$e; continue; }
         [$hh1,$mm1]=array_map('intval',explode(':',$e['ora_da']?:'00:00'));
@@ -546,7 +561,7 @@ layoutHeader('Calendario assenze');
         if($a<$slotEnd && $b>$m) $slotEvents[]=$e;
       }
       $st=hrStatoCella($slotEvents);
-   ?><div<?= $slotEvents !== [] ? ' tabindex="0"' : '' ?> class="hr-time-cell<?= $slotEvents === [] ? ' is-empty' : '' ?> <?= $st==='pending'?'is-pending':($st==='work'?'is-work':($st==='personal'?'is-personal':'')) ?>"<?= $slotEvents !== [] ? ' data-user="'.$uid.'" data-day="'.h($key).'" data-slot="'.$m.'" title="'.h(hrTitoloCella($slotEvents)).'"' : '' ?>></div><?php endfor; ?>
+   ?><div<?= $slotEvents !== [] ? ' tabindex="0"' : '' ?> class="hr-time-cell<?= $slotEvents === [] ? ' is-empty' : '' ?> <?= $st==='pending'?'is-pending':($st==='smart'?'is-smart':($st==='work'?'is-work':($st==='personal'?'is-personal':''))) ?>"<?= $slotEvents !== [] ? ' data-user="'.$uid.'" data-day="'.h($key).'" data-slot="'.$m.'" title="'.h(hrTitoloCella($slotEvents)).'"' : '' ?>></div><?php endfor; ?>
   <?php endforeach; ?>
  </div>
 </div>
@@ -580,7 +595,7 @@ layoutHeader('Calendario assenze');
    const uid=el.dataset.user, day=el.dataset.day, all=(data[uid]&&data[uid][day])||[];
    let evs=all;
    if(el.dataset.slot!==undefined){
-     const a=Number(el.dataset.slot),b=a+30;
+     const a=Number(el.dataset.slot),b=a+15;
      evs=all.filter(e=>{if(e.tipo_periodo!=='ORE')return true;const x=e.ora_da.split(':').map(Number),y=e.ora_a.split(':').map(Number);return x[0]*60+x[1]<b&&y[0]*60+y[1]>a;});
    }
    title.textContent=(names[uid]||'Persona')+' · '+day.split('-').reverse().join('/');
