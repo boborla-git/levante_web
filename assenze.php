@@ -30,6 +30,8 @@ $riepilogo = [
 $utentiGestibili = [];
 $utenteSelezionato = null;
 $emailHrDaInviare = [];
+$primaDataInseribile = '';
+$mesiChiusiInserimento = [];
 
 $form = [
     'id_utente' => '',
@@ -121,6 +123,54 @@ function hrUtenteERiportoDiretto(PDO $pdo, int $idResponsabile, int $idDipendent
     ]);
 
     return (bool)$stmt->fetchColumn();
+}
+
+function hrPrimaDataInseribile(PDO $pdo): string
+{
+    $candidato = new DateTimeImmutable('today', new DateTimeZone('Europe/Rome'));
+    $stmt = $pdo->prepare(
+        "SELECT chiuso
+         FROM hr_chiusure_mese
+         WHERE anno = :anno
+           AND mese = :mese
+         LIMIT 1"
+    );
+
+    // Normalmente i mesi chiusi sono nel passato. Il ciclo copre anche il caso
+    // eccezionale in cui sia gia stato chiuso il mese corrente o uno successivo.
+    for ($i = 0; $i < 36; $i++) {
+        $stmt->execute([
+            'anno' => (int)$candidato->format('Y'),
+            'mese' => (int)$candidato->format('n'),
+        ]);
+        $chiuso = (int)($stmt->fetchColumn() ?: 0) === 1;
+        if (!$chiuso) {
+            return $candidato->format('Y-m-d');
+        }
+        $candidato = $candidato->modify('first day of next month');
+    }
+
+    return $candidato->format('Y-m-d');
+}
+
+function hrMesiChiusiDaOggi(PDO $pdo): array
+{
+    $oggi = new DateTimeImmutable('today', new DateTimeZone('Europe/Rome'));
+    $chiaveOggi = ((int)$oggi->format('Y') * 100) + (int)$oggi->format('n');
+    $stmt = $pdo->prepare(
+        "SELECT anno, mese
+         FROM hr_chiusure_mese
+         WHERE chiuso = 1
+           AND (anno * 100 + mese) >= :chiave_oggi
+         ORDER BY anno, mese"
+    );
+    $stmt->execute(['chiave_oggi' => $chiaveOggi]);
+
+    $mesi = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        $mesi[] = sprintf('%04d-%02d', (int)$row['anno'], (int)$row['mese']);
+    }
+    return $mesi;
 }
 
 function hrMeseChiusoTraDate(PDO $pdo, string $dataDa, string $dataA): ?string
@@ -490,6 +540,11 @@ try {
                 throw new RuntimeException('Il giorno finale non può essere precedente al giorno iniziale.');
             }
             if (!$isHrResponsabile) {
+                $oggiItalia = (new DateTimeImmutable('today', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
+                if ($dataDa < $oggiItalia) {
+                    throw new RuntimeException('Non è possibile inserire richieste per un giorno già trascorso. Seleziona oggi o una data futura.');
+                }
+
                 $meseChiuso = hrMeseChiusoTraDate($pdo, $dataDa, $dataA);
                 if ($meseChiuso !== null) {
                     throw new RuntimeException('Il mese ' . $meseChiuso . ' è chiuso da HR: non è possibile inserire nuove richieste per questo periodo.');
@@ -1098,6 +1153,18 @@ try {
     $errore = $e->getMessage();
 }
 
+if (!$isHrResponsabile) {
+    try {
+        $primaDataInseribile = hrPrimaDataInseribile($pdo);
+        $mesiChiusiInserimento = hrMesiChiusiDaOggi($pdo);
+    } catch (Throwable $e) {
+        // In caso di problema nella lettura delle chiusure, resta comunque
+        // attivo il controllo server al salvataggio.
+        $primaDataInseribile = (new DateTimeImmutable('today', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
+        $mesiChiusiInserimento = [];
+    }
+}
+
 $scopeLabel = $utenteSelezionato ? (string)$utenteSelezionato['nominativo'] : ('Utente #' . $idUtenteTarget);
 $infoRecapitoMancante = (!$isDelegato && !hrHaRecapitoEmailPersonale($pdo, $idUtenteTarget));
 
@@ -1253,12 +1320,12 @@ layoutHeader('Assenze e permessi');
 
                     <div class="form-group hr-field-data" id="gruppo_data_da">
                         <label for="data_da" id="label_data_da">Dal giorno</label>
-                        <input class="control-standard" type="date" name="data_da" id="data_da" value="<?= h($form['data_da']) ?>" required>
+                        <input class="control-standard" type="date" name="data_da" id="data_da" value="<?= h($form['data_da']) ?>"<?= $primaDataInseribile !== '' ? ' min="' . h($primaDataInseribile) . '"' : '' ?> required>
                     </div>
 
                     <div class="form-group hr-field-data" id="gruppo_data_a">
                         <label for="data_a" id="label_data_a">Al giorno</label>
-                        <input class="control-standard" type="date" name="data_a" id="data_a" value="<?= h($form['data_a']) ?>">
+                        <input class="control-standard" type="date" name="data_a" id="data_a" value="<?= h($form['data_a']) ?>"<?= $primaDataInseribile !== '' ? ' min="' . h($primaDataInseribile) . '"' : '' ?>>
                     </div>
 
                     <div class="form-group hr-field-time" id="gruppo_ora_da">
@@ -1424,6 +1491,8 @@ layoutHeader('Assenze e permessi');
 
 <script>
 window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
+window.hrPrimaDataInseribile = <?= json_encode($primaDataInseribile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+window.hrMesiChiusiInserimento = <?= json_encode($mesiChiusiInserimento, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 (function () {
     const modalita = document.getElementById('modalita');
     if (!modalita) {
@@ -1448,6 +1517,37 @@ window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
     const MINUTI_DEFAULT_DURATA = 60;
     const ORA_MIN = 8 * 60;
     const ORA_MAX = 17 * 60;
+    const DATA_MIN = String(window.hrPrimaDataInseribile || '');
+    const MESI_CHIUSI = new Set(Array.isArray(window.hrMesiChiusiInserimento) ? window.hrMesiChiusiInserimento : []);
+
+    function chiaveMese(dataIso) {
+        return /^\d{4}-\d{2}-\d{2}$/.test(dataIso || '') ? dataIso.substring(0, 7) : '';
+    }
+
+    function validaDataSelezionata(campo) {
+        if (!campo || !campo.value) return true;
+
+        if (DATA_MIN && campo.value < DATA_MIN) {
+            alert('Non puoi selezionare un giorno già trascorso o appartenente a un mese già chiuso da HR.');
+            campo.value = '';
+            return false;
+        }
+
+        const mese = chiaveMese(campo.value);
+        if (mese && MESI_CHIUSI.has(mese)) {
+            alert('Il mese selezionato è già stato chiuso da HR. Scegli un periodo di un mese ancora aperto.');
+            campo.value = '';
+            return false;
+        }
+
+        return true;
+    }
+
+    function aggiornaMinDataFine() {
+        if (!dataA) return;
+        const minimo = dataDa && dataDa.value ? dataDa.value : DATA_MIN;
+        if (minimo) dataA.min = minimo;
+    }
 
     function toggleBlock(element, show) {
         if (!element) return;
@@ -1507,8 +1607,10 @@ window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
 
     function sincronizzaDataFine() {
         if (!dataDa || !dataA || !dataDa.value) {
+            aggiornaMinDataFine();
             return;
         }
+        aggiornaMinDataFine();
         if (modalita.value === 'ore') {
             dataA.value = dataDa.value;
             return;
@@ -1555,7 +1657,24 @@ window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
 
     if (dataDa) {
         dataDa.addEventListener('change', function () {
+            if (!validaDataSelezionata(dataDa)) {
+                if (dataA) dataA.value = '';
+                aggiornaMinDataFine();
+                return;
+            }
             sincronizzaDataFine();
+        });
+    }
+
+    if (dataA) {
+        dataA.addEventListener('change', function () {
+            if (!validaDataSelezionata(dataA)) {
+                return;
+            }
+            if (dataDa && dataDa.value && dataA.value < dataDa.value) {
+                alert('Il giorno finale non può essere precedente al giorno iniziale.');
+                dataA.value = dataDa.value;
+            }
         });
     }
 
@@ -1581,7 +1700,11 @@ window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
     });
 
     if (document.getElementById('form-richiesta-assenza')) {
-        document.getElementById('form-richiesta-assenza').addEventListener('submit', function () {
+        document.getElementById('form-richiesta-assenza').addEventListener('submit', function (event) {
+            if (!validaDataSelezionata(dataDa) || !validaDataSelezionata(dataA)) {
+                event.preventDefault();
+                return;
+            }
             if (modalita.value === 'ore') {
                 sincronizzaOraNascosta(oraDa, oraDaOre, oraDaMinuti);
                 sincronizzaOraNascosta(oraA, oraAOre, oraAMinuti);
