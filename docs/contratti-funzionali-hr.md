@@ -30,8 +30,10 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 
 ### Validazioni
 
-- Per gli utenti non HR non devono essere accettate richieste retrodatate: la prima data selezionabile e' oggi, oppure il primo giorno del primo mese aperto se il mese corrente e' gia' chiuso.
-- I mesi chiusi da HR non devono essere selezionabili operativamente dagli utenti non HR; il controllo deve esistere sia lato interfaccia sia lato server.
+- Per una richiesta personale di un utente non HR non devono essere accettate date retroattive: la prima data selezionabile e' oggi, oppure il primo giorno del primo mese aperto se il mese corrente e' gia' chiuso.
+- Un responsabile, quando inserisce una richiesta in modalita' delegata per un proprio riporto diretto, puo' inserire anche una data retroattiva purche' il periodo ricada interamente in mesi non ancora chiusi da HR.
+- La possibilita' di inserimento retroattivo del responsabile non si applica alle sue richieste personali.
+- I mesi chiusi da HR non devono essere utilizzabili dai normali utenti o dai responsabili; il controllo deve esistere sia lato interfaccia sia lato server.
 - HR mantiene la possibilita' tecnica di operare sui periodi chiusi per le rettifiche autorizzate.
 - Non devono essere accettate sovrapposizioni non consentite.
 - I messaggi di errore devono essere chiari e coerenti con gli alert del sito.
