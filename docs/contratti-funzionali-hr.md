@@ -21,8 +21,9 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 
 ### Orari
 
-- Per richieste a ore, i campi ora devono lavorare a step di 5 minuti.
-- Quando viene compilato `Dalle ore`, il campo `Alle ore` deve proporre automaticamente un orario pari a +1 ora.
+- Per richieste a ore, gli orari ammessi sono compresi tra le 08:00 e le 17:00 e lavorano a step di 15 minuti.
+- Nell'interfaccia le ore selezionabili sono 08, 09, 10, ..., 17 e i minuti selezionabili sono 00, 15, 30, 45.
+- Quando viene compilato `Dalle ore`, il campo `Alle ore` deve proporre automaticamente un orario pari a +1 ora, senza superare le 17:00.
 - Il controllo sovrapposizioni deve distinguere correttamente richieste a giorni e richieste a ore.
 - Le richieste a giorni bloccano l'intero periodo.
 - Le richieste a ore bloccano solo se la fascia oraria si sovrappone realmente.
@@ -53,6 +54,7 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Il calendario deve rispettare le regole di visibilita' e privacy delle tipologie evento.
 - Le richieste approvate devono essere visibili secondo ruolo, gruppo e relazione organizzativa.
 - La visibilita' gerarchica deve fermarsi al primo livello inferiore, non deve essere ricorsiva.
+- Lo smart working deve essere rappresentato in verde pieno, distinto dal verde tenue della presenza, sia per giornata intera sia per assenze/impegni a ore.
 
 ## Contratti dati HR
 
