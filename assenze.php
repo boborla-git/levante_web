@@ -502,6 +502,20 @@ try {
                 if ($oraA <= $oraDa) {
                     throw new RuntimeException("L'orario finale deve essere successivo all'orario iniziale.");
                 }
+                $minutiOraDa = ((int)substr($oraDa, 0, 2) * 60) + (int)substr($oraDa, 3, 2);
+                $minutiOraA = ((int)substr($oraA, 0, 2) * 60) + (int)substr($oraA, 3, 2);
+                $inizioConsentito = 8 * 60;
+                $fineConsentita = 17 * 60;
+                if (
+                    $minutiOraDa < $inizioConsentito
+                    || $minutiOraDa > $fineConsentita
+                    || $minutiOraA < $inizioConsentito
+                    || $minutiOraA > $fineConsentita
+                    || ($minutiOraDa % 15) !== 0
+                    || ($minutiOraA % 15) !== 0
+                ) {
+                    throw new RuntimeException('Per le richieste a ore puoi selezionare solo orari tra le 08:00 e le 17:00, a intervalli di 15 minuti.');
+                }
                 if ($dataDa !== $dataA) {
                     throw new RuntimeException('La modalità a ore richiede un solo giorno.');
                 }
@@ -1248,13 +1262,37 @@ layoutHeader('Assenze e permessi');
                     </div>
 
                     <div class="form-group hr-field-time" id="gruppo_ora_da">
-                        <label for="ora_da" id="label_ora_da">Dalle ore</label>
-                        <input class="control-standard" type="time" name="ora_da" id="ora_da" value="<?= h($form['ora_da']) ?>">
+                        <label id="label_ora_da">Dalle ore</label>
+                        <input type="hidden" name="ora_da" id="ora_da" value="<?= h($form['ora_da']) ?>">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                            <select id="ora_da_ore" aria-label="Ora iniziale">
+                                <?php for ($h = 8; $h <= 17; $h++): ?>
+                                    <option value="<?= sprintf('%02d', $h) ?>"><?= sprintf('%02d', $h) ?></option>
+                                <?php endfor; ?>
+                            </select>
+                            <select id="ora_da_minuti" aria-label="Minuti iniziali">
+                                <?php foreach ([0, 15, 30, 45] as $m): ?>
+                                    <option value="<?= sprintf('%02d', $m) ?>"><?= sprintf('%02d', $m) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="form-group hr-field-time" id="gruppo_ora_a">
-                        <label for="ora_a" id="label_ora_a">Alle ore</label>
-                        <input class="control-standard" type="time" name="ora_a" id="ora_a" value="<?= h($form['ora_a']) ?>">
+                        <label id="label_ora_a">Alle ore</label>
+                        <input type="hidden" name="ora_a" id="ora_a" value="<?= h($form['ora_a']) ?>">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                            <select id="ora_a_ore" aria-label="Ora finale">
+                                <?php for ($h = 8; $h <= 17; $h++): ?>
+                                    <option value="<?= sprintf('%02d', $h) ?>"><?= sprintf('%02d', $h) ?></option>
+                                <?php endfor; ?>
+                            </select>
+                            <select id="ora_a_minuti" aria-label="Minuti finali">
+                                <?php foreach ([0, 15, 30, 45] as $m): ?>
+                                    <option value="<?= sprintf('%02d', $m) ?>"><?= sprintf('%02d', $m) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -1400,10 +1438,16 @@ window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
     const dataA = document.getElementById('data_a');
     const oraDa = document.getElementById('ora_da');
     const oraA = document.getElementById('ora_a');
+    const oraDaOre = document.getElementById('ora_da_ore');
+    const oraDaMinuti = document.getElementById('ora_da_minuti');
+    const oraAOre = document.getElementById('ora_a_ore');
+    const oraAMinuti = document.getElementById('ora_a_minuti');
     const labelDataDa = document.getElementById('label_data_da');
 
-    const MINUTI_STEP = 5;
+    const MINUTI_STEP = 15;
     const MINUTI_DEFAULT_DURATA = 60;
+    const ORA_MIN = 8 * 60;
+    const ORA_MAX = 17 * 60;
 
     function toggleBlock(element, show) {
         if (!element) return;
@@ -1428,36 +1472,37 @@ window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
     }
 
     function formatOra(minutiTotali) {
-        const minutiGiorno = 24 * 60;
-        const normalizzati = ((minutiTotali % minutiGiorno) + minutiGiorno) % minutiGiorno;
-        const ore = Math.floor(normalizzati / 60);
-        const minuti = normalizzati % 60;
+        const limitati = Math.max(ORA_MIN, Math.min(ORA_MAX, minutiTotali));
+        const ore = Math.floor(limitati / 60);
+        const minuti = limitati % 60;
         return pad2(ore) + ':' + pad2(minuti);
     }
 
-    function arrotondaAStep(value) {
-        const minuti = parseOra(value);
-        if (minuti === null) {
-            return '';
-        }
-        return formatOra(Math.round(minuti / MINUTI_STEP) * MINUTI_STEP);
+    function impostaSelectDaValore(campo, selectOre, selectMinuti, fallback) {
+        const valore = parseOra(campo && campo.value ? campo.value : '');
+        const minuti = valore === null ? fallback : Math.max(ORA_MIN, Math.min(ORA_MAX, Math.round(valore / MINUTI_STEP) * MINUTI_STEP));
+        if (selectOre) selectOre.value = pad2(Math.floor(minuti / 60));
+        if (selectMinuti) selectMinuti.value = pad2(minuti % 60);
+        if (campo) campo.value = formatOra(minuti);
+    }
+
+    function sincronizzaOraNascosta(campo, selectOre, selectMinuti) {
+        if (!campo || !selectOre || !selectMinuti) return;
+        campo.value = selectOre.value + ':' + selectMinuti.value;
     }
 
     function impostaOraFineDefault() {
-        if (!oraDa || !oraA || modalita.value !== 'ore') {
+        if (!oraDa || !oraA || !oraDaOre || !oraDaMinuti || !oraAOre || !oraAMinuti || modalita.value !== 'ore') {
             return;
         }
-        const oraDaNormalizzata = arrotondaAStep(oraDa.value);
-        if (!oraDaNormalizzata) {
-            oraA.value = '';
-            return;
-        }
-        oraDa.value = oraDaNormalizzata;
-        const minutiInizio = parseOra(oraDaNormalizzata);
+        sincronizzaOraNascosta(oraDa, oraDaOre, oraDaMinuti);
+        const minutiInizio = parseOra(oraDa.value);
         if (minutiInizio === null) {
             return;
         }
-        oraA.value = formatOra(minutiInizio + MINUTI_DEFAULT_DURATA);
+        const minutiFine = Math.min(ORA_MAX, minutiInizio + MINUTI_DEFAULT_DURATA);
+        oraA.value = formatOra(minutiFine);
+        impostaSelectDaValore(oraA, oraAOre, oraAMinuti, minutiFine);
     }
 
     function sincronizzaDataFine() {
@@ -1489,19 +1534,17 @@ window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
         }
         if (oraDa) {
             oraDa.required = isOre;
-            oraDa.step = String(MINUTI_STEP * 60);
         }
         if (oraA) {
             oraA.required = isOre;
-            oraA.step = String(MINUTI_STEP * 60);
         }
 
         sincronizzaDataFine();
 
         if (isOre) {
-            if (oraDa && oraDa.value) {
-                impostaOraFineDefault();
-            }
+            impostaSelectDaValore(oraDa, oraDaOre, oraDaMinuti, ORA_MIN);
+            const fallbackFine = Math.min(ORA_MAX, (parseOra(oraDa.value) ?? ORA_MIN) + MINUTI_DEFAULT_DURATA);
+            impostaSelectDaValore(oraA, oraAOre, oraAMinuti, fallbackFine);
         } else {
             if (oraDa) oraDa.value = '';
             if (oraA) oraA.value = '';
@@ -1516,9 +1559,34 @@ window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
         });
     }
 
-    if (oraDa) {
-        oraDa.addEventListener('change', impostaOraFineDefault);
-        oraDa.addEventListener('blur', impostaOraFineDefault);
+    [oraDaOre, oraDaMinuti].forEach(function (campo) {
+        if (campo) {
+            campo.addEventListener('change', impostaOraFineDefault);
+        }
+    });
+
+    [oraAOre, oraAMinuti].forEach(function (campo) {
+        if (campo) {
+            campo.addEventListener('change', function () {
+                sincronizzaOraNascosta(oraA, oraAOre, oraAMinuti);
+                const da = parseOra(oraDa ? oraDa.value : '');
+                const a = parseOra(oraA ? oraA.value : '');
+                if (da !== null && a !== null && a <= da) {
+                    const minimoFine = Math.min(ORA_MAX, da + MINUTI_STEP);
+                    oraA.value = formatOra(minimoFine);
+                    impostaSelectDaValore(oraA, oraAOre, oraAMinuti, minimoFine);
+                }
+            });
+        }
+    });
+
+    if (document.getElementById('form-richiesta-assenza')) {
+        document.getElementById('form-richiesta-assenza').addEventListener('submit', function () {
+            if (modalita.value === 'ore') {
+                sincronizzaOraNascosta(oraDa, oraDaOre, oraDaMinuti);
+                sincronizzaOraNascosta(oraA, oraAOre, oraAMinuti);
+            }
+        });
     }
 
     aggiornaCampi();
