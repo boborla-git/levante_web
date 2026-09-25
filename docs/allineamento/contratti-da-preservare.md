@@ -23,7 +23,7 @@
 - Gruppi come relazione tra pari, non gerarchica.
 - Privacy tipologie secondo configurazione e permessi.
 - Pendenti visibili solo a richiedente, approvatore o chi ha permesso globale.
-- Ordine calendario: utente corrente; riporti diretti per cognome crescente; membri gruppo non duplicati per cognome decrescente; altri utenti globali per cognome crescente.
+- Ordine calendario: utente corrente; riporti diretti per cognome crescente; membri gruppo non duplicati per cognome crescente; altri utenti globali per cognome crescente.
 - Icona gerarchia sui riporti diretti e icona gruppo sui membri dei gruppi.
 
 ## Email HR
