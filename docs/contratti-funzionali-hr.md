@@ -52,9 +52,18 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 
 - Le causali `ALLATTAMENTO` e `CONGEDO_STRAORDINARIO_DISABILI` sono selezionabili solo da Giorgia HR (`test_GBettolini` con ruolo `hr_responsabile_personale`).
 - La restrizione deve esistere sia nell'interfaccia sia nella validazione server, per impedire inserimenti forzati da altri utenti.
+- Le due causali sono disponibili per un dipendente solo se il corrispondente diritto e' attivo in `hr_benefici_utenti` per l'intero periodo richiesto.
 - Entrambe sono trattate come assenze personali: stato presenza `ASSENTE`, nessuna approvazione, dettaglio non mostrato a colleghi o responsabili, dettaglio visibile a HR.
 - Nel calendario la descrizione pubblica deve restare generica (`Assente`).
 - Sono consentiti sia inserimenti a giorni sia a ore, mantenendo le regole generali su date, orari, sovrapposizioni e mesi chiusi.
+
+### Benefici e diritti HR
+
+- La pagina `benefici_hr.php` usa `hr_benefici_utenti` come registro unico per `LEGGE_104`, `ALLATTAMENTO`, `CONGEDO_STRAORDINARIO_DISABILI` e `SMART_WORKING`.
+- La pagina deve presentare una zona di assegnazione per scegliere dipendente, diritto, decorrenza ed eventuali note.
+- Il plafond mensile e l'equivalenza giornata sono richiesti solo per `LEGGE_104`.
+- L'elenco principale mostra solo assegnazioni attive, non tutti i dipendenti.
+- La revoca disattiva l'assegnazione senza cancellarne la registrazione; una successiva riassegnazione riattiva e aggiorna la stessa coppia utente/beneficio.
 
 ### UI
 
