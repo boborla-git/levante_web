@@ -150,6 +150,138 @@
     margin-left: auto;
 }
 
+/* Vista unica utenti: tabella compatta su desktop/tablet, card responsive su smartphone. */
+.admin-users-card {
+    overflow: hidden;
+}
+
+.admin-users-table-wrap {
+    overflow-x: auto;
+}
+
+.admin-users-table {
+    width: 100%;
+    min-width: 900px;
+    border-collapse: collapse;
+}
+
+.admin-users-table th,
+.admin-users-table td {
+    padding: 9px 10px;
+    vertical-align: middle;
+}
+
+.admin-users-table th {
+    white-space: nowrap;
+}
+
+.admin-users-table tbody tr:hover {
+    background: #fbfdff;
+}
+
+.admin-users-person {
+    min-width: 220px;
+}
+
+.admin-users-person-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+}
+
+.admin-users-person-text {
+    min-width: 0;
+}
+
+.admin-users-person-text > strong {
+    display: block;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.admin-users-person-text > span {
+    display: block;
+    margin-top: 2px;
+    color: #64748b;
+    font-size: .86rem;
+    overflow-wrap: anywhere;
+}
+
+.admin-users-details {
+    margin-top: 5px;
+    font-size: .78rem;
+}
+
+.admin-users-details summary {
+    width: fit-content;
+    cursor: pointer;
+    color: var(--rav-blue, #005bd4);
+    font-weight: 700;
+    list-style: none;
+}
+
+.admin-users-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-users-details summary::after {
+    content: ' +';
+}
+
+.admin-users-details[open] summary::after {
+    content: ' −';
+}
+
+.admin-users-details > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 12px;
+    margin-top: 5px;
+    color: #64748b;
+}
+
+.admin-users-role {
+    overflow-wrap: anywhere;
+}
+
+.admin-users-qualifica-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.admin-users-qualifica-form select {
+    width: 132px;
+    min-width: 132px;
+    min-height: 34px;
+}
+
+.admin-users-qualifica-form .btn,
+.admin-users-row-actions .btn {
+    min-height: 34px;
+}
+
+.admin-users-row-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+@media (max-width: 1050px) and (min-width: 721px) {
+    .admin-users-action-text {
+        display: none;
+    }
+
+    .admin-users-qualifica-form .btn,
+    .admin-users-row-actions .btn {
+        width: 34px;
+        min-width: 34px;
+        padding-inline: 0;
+    }
+}
+
 @media (min-width: 1180px) {
     .admin-user-grid {
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -208,12 +340,104 @@
         margin-left: 0;
     }
 
-    .admin-archive-card .table-wrap {
-        overflow-x: auto;
+    .admin-users-card {
+        overflow: visible;
     }
 
-    .admin-archive-card table {
-        min-width: 780px;
+    .admin-users-table-wrap {
+        overflow: visible;
+    }
+
+    .admin-users-table {
+        display: block;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .admin-users-table thead {
+        display: none;
+    }
+
+    .admin-users-table tbody {
+        display: grid;
+        gap: 12px;
+    }
+
+    .admin-users-table tbody tr {
+        display: block;
+        border: 1px solid #dbe4ef;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .05);
+        padding: 10px 12px;
+    }
+
+    .admin-users-table tbody td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        width: 100%;
+        padding: 9px 0;
+        border: 0;
+        border-top: 1px solid #eef2f6;
+        text-align: right;
+    }
+
+    .admin-users-table tbody td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        color: #64748b;
+        font-size: .74rem;
+        font-weight: 800;
+        letter-spacing: .045em;
+        text-transform: uppercase;
+        text-align: left;
+    }
+
+    .admin-users-table tbody td.admin-users-person {
+        display: block;
+        min-width: 0;
+        padding-top: 2px;
+        border-top: 0;
+        text-align: left;
+    }
+
+    .admin-users-table tbody td.admin-users-person::before {
+        display: none;
+    }
+
+    .admin-users-person-main {
+        align-items: flex-start;
+    }
+
+    .admin-users-details > div {
+        display: grid;
+        gap: 3px;
+    }
+
+    .admin-users-qualifica-form {
+        justify-content: flex-end;
+        width: min(70%, 220px);
+    }
+
+    .admin-users-qualifica-form select {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+    }
+
+    .admin-users-row-actions {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .admin-users-action-text {
+        display: inline;
+    }
+
+    .admin-users-row-actions .btn {
+        min-width: 82px;
     }
 }
 
