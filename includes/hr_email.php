@@ -459,8 +459,7 @@ if (!function_exists('hrEmailRichiestePresentiNelPeriodo')) {
                 te.mostra_dettaglio_responsabili,
                 sr.descrizione,
                 sr.codice
-             ORDER BY MIN(p.data_da) ASC, persona ASC
-             LIMIT 10"
+             ORDER BY MIN(p.data_da) ASC, persona ASC"
         );
 
         $stmt->execute($params);
