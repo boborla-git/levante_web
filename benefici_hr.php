@@ -259,7 +259,7 @@ layoutHeader('Benefici e diritti HR');
 ?>
 <style>
 .hr-benefit-stack{display:grid;gap:20px}
-.hr-benefit-form-grid{display:grid;grid-template-columns:minmax(170px,1.45fr) minmax(175px,1.35fr) minmax(130px,.95fr) minmax(130px,.95fr) minmax(86px,.58fr) minmax(86px,.58fr) minmax(96px,.66fr);gap:10px;align-items:end}
+.hr-benefit-form-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1.35fr) minmax(0,.95fr) minmax(0,.95fr) minmax(0,.58fr) minmax(0,.58fr) minmax(0,.66fr);gap:10px;align-items:end}
 .hr-benefit-form-grid .form-group{margin:0;min-width:0}
 .hr-benefit-form-grid input,.hr-benefit-form-grid select,.hr-benefit-table input,.hr-benefit-table textarea{width:100%;box-sizing:border-box}
 .hr-benefit-104-fields{display:contents}
@@ -347,20 +347,20 @@ layoutHeader('Benefici e diritti HR');
                         <label for="data_fine"><strong>Decorrenza a</strong></label>
                         <input type="date" name="data_fine" id="data_fine">
                     </div>
-                </div>
 
-                <div class="hr-benefit-104-fields" id="campi-legge-104">
-                    <div class="form-group">
-                        <label for="plafond_giorni_mese"><strong>Giorni/mese</strong></label>
-                        <input type="number" min="0.01" step="0.01" name="plafond_giorni_mese" id="plafond_giorni_mese" value="3">
-                    </div>
-                    <div class="form-group">
-                        <label for="plafond_ore_mese"><strong>Ore/mese</strong></label>
-                        <input type="number" min="0.01" step="0.01" name="plafond_ore_mese" id="plafond_ore_mese" value="24">
-                    </div>
-                    <div class="form-group">
-                        <label for="ore_giornata_equivalenza"><strong>Ore/giorno</strong></label>
-                        <input type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" id="ore_giornata_equivalenza" value="8">
+                    <div class="hr-benefit-104-fields" id="campi-legge-104">
+                        <div class="form-group">
+                            <label for="plafond_giorni_mese"><strong>Giorni/mese</strong></label>
+                            <input type="number" min="0.01" step="0.01" name="plafond_giorni_mese" id="plafond_giorni_mese" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label for="plafond_ore_mese"><strong>Ore/mese</strong></label>
+                            <input type="number" min="0.01" step="0.01" name="plafond_ore_mese" id="plafond_ore_mese" value="24">
+                        </div>
+                        <div class="form-group">
+                            <label for="ore_giornata_equivalenza"><strong>Ore/giorno</strong></label>
+                            <input type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" id="ore_giornata_equivalenza" value="8">
+                        </div>
                     </div>
                 </div>
 
