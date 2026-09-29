@@ -188,13 +188,15 @@ foreach ($utenti as $utente) {
         $riepilogo['cambio_password']++;
     }
 
-    $qualificaInps = strtoupper(trim((string)($utente['qualifica_inps'] ?? '')));
-    if ($qualificaInps === 'OPERAIO') {
-        $riepilogo['operai']++;
-    } elseif ($qualificaInps === 'IMPIEGATO') {
-        $riepilogo['impiegati']++;
-    } else {
-        $riepilogo['senza_qualifica_inps']++;
+    if ((int)$utente['attivo'] === 1) {
+        $qualificaInps = strtoupper(trim((string)($utente['qualifica_inps'] ?? '')));
+        if ($qualificaInps === 'OPERAIO') {
+            $riepilogo['operai']++;
+        } elseif ($qualificaInps === 'IMPIEGATO') {
+            $riepilogo['impiegati']++;
+        } else {
+            $riepilogo['senza_qualifica_inps']++;
+        }
     }
 }
 
@@ -230,9 +232,9 @@ layoutHeader('Gestione utenti');
     <span><strong><?= (int)$riepilogo['disattivi'] ?></strong> disattivi</span>
     <span><strong><?= (int)$riepilogo['senza_ruolo'] ?></strong> senza ruolo</span>
     <span><strong><?= (int)$riepilogo['cambio_password'] ?></strong> cambio password</span>
-    <span><strong><?= (int)$riepilogo['operai'] ?></strong> operai</span>
-    <span><strong><?= (int)$riepilogo['impiegati'] ?></strong> impiegati</span>
-    <span><strong><?= (int)$riepilogo['senza_qualifica_inps'] ?></strong> senza Qual. INPS</span>
+    <span><strong><?= (int)$riepilogo['operai'] ?></strong> operai attivi</span>
+    <span><strong><?= (int)$riepilogo['impiegati'] ?></strong> impiegati attivi</span>
+    <span><strong><?= (int)$riepilogo['senza_qualifica_inps'] ?></strong> attivi senza Qual. INPS</span>
 </section>
 
 <div class="card card-wide">
