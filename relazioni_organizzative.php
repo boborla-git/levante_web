@@ -218,73 +218,80 @@ layoutHeader('Relazioni organizzative');
 <?php if ($errore !== ''): ?><div class="alert alert-error"><?= h($errore) ?></div><?php endif; ?>
 <?php if ($messaggio !== ''): ?><div class="alert alert-success"><?= h($messaggio) ?></div><?php endif; ?>
 
-<div class="card card-form">
-    <h2>Nuova relazione</h2>
-    <?php if (!$puoScrivere): ?>
-        <div class="info-box">Il tuo profilo puo consultare ma non modificare le relazioni.</div>
-    <?php else: ?>
-    <form method="post" action="relazioni_organizzative.php">
-        <input type="hidden" name="azione" value="nuova_relazione">
-        <div class="info-box">Compila la frase organizzativa: <strong>Utente</strong> → <strong>risponde funzionalmente a</strong> → <strong>responsabile / referente</strong>.</div>
-        <div class="hr-wide-form-row hr-relazioni-form-row">
-            <div class="form-group">
-                <label for="id_utente">Utente</label>
-                <select name="id_utente" id="id_utente" required>
-                    <option value="">Seleziona...</option>
-                    <?php foreach ($utenti as $u): ?>
-                        <option value="<?= (int)$u['id_utente'] ?>"><?= h(trim((string)$u['nominativo']) !== '' ? (string)$u['nominativo'] : (string)$u['username']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="id_tipo_relazione">Relazione</label>
-                <select name="id_tipo_relazione" id="id_tipo_relazione" required>
-                    <option value="">Seleziona...</option>
-                    <?php
-                    $relazioniViste = [];
-                    foreach ($tipiRelazione as $t):
-                        $descrizioneOpzione = descrizioneRelazioneBreve((string)$t['codice'], (string)$t['descrizione']);
-                        if (isset($relazioniViste[$descrizioneOpzione])) {
-                            continue;
-                        }
-                        $relazioniViste[$descrizioneOpzione] = true;
-                    ?>
-                        <option value="<?= (int)$t['id_tipo_relazione'] ?>"><?= h($descrizioneOpzione) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="id_utente_collegato">Responsabile / referente</label>
-                <select name="id_utente_collegato" id="id_utente_collegato" required>
-                    <option value="">Seleziona...</option>
-                    <?php foreach ($utenti as $u): ?>
-                        <option value="<?= (int)$u['id_utente'] ?>"><?= h(trim((string)$u['nominativo']) !== '' ? (string)$u['nominativo'] : (string)$u['username']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="data_inizio">Data inizio</label>
-                <input type="date" name="data_inizio" id="data_inizio" value="<?= date('Y-m-d') ?>" required>
-            </div>
-            <div class="form-group">
-                <label for="data_fine">Data fine</label>
-                <input type="date" name="data_fine" id="data_fine">
-            </div>
-            <div class="form-group">
-                <label for="note">Note</label>
-                <input type="text" name="note" id="note" maxlength="255">
-            </div>
-        </div>
-        <div class="actions"><button type="submit">Salva relazione</button></div>
-    </form>
-    <?php endif; ?>
+<?php if (!$puoScrivere): ?>
+<div class="card card-compact">
+    <div class="info-box">Il tuo profilo puo consultare ma non modificare le relazioni.</div>
 </div>
+<?php else: ?>
+<details class="card card-compact hr-org-create">
+    <summary class="hr-org-create-summary">
+        <span class="hr-org-create-title"><i class="la la-plus-circle" aria-hidden="true"></i> Nuova relazione</span>
+        <span class="meta">Apri il modulo solo quando serve</span>
+    </summary>
+    <div class="hr-org-create-body">
+        <form method="post" action="relazioni_organizzative.php">
+            <input type="hidden" name="azione" value="nuova_relazione">
+            <div class="info-box">Compila la frase organizzativa: <strong>Utente</strong> → <strong>risponde funzionalmente a</strong> → <strong>responsabile / referente</strong>.</div>
+            <div class="hr-wide-form-row hr-relazioni-form-row">
+                <div class="form-group">
+                    <label for="id_utente">Utente</label>
+                    <select name="id_utente" id="id_utente" required>
+                        <option value="">Seleziona...</option>
+                        <?php foreach ($utenti as $u): ?>
+                            <option value="<?= (int)$u['id_utente'] ?>"><?= h(trim((string)$u['nominativo']) !== '' ? (string)$u['nominativo'] : (string)$u['username']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="id_tipo_relazione">Relazione</label>
+                    <select name="id_tipo_relazione" id="id_tipo_relazione" required>
+                        <option value="">Seleziona...</option>
+                        <?php
+                        $relazioniViste = [];
+                        foreach ($tipiRelazione as $t):
+                            $descrizioneOpzione = descrizioneRelazioneBreve((string)$t['codice'], (string)$t['descrizione']);
+                            if (isset($relazioniViste[$descrizioneOpzione])) {
+                                continue;
+                            }
+                            $relazioniViste[$descrizioneOpzione] = true;
+                        ?>
+                            <option value="<?= (int)$t['id_tipo_relazione'] ?>"><?= h($descrizioneOpzione) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="id_utente_collegato">Responsabile / referente</label>
+                    <select name="id_utente_collegato" id="id_utente_collegato" required>
+                        <option value="">Seleziona...</option>
+                        <?php foreach ($utenti as $u): ?>
+                            <option value="<?= (int)$u['id_utente'] ?>"><?= h(trim((string)$u['nominativo']) !== '' ? (string)$u['nominativo'] : (string)$u['username']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="data_inizio">Data inizio</label>
+                    <input type="date" name="data_inizio" id="data_inizio" value="<?= date('Y-m-d') ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="data_fine">Data fine</label>
+                    <input type="date" name="data_fine" id="data_fine">
+                </div>
+                <div class="form-group">
+                    <label for="note">Note</label>
+                    <input type="text" name="note" id="note" maxlength="255">
+                </div>
+            </div>
+            <div class="actions"><button type="submit">Salva relazione</button></div>
+        </form>
+    </div>
+</details>
+<?php endif; ?>
 
 <div class="card card-wide">
     <div class="hr-org-toolbar">
         <div>
-            <h2>Mappa responsabili / referenti</h2>
-            <div class="meta">Vista per responsabile: mostra solo i collegamenti attivi e diretti.</div>
+            <h2>Organizzazione attuale</h2>
+            <div class="meta">Responsabili e collaboratori collegati. Apri un responsabile per vedere il dettaglio.</div>
         </div>
         <div class="form-group hr-filter-search-group">
             <label for="orgSearch">Filtro rapido</label>
@@ -295,97 +302,108 @@ layoutHeader('Relazioni organizzative');
     <?php if (count($collaboratoriPerResponsabile) === 0): ?>
         <div class="hr-org-empty">Nessuna relazione attiva presente. Inserisci una relazione per costruire la mappa organizzativa.</div>
     <?php else: ?>
-        <div class="hr-org-grid" id="orgCards">
+        <div class="hr-org-manager-list" id="orgCards">
             <?php foreach ($collaboratoriPerResponsabile as $idResponsabile => $gruppo): ?>
                 <?php
                 $responsabile = $gruppo['responsabile'];
                 $collaboratori = $gruppo['collaboratori'] ?? [];
+                $numeroCollaboratori = count($collaboratori);
                 $searchText = strtolower((string)$responsabile['nome'] . ' ' . (string)$responsabile['username']);
                 foreach ($collaboratori as $collab) {
                     $searchText .= ' ' . strtolower(hrRelazioneNomeUtente($collab, 'utente') . ' ' . hrRelazioneUsername($collab, 'utente') . ' ' . (string)($collab['note'] ?? ''));
                 }
                 ?>
-                <article class="hr-org-card" data-card-filter-item="relazioniOrganizzative" data-search-text="<?= h($searchText) ?>">
-                    <div class="hr-org-card-head">
-                        <div>
-                            <h3 class="hr-org-card-title"><?= h((string)$responsabile['nome']) ?></h3>
-                            <div class="hr-org-chip-row"><?= hrRelazioneTestBadge((string)$responsabile['username']) ?></div>
+                <details class="hr-org-manager" data-card-filter-item="relazioniOrganizzative" data-search-text="<?= h($searchText) ?>">
+                    <summary class="hr-org-manager-summary">
+                        <div class="hr-org-manager-main">
+                            <strong><?= h((string)$responsabile['nome']) ?></strong>
+                            <?= hrRelazioneTestBadge((string)$responsabile['username']) ?>
                         </div>
-                        <?= renderHrStatusBadge('ATTIVO', 'Attivo') ?>
-                    </div>
-                    <div class="hr-org-card-body">
-                        <div class="hr-org-small-title">Collaboratori diretti</div>
-                        <?php foreach ($collaboratori as $r): ?>
-                            <div class="hr-org-relation-line">
-                                <span class="hr-org-relation-icon"><i class="la la-user-check" aria-hidden="true"></i></span>
-                                <div>
-                                    <div class="hr-org-person"><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></div>
-                                    <div class="hr-org-meta"><?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></div>
-                                    <div class="hr-org-chip-row">
-                                        <?= hrRelazioneTestBadge(hrRelazioneUsername($r, 'utente')) ?>
-                                        <span class="hr-org-chip hr-org-chip-muted"><?= h(hrRelazionePeriodo($r)) ?></span>
+                        <span class="hr-org-manager-count"><?= $numeroCollaboratori ?> <?= $numeroCollaboratori === 1 ? 'collaboratore' : 'collaboratori' ?></span>
+                    </summary>
+                    <div class="hr-org-manager-body">
+                        <div class="hr-org-manager-note">Collaboratori che rispondono funzionalmente a questo responsabile.</div>
+                        <div class="hr-org-compact-relations">
+                            <?php foreach ($collaboratori as $r): ?>
+                                <div class="hr-org-compact-relation">
+                                    <div class="hr-org-compact-person">
+                                        <span class="hr-org-relation-icon"><i class="la la-user-check" aria-hidden="true"></i></span>
+                                        <div>
+                                            <div class="hr-org-person"><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></div>
+                                            <div class="hr-org-compact-meta">
+                                                <span><?= h(hrRelazionePeriodo($r)) ?></span>
+                                                <?= hrRelazioneTestBadge(hrRelazioneUsername($r, 'utente')) ?>
+                                            </div>
+                                            <?php if (trim((string)($r['note'] ?? '')) !== ''): ?>
+                                                <div class="hr-org-meta">Note: <?= h((string)$r['note']) ?></div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
-                                    <?php if (trim((string)($r['note'] ?? '')) !== ''): ?>
-                                        <div class="hr-org-meta">Note: <?= h((string)$r['note']) ?></div>
-                                    <?php endif; ?>
                                 </div>
-                            </div>
-                        <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
-                </article>
+                </details>
             <?php endforeach; ?>
         </div>
+        <div class="hr-org-empty" data-card-filter-empty="relazioniOrganizzative" style="display:none">Nessun responsabile o collaboratore corrisponde al filtro.</div>
     <?php endif; ?>
 </div>
 
-<div class="card card-wide hr-org-history">
-    <div class="hr-org-toolbar">
+<details class="card card-wide hr-org-history hr-org-archive">
+    <summary class="hr-org-archive-summary">
         <div>
-            <h2>Relazioni registrate</h2>
-            <div class="meta">Archivio completo: include relazioni attive e chiuse.</div>
+            <h2>Archivio relazioni</h2>
+            <div class="meta">Archivio completo: <?= (int)$riepilogo['relazioni_totali'] ?> relazioni registrate, attive e chiuse.</div>
         </div>
-        <div class="form-group hr-filter-search-group">
-            <label for="relazioniSearch">Filtro rapido</label>
-            <input type="search" id="relazioniSearch" data-table-filter="relazioniTable" placeholder="Cerca in tutte le colonne...">
+        <span class="hr-org-archive-action">Apri archivio</span>
+    </summary>
+    <div class="hr-org-archive-body">
+        <div class="hr-org-toolbar hr-org-archive-toolbar">
+            <div class="meta">Qui puoi consultare lo storico completo e chiudere le relazioni ancora attive.</div>
+            <div class="form-group hr-filter-search-group">
+                <label for="relazioniSearch">Filtro rapido</label>
+                <input type="search" id="relazioniSearch" data-table-filter="relazioniTable" placeholder="Cerca in tutte le colonne...">
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table id="relazioniTable">
+                <thead>
+                    <tr>
+                        <th>Utente</th>
+                        <th>Relazione</th>
+                        <th>Responsabile / referente</th>
+                        <th>Periodo</th>
+                        <th>Note</th>
+                        <th>Stato</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($relazioni as $r): ?>
+                    <tr>
+                        <td><strong><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></strong></td>
+                        <td><span class="relation-icon"><i class="la la-level-up-alt" aria-hidden="true"></i></span><?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></td>
+                        <td><strong><?= h(hrRelazioneNomeUtente($r, 'collegato')) ?></strong></td>
+                        <td><?= h(hrRelazionePeriodo($r)) ?></td>
+                        <td><?= h((string)$r['note']) ?></td>
+                        <td><?= renderHrStatusBadge((int)$r['attiva'] === 1 ? 'ATTIVA' : 'CHIUSA', (int)$r['attiva'] === 1 ? 'Attiva' : 'Chiusa') ?></td>
+                        <td>
+                            <?php if ($puoScrivere && (int)$r['attiva'] === 1): ?>
+                                <form method="post" action="relazioni_organizzative.php" onsubmit="return confirm('Chiudere questa relazione?');">
+                                    <input type="hidden" name="azione" value="chiudi_relazione">
+                                    <input type="hidden" name="id_relazione_organizzativa" value="<?= (int)$r['id_relazione_organizzativa'] ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="la la-times" aria-hidden="true"></i> Chiudi</button>
+                                </form>
+                            <?php else: ?><span class="meta">-</span><?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
     </div>
-    <div class="table-wrap">
-        <table id="relazioniTable">
-            <thead>
-                <tr>
-                    <th>Utente</th>
-                    <th>Relazione</th>
-                    <th>Responsabile / referente</th>
-                    <th>Periodo</th>
-                    <th>Note</th>
-                    <th>Stato</th>
-                    <th>Azioni</th>
-                </tr>
-            </thead>
-            <tbody>
-            <?php foreach ($relazioni as $r): ?>
-                <tr>
-                    <td><strong><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></strong></td>
-                    <td><span class="relation-icon"><i class="la la-level-up-alt" aria-hidden="true"></i></span><?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></td>
-                    <td><strong><?= h(hrRelazioneNomeUtente($r, 'collegato')) ?></strong></td>
-                    <td><?= h(hrRelazionePeriodo($r)) ?></td>
-                    <td><?= h((string)$r['note']) ?></td>
-                    <td><?= renderHrStatusBadge((int)$r['attiva'] === 1 ? 'ATTIVA' : 'CHIUSA', (int)$r['attiva'] === 1 ? 'Attiva' : 'Chiusa') ?></td>
-                    <td>
-                        <?php if ($puoScrivere && (int)$r['attiva'] === 1): ?>
-                            <form method="post" action="relazioni_organizzative.php" onsubmit="return confirm('Chiudere questa relazione?');">
-                                <input type="hidden" name="azione" value="chiudi_relazione">
-                                <input type="hidden" name="id_relazione_organizzativa" value="<?= (int)$r['id_relazione_organizzativa'] ?>">
-                                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="la la-times" aria-hidden="true"></i> Chiudi</button>
-                            </form>
-                        <?php else: ?><span class="meta">-</span><?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
+</details>
 
 <script src="/assets/hr-common.js"></script>
 
