@@ -166,7 +166,14 @@ if (!function_exists('hrEmailDestinatariUtenti')) {
                AND tr.codice IN ('EMAIL_LAVORO', 'EMAIL_PERSONALE')
              WHERE ru.attivo = 1
                AND ru.id_utente IN ($placeholders)
-             ORDER BY ru.principale DESC, ru.id_recapito_utente ASC"
+             ORDER BY
+                CASE tr.codice
+                    WHEN 'EMAIL_LAVORO' THEN 0
+                    WHEN 'EMAIL_PERSONALE' THEN 1
+                    ELSE 2
+                END,
+                ru.principale DESC,
+                ru.id_recapito_utente ASC"
         );
         $stmtRecapiti->execute($idUtenti);
 
