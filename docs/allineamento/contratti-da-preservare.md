@@ -9,6 +9,10 @@
 - Richieste personali non HR: niente retrodate. Inserimenti delegati dei responsabili per riporti diretti: retrodate consentite solo nei mesi aperti. Mesi chiusi sempre bloccati a utenti/responsabili; HR mantiene l'override per rettifiche autorizzate.
 - Controllo sovrapposizioni distinto per giorni e ore.
 - Annullamento richiesta con storico, notifiche e email dopo commit.
+- Qualifica INPS `IMPIEGATO`: `VISITA_CLIENTE`, `VISITA_FORNITORE`, `FORMAZIONE` in auto-approvazione; responsabile informato via email, senza azione approvativa.
+- `LEGGE_104`: nessuna approvazione del responsabile; responsabile informato via email se presente.
+- Le email informative/di approvazione al responsabile mostrano eventuali altre richieste nello stesso periodo limitate ai suoi riporti diretti/funzionali.
+- Richiedente e responsabile possono annullare le auto-approvate se lo stato e il mese lo consentono; `annullata_da_richiedente` vale 1 solo per annullamento effettuato dal richiedente.
 
 ## Approvazioni
 
