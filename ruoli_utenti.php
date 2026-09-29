@@ -15,7 +15,7 @@ $errore = '';
 $messaggio = '';
 $utenti = [];
 $ruoli = [];
-$ruoloUtenteMappa = [];
+$ruoliUtenteAttivi = [];
 
 function h(?string $valore): string
 {
@@ -37,6 +37,7 @@ function adminRuoliUserInitials(array $utente): string
     $cognome = trim((string)($utente['cognome'] ?? ''));
     $username = trim((string)($utente['username'] ?? ''));
     $iniziali = '';
+
     if ($nome !== '') {
         $iniziali .= mb_substr($nome, 0, 1, 'UTF-8');
     }
@@ -46,17 +47,35 @@ function adminRuoliUserInitials(array $utente): string
     if ($iniziali === '' && $username !== '') {
         $iniziali = mb_substr($username, 0, 2, 'UTF-8');
     }
+
     return mb_strtoupper($iniziali !== '' ? $iniziali : '?', 'UTF-8');
 }
 
-function adminRuoloLabel(array $ruoli, int $idRuolo): string
+function adminRuoloLabel(array $ruoliPerId, int $idRuolo): string
 {
-    foreach ($ruoli as $ruolo) {
-        if ((int)$ruolo['id_ruolo'] === $idRuolo) {
-            return (string)$ruolo['codice_ruolo'];
-        }
+    return isset($ruoliPerId[$idRuolo])
+        ? (string)$ruoliPerId[$idRuolo]['codice_ruolo']
+        : 'Ruolo non disponibile';
+}
+
+function adminRuoliCorrentiLabel(array $ruoliPerId, array $idsRuolo): string
+{
+    if (!$idsRuolo) {
+        return 'Nessun ruolo';
     }
-    return 'Nessun ruolo';
+
+    $etichette = [];
+    foreach ($idsRuolo as $idRuolo) {
+        $etichette[] = adminRuoloLabel($ruoliPerId, (int)$idRuolo);
+    }
+
+    return implode(', ', $etichette);
+}
+
+function adminUtenteRuoloProtetto(array $utente): bool
+{
+    $username = strtolower(trim((string)($utente['username'] ?? '')));
+    return in_array($username, ['admin', 'amministratore'], true);
 }
 
 try {
@@ -69,6 +88,7 @@ try {
             attivo
         FROM aut_utenti
         ORDER BY
+            attivo DESC,
             CASE WHEN COALESCE(cognome, '') = '' THEN 1 ELSE 0 END,
             cognome ASC,
             nome ASC,
@@ -88,74 +108,125 @@ try {
         ORDER BY ordinamento, codice_ruolo"
     );
     $ruoli = $stmtRuoli->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmtRuoliUtenti = $pdo->query(
+        "SELECT id_utente, id_ruolo
+         FROM aut_utenti_ruoli
+         WHERE attivo = 1
+           AND (data_fine IS NULL OR data_fine >= NOW())
+         ORDER BY id_utente, id_utente_ruolo"
+    );
+
+    while ($riga = $stmtRuoliUtenti->fetch(PDO::FETCH_ASSOC)) {
+        $idUtente = (int)$riga['id_utente'];
+        $ruoliUtenteAttivi[$idUtente][] = (int)$riga['id_ruolo'];
+    }
 } catch (Throwable $e) {
     http_response_code(500);
     die('Errore nel caricamento di utenti o ruoli.');
 }
 
+$ruoliPerId = [];
+foreach ($ruoli as $ruolo) {
+    $ruoliPerId[(int)$ruolo['id_ruolo']] = $ruolo;
+}
+$idsRuoliValidi = array_fill_keys(array_keys($ruoliPerId), true);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $modificati = 0;
+
     try {
         $pdo->beginTransaction();
 
+        $stmtDisattiva = $pdo->prepare(
+            "UPDATE aut_utenti_ruoli
+             SET attivo = 0,
+                 data_fine = NOW()
+             WHERE id_utente = :id_utente
+               AND attivo = 1
+               AND (data_fine IS NULL OR data_fine >= NOW())"
+        );
+
+        $stmtInserisci = $pdo->prepare(
+            "INSERT INTO aut_utenti_ruoli
+                (id_utente, id_ruolo, data_inizio, data_fine, attivo)
+             VALUES
+                (:id_utente, :id_ruolo, NOW(), NULL, 1)
+             ON DUPLICATE KEY UPDATE
+                attivo = 1,
+                data_inizio = NOW(),
+                data_fine = NULL"
+        );
+
         foreach ($utenti as $utente) {
+            if (adminUtenteRuoloProtetto($utente)) {
+                continue;
+            }
+
             $utenteId = (int)$utente['id_utente'];
             $chiave = 'ruolo_utente_' . $utenteId;
-            $idRuoloSelezionato = (int)($_POST[$chiave] ?? 0);
 
-            $stmtDisattiva = $pdo->prepare(
-                "UPDATE aut_utenti_ruoli
-                 SET attivo = 0,
-                     data_fine = NOW()
-                 WHERE id_utente = :id_utente
-                   AND attivo = 1"
-            );
+            if (!array_key_exists($chiave, $_POST)) {
+                continue;
+            }
+
+            $idRuoloSelezionato = (int)$_POST[$chiave];
+
+            // -1 viene usato solo quando l'utente possiede piu' ruoli attivi:
+            // significa "non modificare" e impedisce riduzioni involontarie.
+            if ($idRuoloSelezionato === -1) {
+                continue;
+            }
+
+            if ($idRuoloSelezionato < 0 || ($idRuoloSelezionato > 0 && !isset($idsRuoliValidi[$idRuoloSelezionato]))) {
+                throw new RuntimeException('Ruolo selezionato non valido.');
+            }
+
+            $correnti = array_values(array_unique(array_map(
+                'intval',
+                $ruoliUtenteAttivi[$utenteId] ?? []
+            )));
+
+            $nessunRuoloCorrente = count($correnti) === 0;
+            $singoloRuoloInvariato = count($correnti) === 1 && $correnti[0] === $idRuoloSelezionato;
+            $nessunRuoloInvariato = $nessunRuoloCorrente && $idRuoloSelezionato === 0;
+
+            if ($singoloRuoloInvariato || $nessunRuoloInvariato) {
+                continue;
+            }
+
             $stmtDisattiva->execute(['id_utente' => $utenteId]);
 
             if ($idRuoloSelezionato > 0) {
-                $stmtInserisci = $pdo->prepare(
-                    "INSERT INTO aut_utenti_ruoli
-                     (id_utente, id_ruolo, data_inizio, data_fine, attivo)
-                     VALUES (:id_utente, :id_ruolo, NOW(), NULL, 1)
-                     ON DUPLICATE KEY UPDATE
-                         attivo = 1,
-                         data_inizio = NOW(),
-                         data_fine = NULL"
-                );
                 $stmtInserisci->execute([
                     'id_utente' => $utenteId,
                     'id_ruolo' => $idRuoloSelezionato,
                 ]);
             }
+
+            $modificati++;
         }
 
         $pdo->commit();
-        header('Location: ruoli_utenti.php?ok=1');
+
+        header('Location: ruoli_utenti.php?ok=1&modificati=' . $modificati);
         exit;
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        $errore = 'Errore durante il salvataggio dei ruoli utenti.';
-    }
-}
 
-try {
-    $stmtRuoliUtenti = $pdo->query(
-        "SELECT id_utente, id_ruolo
-         FROM aut_utenti_ruoli
-         WHERE attivo = 1"
-    );
-
-    while ($riga = $stmtRuoliUtenti->fetch(PDO::FETCH_ASSOC)) {
-        $ruoloUtenteMappa[(int)$riga['id_utente']] = (int)$riga['id_ruolo'];
+        $errore = $e->getMessage() === 'Ruolo selezionato non valido.'
+            ? $e->getMessage()
+            : 'Errore durante il salvataggio dei ruoli utenti.';
     }
-} catch (Throwable $e) {
-    http_response_code(500);
-    die('Errore nel caricamento dei ruoli utente.');
 }
 
 if (isset($_GET['ok'])) {
-    $messaggio = 'Ruoli utenti aggiornati correttamente.';
+    $modificati = max(0, (int)($_GET['modificati'] ?? 0));
+    $messaggio = $modificati > 0
+        ? ($modificati === 1 ? '1 ruolo utente aggiornato correttamente.' : $modificati . ' ruoli utente aggiornati correttamente.')
+        : 'Nessuna modifica ai ruoli: le assegnazioni erano già aggiornate.';
 }
 
 $riepilogo = [
@@ -172,14 +243,23 @@ foreach ($ruoli as $ruolo) {
 
 foreach ($utenti as $utente) {
     $idUtente = (int)$utente['id_utente'];
-    $idRuolo = (int)($ruoloUtenteMappa[$idUtente] ?? 0);
+    $ruoliCorrenti = array_values(array_unique(array_map(
+        'intval',
+        $ruoliUtenteAttivi[$idUtente] ?? []
+    )));
+
     if ((int)$utente['attivo'] === 1) {
         $riepilogo['attivi']++;
     }
-    if ($idRuolo <= 0) {
+
+    if (count($ruoliCorrenti) === 0) {
         $riepilogo['senza_ruolo']++;
-    } elseif (isset($conteggioRuoli[$idRuolo])) {
-        $conteggioRuoli[$idRuolo]++;
+    }
+
+    foreach ($ruoliCorrenti as $idRuolo) {
+        if (isset($conteggioRuoli[$idRuolo])) {
+            $conteggioRuoli[$idRuolo]++;
+        }
     }
 }
 
@@ -191,10 +271,10 @@ layoutHeader('Ruoli utenti');
     <div class="section-head">
         <div>
             <h1>Ruoli utenti</h1>
-            <div class="meta">Assegna il ruolo attivo agli utenti del portale. I permessi vengono ereditati dal ruolo selezionato.</div>
+            <div class="meta">Assegna o modifica il ruolo degli utenti esistenti. I permessi vengono ereditati dal ruolo selezionato.</div>
         </div>
         <div class="section-head-actions">
-            <a class="btn btn-light" href="index.php"><i class="la la-arrow-left" aria-hidden="true"></i> Dashboard</a>
+            <a class="btn btn-light" href="utenti.php"><i class="la la-arrow-left" aria-hidden="true"></i> Gestione utenti</a>
         </div>
     </div>
 </div>
@@ -213,126 +293,115 @@ layoutHeader('Ruoli utenti');
 <?php renderAdminAlert($errore, 'danger'); ?>
 <?php renderAdminAlert($messaggio, 'success'); ?>
 
-<section class="card card-wide">
-    <div class="hr-filter-toolbar admin-section-toolbar">
-        <div class="admin-section-title">
-            <h2>Ruoli disponibili</h2>
-            <div class="meta">Vista sintetica dei ruoli attivi e del numero di utenti assegnati.</div>
-        </div>
+<section class="card card-wide admin-roles-summary">
+    <div class="admin-section-title">
+        <h2>Ruoli disponibili</h2>
+        <div class="meta">Riepilogo compatto dei ruoli attivi e del numero di utenti assegnati.</div>
     </div>
-    <div class="admin-role-summary-grid">
+
+    <div class="admin-role-chip-list">
         <?php foreach ($ruoli as $ruolo): ?>
-            <?php $idRuolo = (int)$ruolo['id_ruolo']; ?>
-            <article class="admin-role-summary-card">
-                <div>
-                    <h3><?= h((string)$ruolo['codice_ruolo']) ?></h3>
-                    <p><?= h((string)($ruolo['descrizione'] ?? '')) ?></p>
-                </div>
-                <div class="admin-role-count"><strong><?= (int)($conteggioRuoli[$idRuolo] ?? 0) ?></strong><span>utenti</span></div>
-            </article>
+            <?php
+            $idRuolo = (int)$ruolo['id_ruolo'];
+            $descrizioneRuolo = trim((string)($ruolo['descrizione'] ?? ''));
+            ?>
+            <span class="admin-role-chip" title="<?= h($descrizioneRuolo) ?>">
+                <strong><?= h((string)$ruolo['codice_ruolo']) ?></strong>
+                <span><?= (int)($conteggioRuoli[$idRuolo] ?? 0) ?></span>
+            </span>
         <?php endforeach; ?>
     </div>
 </section>
 
 <form method="post" id="ruoliUtentiForm">
-    <section class="card card-wide">
+    <section class="card card-wide admin-roles-card">
         <div class="hr-filter-toolbar admin-section-toolbar">
             <div class="admin-section-title">
                 <h2>Assegnazione ruoli</h2>
-                <div class="meta">Modifica i ruoli degli utenti e salva tutto con un'unica conferma finale.</div>
+                <div class="meta">Vengono aggiornati solo gli utenti per i quali il ruolo cambia realmente.</div>
             </div>
-            <div class="form-group hr-filter-search-group">
-                <label for="ruoliUtentiSearch">Filtro rapido</label>
-                <input type="search" id="ruoliUtentiSearch" data-card-filter="ruoliUtentiCards" placeholder="Cerca persona, ruolo, stato..." autocomplete="off">
-            </div>
+            <?php renderAdminQuickFilter('filtroRapidoRuoliUtenti', 'tabellaRuoliUtenti', 'Cerca persona, username, ruolo, stato...'); ?>
         </div>
 
-        <div class="admin-role-user-grid" id="ruoliUtentiCards">
-            <?php foreach ($utenti as $utente): ?>
-                <?php
-                $utenteId = (int)$utente['id_utente'];
-                $chiave = 'ruolo_utente_' . $utenteId;
-                $ruoloCorrente = (int)($ruoloUtenteMappa[$utenteId] ?? 0);
-                $ruoloCorrenteLabel = adminRuoloLabel($ruoli, $ruoloCorrente);
-                $nomeCompleto = adminRuoliUserDisplayName($utente);
-                $username = trim((string)$utente['username']);
-                $utenteAttivo = (int)$utente['attivo'] === 1;
-                $searchText = mb_strtolower(trim($username . ' ' . $nomeCompleto . ' ' . $ruoloCorrenteLabel . ' ' . ($utenteAttivo ? 'attivo' : 'disattivo')), 'UTF-8');
-                ?>
-                <article class="admin-role-user-card" data-card-filter-item="ruoliUtentiCards" data-search-text="<?= h($searchText) ?>">
-                    <div class="admin-role-user-head">
-                        <div class="admin-role-user-avatar" aria-hidden="true"><?= h(adminRuoliUserInitials($utente)) ?></div>
-                        <div class="admin-role-user-title">
-                            <h3><?= h($nomeCompleto) ?></h3>
-                            <div class="meta"><?= h($username) ?></div>
-                        </div>
-                        <div class="admin-role-user-status">
-                            <?= renderHrStatusBadge($utenteAttivo ? 'ATTIVO' : 'DISATTIVO', $utenteAttivo ? 'Attivo' : 'Disattivo', ['class' => 'user-badge']) ?>
-                        </div>
-                    </div>
-                    <div class="admin-role-current">
-                        <span>Ruolo attuale</span>
-                        <strong><?= h($ruoloCorrenteLabel) ?></strong>
-                    </div>
-                    <div class="form-group admin-role-select-group">
-                        <label for="<?= h($chiave) ?>">Nuovo ruolo</label>
-                        <select class="role-select" id="<?= h($chiave) ?>" name="<?= h($chiave) ?>">
-                            <option value="0" <?= $ruoloCorrente === 0 ? 'selected' : '' ?>>nessun ruolo</option>
-                            <?php foreach ($ruoli as $ruolo): ?>
-                                <option value="<?= (int)$ruolo['id_ruolo'] ?>" <?= $ruoloCorrente === (int)$ruolo['id_ruolo'] ? 'selected' : '' ?>>
-                                    <?= h((string)$ruolo['codice_ruolo']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </article>
-            <?php endforeach; ?>
-        </div>
-
-        <?php renderAdminSaveActions('Salva ruoli utenti'); ?>
-    </section>
-
-    <section class="card card-wide">
-        <div class="hr-filter-toolbar admin-section-toolbar">
-            <div class="admin-section-title">
-                <h2>Archivio assegnazioni</h2>
-                <div class="meta">Vista tabellare completa per controllo amministrativo.</div>
-            </div>
-            <?php renderAdminQuickFilter('filtroRapidoRuoliUtenti', 'tabellaRuoliUtenti'); ?>
-        </div>
-        <div class="table-wrap">
-            <table id="tabellaRuoliUtenti">
+        <div class="table-wrap admin-roles-table-wrap">
+            <table id="tabellaRuoliUtenti" class="admin-roles-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Username</th>
-                        <th>Nome</th>
+                        <th>Dipendente</th>
+                        <th>Ruolo attuale</th>
+                        <th>Nuovo ruolo</th>
                         <th>Stato</th>
-                        <th>Ruolo attivo</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($utenti as $utente): ?>
-                        <?php
-                        $utenteId = (int)$utente['id_utente'];
-                        $ruoloCorrente = (int)($ruoloUtenteMappa[$utenteId] ?? 0);
-                        $nomeCompleto = adminRuoliUserDisplayName($utente);
-                        $utenteAttivo = (int)$utente['attivo'] === 1;
-                        ?>
-                        <tr>
-                            <td><?= $utenteId ?></td>
-                            <td><?= h((string)$utente['username']) ?></td>
-                            <td><?= h($nomeCompleto) ?></td>
-                            <td><?= renderHrStatusBadge($utenteAttivo ? 'ATTIVO' : 'DISATTIVO', $utenteAttivo ? 'Attivo' : 'Disattivo', ['class' => 'user-badge']) ?></td>
-                            <td><?= h(adminRuoloLabel($ruoli, $ruoloCorrente)) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
+                <?php foreach ($utenti as $utente): ?>
+                    <?php
+                    $utenteId = (int)$utente['id_utente'];
+                    $chiave = 'ruolo_utente_' . $utenteId;
+                    $ruoliCorrenti = array_values(array_unique(array_map(
+                        'intval',
+                        $ruoliUtenteAttivi[$utenteId] ?? []
+                    )));
+                    $ruoloCorrenteLabel = adminRuoliCorrentiLabel($ruoliPerId, $ruoliCorrenti);
+                    $nomeCompleto = adminRuoliUserDisplayName($utente);
+                    $username = trim((string)$utente['username']);
+                    $utenteAttivo = (int)$utente['attivo'] === 1;
+                    $utenteProtetto = adminUtenteRuoloProtetto($utente);
+                    $piuRuoliAttivi = count($ruoliCorrenti) > 1;
+                    $ruoloSelezionato = count($ruoliCorrenti) === 1 ? $ruoliCorrenti[0] : ($piuRuoliAttivi ? -1 : 0);
+                    ?>
+                    <tr>
+                        <td class="admin-roles-person" data-label="Dipendente">
+                            <div class="admin-users-person-main">
+                                <div class="admin-user-avatar" aria-hidden="true"><?= h(adminRuoliUserInitials($utente)) ?></div>
+                                <div class="admin-users-person-text">
+                                    <strong><?= h($nomeCompleto) ?></strong>
+                                    <span><?= h($username) ?></span>
+                                    <?php if ($utenteProtetto): ?>
+                                        <small class="admin-role-protected-note"><i class="la la-lock" aria-hidden="true"></i> Account tecnico protetto</small>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </td>
+                        <td data-label="Ruolo attuale">
+                            <strong class="admin-roles-current"><?= h($ruoloCorrenteLabel) ?></strong>
+                            <?php if ($piuRuoliAttivi): ?>
+                                <div class="meta">Più ruoli attivi: nessuna modifica automatica.</div>
+                            <?php endif; ?>
+                        </td>
+                        <td data-label="Nuovo ruolo">
+                            <?php if ($utenteProtetto): ?>
+                                <span class="admin-role-locked"><i class="la la-lock" aria-hidden="true"></i> Non modificabile</span>
+                            <?php else: ?>
+                                <select class="role-select admin-role-select" id="<?= h($chiave) ?>" name="<?= h($chiave) ?>">
+                                    <?php if ($piuRuoliAttivi): ?>
+                                        <option value="-1" selected>— Nessuna modifica —</option>
+                                    <?php endif; ?>
+                                    <option value="0" <?= $ruoloSelezionato === 0 ? 'selected' : '' ?>>Nessun ruolo</option>
+                                    <?php foreach ($ruoli as $ruolo): ?>
+                                        <option value="<?= (int)$ruolo['id_ruolo'] ?>" <?= $ruoloSelezionato === (int)$ruolo['id_ruolo'] ? 'selected' : '' ?>>
+                                            <?= h((string)$ruolo['codice_ruolo']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php endif; ?>
+                        </td>
+                        <td data-label="Stato">
+                            <?= renderHrStatusBadge(
+                                $utenteAttivo ? 'ATTIVO' : 'DISATTIVO',
+                                $utenteAttivo ? 'Attivo' : 'Disattivo',
+                                ['class' => 'user-badge']
+                            ) ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
                 </tbody>
             </table>
+            <div class="admin-filter-empty" data-table-filter-empty="tabellaRuoliUtenti" hidden>Nessun utente corrisponde al filtro.</div>
         </div>
+
+        <?php renderAdminSaveActions('Salva modifiche ruoli'); ?>
     </section>
 </form>
-
-<script src="/assets/hr-common.js"></script>
 
 <?php layoutFooter(); ?>
