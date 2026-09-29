@@ -342,6 +342,4 @@ layoutHeader('Gestione utenti');
     </div>
 </div>
 
-<script src="/assets/hr-common.js"></script>
-
 <?php layoutFooter(); ?>
