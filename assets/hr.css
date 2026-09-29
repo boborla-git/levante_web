@@ -135,6 +135,11 @@
 .hr-org-manager[open] > .hr-org-manager-summary::before { transform: rotate(90deg); }
 .hr-org-create-title { display: inline-flex; align-items: center; gap: .45rem; color: #0f172a; font-weight: 800; font-size: 1rem; }
 .hr-org-create-summary .meta { margin-left: auto; }
+.hr-org-state-open { display: none; }
+.hr-org-create[open] .hr-org-state-closed,
+.hr-org-archive[open] .hr-org-state-closed { display: none; }
+.hr-org-create[open] .hr-org-state-open,
+.hr-org-archive[open] .hr-org-state-open { display: inline; }
 .hr-org-create-body { padding-top: 1rem; border-top: 1px solid #edf2f7; margin-top: 1rem; }
 .hr-org-create-body .info-box { margin-top: 0; }
 
@@ -183,7 +188,6 @@
 .hr-org-archive-summary h2 { margin: 0 0 .2rem; }
 .hr-org-archive-summary > div { flex: 1 1 auto; }
 .hr-org-archive-action { margin-left: auto; color: #0756c9; font-weight: 800; font-size: .9rem; white-space: nowrap; }
-.hr-org-archive[open] .hr-org-archive-action::after { content: ' aperto'; }
 .hr-org-archive-body { padding-top: 1rem; border-top: 1px solid #edf2f7; margin-top: 1rem; }
 .hr-org-archive-toolbar { margin-bottom: .85rem; }
 
