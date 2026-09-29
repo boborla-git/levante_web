@@ -427,7 +427,10 @@ if (!function_exists('hrEmailRichiestePresentiNelPeriodo')) {
             "SELECT
                 r.id_richiesta,
                 TRIM(CONCAT(COALESCE(u.nome, ''), ' ', COALESCE(u.cognome, ''))) AS persona,
-                te.descrizione AS tipologia,
+                CASE
+                    WHEN te.mostra_dettaglio_responsabili = 1 THEN te.descrizione
+                    ELSE 'Assenza/permesso'
+                END AS tipologia,
                 sr.descrizione AS stato,
                 sr.codice AS stato_codice,
                 MIN(p.data_da) AS data_da,
@@ -453,6 +456,7 @@ if (!function_exists('hrEmailRichiestePresentiNelPeriodo')) {
                 r.id_richiesta,
                 persona,
                 te.descrizione,
+                te.mostra_dettaglio_responsabili,
                 sr.descrizione,
                 sr.codice
              ORDER BY MIN(p.data_da) ASC, persona ASC
