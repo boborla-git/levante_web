@@ -75,6 +75,8 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - `ruoli_utenti.php` e' la pagina dedicata alla modifica del ruolo degli utenti gia' esistenti; la creazione iniziale del ruolo resta in `utente_nuovo.php`.
 - La pagina usa una sola vista responsive: tabella compatta su desktop/tablet e schede su smartphone, senza duplicare gli stessi utenti in un archivio separato.
 - Il riepilogo dei ruoli disponibili deve restare compatto e mostrare il numero di utenti assegnati a ciascun ruolo.
+- Nel riepilogo compatto devono comparire solo i ruoli con almeno un utente assegnato; i ruoli attivi con conteggio zero restano comunque disponibili nei selettori di assegnazione.
+- Se nessun ruolo risulta assegnato, il riepilogo deve mostrare il messaggio `Nessun ruolo attualmente assegnato.`.
 - Il salvataggio deve aggiornare esclusivamente gli utenti per i quali il ruolo cambia realmente; le assegnazioni invariate non devono essere disattivate/reinserite e non devono perdere la decorrenza originaria.
 - L'account tecnico `admin` / `amministratore` e' protetto e non puo' cambiare ruolo dalla pagina.
 - Se un utente possiede piu' ruoli attivi, la pagina non deve ridurli automaticamente a un solo ruolo: la selezione iniziale resta su `Nessuna modifica` finche' l'amministratore non effettua una scelta esplicita.
