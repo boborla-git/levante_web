@@ -380,7 +380,7 @@ if (!function_exists('hrEmailRichiestaDettaglio')) {
 }
 
 if (!function_exists('hrEmailRichiestePresentiNelPeriodo')) {
-    function hrEmailRichiestePresentiNelPeriodo(PDO $pdo, ?int $idRichiesta): array
+    function hrEmailRichiestePresentiNelPeriodo(PDO $pdo, ?int $idRichiesta, ?int $idResponsabile = null): array
     {
         if ($idRichiesta === null || $idRichiesta <= 0) {
             return [];
@@ -396,6 +396,31 @@ if (!function_exists('hrEmailRichiestePresentiNelPeriodo')) {
 
         if (!$range || empty($range['data_da_min']) || empty($range['data_a_max'])) {
             return [];
+        }
+
+        $filtroResponsabile = '';
+        $params = [
+            'id_richiesta' => $idRichiesta,
+            'data_da' => $range['data_da_min'],
+            'data_a' => $range['data_a_max'],
+        ];
+
+        if ($idResponsabile !== null && $idResponsabile > 0) {
+            $filtroResponsabile = "
+               AND EXISTS (
+                    SELECT 1
+                    FROM hr_relazioni_organizzative ro
+                    INNER JOIN hr_tipi_relazione_organizzativa tro
+                       ON tro.id_tipo_relazione = ro.id_tipo_relazione
+                      AND tro.attivo = 1
+                      AND tro.codice IN ('RESPONSABILE_DIRETTO', 'RESPONSABILE_FUNZIONALE')
+                    WHERE ro.id_utente = r.id_utente_richiedente
+                      AND ro.id_utente_collegato = :id_responsabile
+                      AND ro.attiva = 1
+                      AND ro.data_inizio <= CURDATE()
+                      AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE())
+               )";
+            $params['id_responsabile'] = $idResponsabile;
         }
 
         $stmt = $pdo->prepare(
@@ -423,6 +448,7 @@ if (!function_exists('hrEmailRichiestePresentiNelPeriodo')) {
                AND sr.codice IN ('IN_ATTESA', 'APPROVATA')
                AND p.data_da <= :data_a
                AND p.data_a >= :data_da
+               {$filtroResponsabile}
              GROUP BY
                 r.id_richiesta,
                 persona,
@@ -433,11 +459,7 @@ if (!function_exists('hrEmailRichiestePresentiNelPeriodo')) {
              LIMIT 10"
         );
 
-        $stmt->execute([
-            'id_richiesta' => $idRichiesta,
-            'data_da' => $range['data_da_min'],
-            'data_a' => $range['data_a_max'],
-        ]);
+        $stmt->execute($params);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -574,15 +596,17 @@ if (!function_exists('hrEmailHtml')) {
 
         $titoloPulito = trim($titolo) !== '' ? trim($titolo) : 'Notifica HR';
         $tipoEvento = strtoupper(trim((string)$tipoEvento));
-        $mostraPresenti = str_contains($tipoEvento, 'DA_APPROVARE');
+        $mostraPresenti =
+            str_contains($tipoEvento, 'DA_APPROVARE')
+            || str_contains($tipoEvento, 'INFORMATIVA_RESPONSABILE');
 
         $presentiHtml = '';
         if ($mostraPresenti && $idRichiesta !== null) {
-            $presenti = hrEmailRichiestePresentiNelPeriodo($pdo, $idRichiesta);
+            $presenti = hrEmailRichiestePresentiNelPeriodo($pdo, $idRichiesta, $idDestinatario);
             if (count($presenti) > 0) {
                 $presentiHtml = ''
                     . '<tr><td style="padding:18px 0 6px 0; font-family:Arial,Helvetica,sans-serif;">'
-                    . '<h3 style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:18px; line-height:24px; color:#005bd3; font-weight:700;">Assenze/richieste già presenti nel periodo</h3>'
+                    . '<h3 style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:18px; line-height:24px; color:#005bd3; font-weight:700;">Altre assenze/richieste già presenti nel periodo</h3>'
                     . '</td></tr>'
                     . '<tr><td style="padding:0 0 18px 0;">'
                     . hrEmailRichiestePresentiHtml($presenti)
