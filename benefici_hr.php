@@ -30,6 +30,11 @@ function hrBeneficioLabel(string $codice, array $beneficiDisponibili): string
     return $beneficiDisponibili[$codice] ?? $codice;
 }
 
+function hrNumeroCompatto(float $valore, int $decimali = 2): string
+{
+    return rtrim(rtrim(number_format($valore, $decimali, '.', ''), '0'), '.');
+}
+
 function hrBeneficioValidaUtente(PDO $pdo, int $idUtente): void
 {
     $stmt = $pdo->prepare(
@@ -254,10 +259,11 @@ layoutHeader('Benefici e diritti HR');
 ?>
 <style>
 .hr-benefit-stack{display:grid;gap:20px}
-.hr-benefit-form-grid{display:grid;grid-template-columns:minmax(220px,1.4fr) minmax(220px,1.1fr) minmax(160px,.8fr) minmax(160px,.8fr);gap:14px;align-items:end}
-.hr-benefit-form-grid .form-group{margin:0}
+.hr-benefit-form-grid{display:grid;grid-template-columns:minmax(170px,1.45fr) minmax(175px,1.35fr) minmax(130px,.95fr) minmax(130px,.95fr) minmax(86px,.58fr) minmax(86px,.58fr) minmax(96px,.66fr);gap:10px;align-items:end}
+.hr-benefit-form-grid .form-group{margin:0;min-width:0}
 .hr-benefit-form-grid input,.hr-benefit-form-grid select,.hr-benefit-table input,.hr-benefit-table textarea{width:100%;box-sizing:border-box}
-.hr-benefit-104-fields{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:14px;margin-top:14px}
+.hr-benefit-104-fields{display:contents}
+.hr-benefit-104-fields .form-group label strong{white-space:nowrap}
 .hr-benefit-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .hr-benefit-summary{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:12px 16px}
 .hr-benefit-summary span{white-space:nowrap}
@@ -272,8 +278,10 @@ layoutHeader('Benefici e diritti HR');
 .hr-benefit-no-limit{font-size:.82rem;color:#64748b;white-space:nowrap}
 .hr-benefit-table .benefit-actions{min-width:160px}
 .hr-benefit-empty{padding:18px;color:#667085}
-@media(max-width:1050px){.hr-benefit-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:700px){.hr-benefit-form-grid,.hr-benefit-104-fields{grid-template-columns:1fr}}
+@media(max-width:700px){
+    .hr-benefit-form-grid{grid-template-columns:1fr}
+    .hr-benefit-104-fields{display:contents}
+}
 </style>
 
 <div class="page-container hr-benefit-stack">
@@ -343,16 +351,16 @@ layoutHeader('Benefici e diritti HR');
 
                 <div class="hr-benefit-104-fields" id="campi-legge-104">
                     <div class="form-group">
-                        <label for="plafond_giorni_mese"><strong>Plafond giorni/mese</strong></label>
+                        <label for="plafond_giorni_mese"><strong>Giorni/mese</strong></label>
                         <input type="number" min="0.01" step="0.01" name="plafond_giorni_mese" id="plafond_giorni_mese" value="3">
                     </div>
                     <div class="form-group">
-                        <label for="plafond_ore_mese"><strong>Plafond ore/mese</strong></label>
-                        <input type="number" min="0.01" step="0.01" name="plafond_ore_mese" id="plafond_ore_mese" value="24.00">
+                        <label for="plafond_ore_mese"><strong>Ore/mese</strong></label>
+                        <input type="number" min="0.01" step="0.01" name="plafond_ore_mese" id="plafond_ore_mese" value="24">
                     </div>
                     <div class="form-group">
-                        <label for="ore_giornata_equivalenza"><strong>Ore per giornata</strong></label>
-                        <input type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" id="ore_giornata_equivalenza" value="8.00">
+                        <label for="ore_giornata_equivalenza"><strong>Ore/giorno</strong></label>
+                        <input type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" id="ore_giornata_equivalenza" value="8">
                     </div>
                 </div>
 
@@ -432,15 +440,15 @@ layoutHeader('Benefici e diritti HR');
                                     <div class="hr-benefit-param-row">
                                         <label class="hr-benefit-param-item">
                                             <strong>Giorni</strong>
-                                            <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="plafond_giorni_mese" value="<?= h((string)$beneficio['plafond_giorni_mese']) ?>">
+                                            <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="plafond_giorni_mese" value="<?= h(hrNumeroCompatto((float)$beneficio['plafond_giorni_mese'])) ?>">
                                         </label>
                                         <label class="hr-benefit-param-item">
                                             <strong>Ore</strong>
-                                            <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="plafond_ore_mese" value="<?= h(number_format($oreMese, 2, '.', '')) ?>">
+                                            <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="plafond_ore_mese" value="<?= h(hrNumeroCompatto($oreMese)) ?>">
                                         </label>
                                         <label class="hr-benefit-param-item">
                                             <strong>Ore/giorno</strong>
-                                            <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" value="<?= h(number_format($oreGiornata, 2, '.', '')) ?>">
+                                            <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" value="<?= h(hrNumeroCompatto($oreGiornata)) ?>">
                                         </label>
                                     </div>
                                 <?php else: ?>
@@ -480,7 +488,7 @@ layoutHeader('Benefici e diritti HR');
     if (!tipo || !campi104) return;
 
     function aggiornaCampi104() {
-        campi104.style.display = tipo.value === 'LEGGE_104' ? 'grid' : 'none';
+        campi104.style.display = tipo.value === 'LEGGE_104' ? 'contents' : 'none';
     }
 
     tipo.addEventListener('change', aggiornaCampi104);
