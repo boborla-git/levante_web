@@ -70,6 +70,17 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - La password iniziale deve avere almeno 6 caratteri e il nuovo utente deve cambiarla al primo accesso.
 - La creazione e' atomica: se uno dei salvataggi fallisce, la transazione viene annullata per evitare account e profilo HR parzialmente creati.
 
+### Gestione ruoli utenti
+
+- `ruoli_utenti.php` e' la pagina dedicata alla modifica del ruolo degli utenti gia' esistenti; la creazione iniziale del ruolo resta in `utente_nuovo.php`.
+- La pagina usa una sola vista responsive: tabella compatta su desktop/tablet e schede su smartphone, senza duplicare gli stessi utenti in un archivio separato.
+- Il riepilogo dei ruoli disponibili deve restare compatto e mostrare il numero di utenti assegnati a ciascun ruolo.
+- Il salvataggio deve aggiornare esclusivamente gli utenti per i quali il ruolo cambia realmente; le assegnazioni invariate non devono essere disattivate/reinserite e non devono perdere la decorrenza originaria.
+- L'account tecnico `admin` / `amministratore` e' protetto e non puo' cambiare ruolo dalla pagina.
+- Se un utente possiede piu' ruoli attivi, la pagina non deve ridurli automaticamente a un solo ruolo: la selezione iniziale resta su `Nessuna modifica` finche' l'amministratore non effettua una scelta esplicita.
+- Se il ruolo attualmente assegnato non e' piu' disponibile tra i ruoli attivi, non deve essere rimosso da un salvataggio generale non intenzionale.
+- Il filtro rapido della tabella deve cercare nei dati effettivi dell'utente e del ruolo corrente, senza essere contaminato dalle opzioni non selezionate presenti nelle tendine.
+
 ### Benefici e diritti HR
 
 - La pagina `benefici_hr.php` usa `hr_benefici_utenti` come registro unico per `LEGGE_104`, `ALLATTAMENTO`, `CONGEDO_STRAORDINARIO_DISABILI` e `SMART_WORKING`.
