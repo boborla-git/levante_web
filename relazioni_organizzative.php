@@ -226,7 +226,10 @@ layoutHeader('Relazioni organizzative');
 <details class="card card-compact hr-org-create">
     <summary class="hr-org-create-summary">
         <span class="hr-org-create-title"><i class="la la-plus-circle" aria-hidden="true"></i> Nuova relazione</span>
-        <span class="meta">Apri il modulo solo quando serve</span>
+        <span class="meta hr-org-create-state">
+            <span class="hr-org-state-closed">Apri modulo</span>
+            <span class="hr-org-state-open">Chiudi modulo</span>
+        </span>
     </summary>
     <div class="hr-org-create-body">
         <form method="post" action="relazioni_organizzative.php">
@@ -356,7 +359,10 @@ layoutHeader('Relazioni organizzative');
             <h2>Archivio relazioni</h2>
             <div class="meta">Archivio completo: <?= (int)$riepilogo['relazioni_totali'] ?> relazioni registrate, attive e chiuse.</div>
         </div>
-        <span class="hr-org-archive-action">Apri archivio</span>
+        <span class="hr-org-archive-action">
+            <span class="hr-org-state-closed">Apri archivio</span>
+            <span class="hr-org-state-open">Chiudi archivio</span>
+        </span>
     </summary>
     <div class="hr-org-archive-body">
         <div class="hr-org-toolbar hr-org-archive-toolbar">
