@@ -237,116 +237,24 @@ layoutHeader('Gestione utenti');
     <span><strong><?= (int)$riepilogo['senza_qualifica_inps'] ?></strong> attivi senza Qual. INPS</span>
 </section>
 
-<div class="card card-wide">
+<div class="card card-wide admin-users-card">
     <div class="hr-filter-toolbar admin-section-toolbar">
         <div class="admin-section-title">
-            <h2>Directory utenti</h2>
-            <div class="meta">Vista compatta per verificare rapidamente utenti, ruoli e azioni principali.</div>
+            <h2>Utenti</h2>
+            <div class="meta">Vista unica e compatta per gestire utenti, ruoli, qualifica INPS e sicurezza.</div>
         </div>
-        <div class="form-group hr-filter-search-group">
-            <label for="utentiSearch">Filtro rapido</label>
-            <input type="search" id="utentiSearch" data-card-filter="utentiCards" placeholder="Cerca persona, ruolo, stato..." autocomplete="off">
-        </div>
+        <?php renderAdminQuickFilter('filtroRapidoUtenti', 'tabellaUtenti', 'Cerca persona, username, ruolo, qualifica...'); ?>
     </div>
 
-    <div class="admin-user-grid" id="utentiCards">
-        <?php foreach ($utenti as $utente): ?>
-            <?php
-            $idUtente = (int)$utente['id_utente'];
-            $username = trim((string)$utente['username']);
-            $nomeCompleto = adminUserDisplayName($utente);
-            $ruoli = trim((string)($utente['ruoli_attivi'] ?? ''));
-            $utenteAttivo = (int)$utente['attivo'] === 1;
-            $cambioPassword = (int)$utente['deve_cambiare_password'] === 1;
-            $qualificaInps = strtoupper(trim((string)($utente['qualifica_inps'] ?? '')));
-            $qualificaInpsLabel = $qualificaInps !== '' ? ucfirst(strtolower($qualificaInps)) : 'Non assegnata';
-            $searchText = trim($username . ' ' . $nomeCompleto . ' ' . $ruoli . ' ' . $qualificaInpsLabel . ' ' . ($utenteAttivo ? 'attivo' : 'disattivo') . ' ' . ($cambioPassword ? 'cambio password obbligatorio' : 'password ok'));
-            ?>
-            <article class="admin-user-card" data-card-filter-item="utentiCards" data-search-text="<?= h(mb_strtolower($searchText, 'UTF-8')) ?>">
-                <div class="admin-user-card-main">
-                    <div class="admin-user-avatar" aria-hidden="true"><?= h(adminUserInitials($utente)) ?></div>
-                    <div class="admin-user-identity">
-                        <h3><?= h($nomeCompleto) ?></h3>
-                        <div class="meta"><?= h($username) ?></div>
-                    </div>
-                    <div class="admin-user-status">
-                        <?= $utenteAttivo ? renderHrStatusBadge('ATTIVO', 'Attivo', ['class' => 'user-badge']) : renderHrStatusBadge('DISATTIVO', 'Disattivo', ['class' => 'user-badge']) ?>
-                    </div>
-                </div>
-
-                <div class="admin-user-card-body">
-                    <div class="admin-user-info-box admin-user-info-wide">
-                        <span>Ruoli attivi</span>
-                        <strong><?= h($ruoli !== '' ? $ruoli : 'Nessun ruolo') ?></strong>
-                    </div>
-                    <div class="admin-user-info-box">
-                        <span>Qual. INPS</span>
-                        <strong><?= h($qualificaInpsLabel) ?></strong>
-                    </div>
-                    <div class="admin-user-info-box">
-                        <span>Password</span>
-                        <strong><?= $cambioPassword ? 'Cambio richiesto' : 'OK' ?></strong>
-                    </div>
-                    <div class="admin-user-info-box admin-user-info-date">
-                        <span>Creato</span>
-                        <strong><?= h(adminFormatDate((string)$utente['data_creazione'])) ?></strong>
-                    </div>
-                    <div class="admin-user-info-box admin-user-info-date">
-                        <span>Aggiornato</span>
-                        <strong><?= h(adminFormatDate((string)($utente['data_aggiornamento'] ?? ''))) ?></strong>
-                    </div>
-                </div>
-
-                <div class="admin-user-card-footer">
-                    <div class="admin-user-footer-state">
-                        <?php if ($cambioPassword): ?>
-                            <?= renderHrStatusBadge('OBBLIGATORIO', 'Cambio password richiesto', ['class' => 'user-badge']) ?>
-                        <?php else: ?>
-                            <span class="meta">Password verificata</span>
-                        <?php endif; ?>
-                    </div>
-
-                    <?php if ($idUtente !== $idUtenteCorrente): ?>
-                        <div class="admin-user-actions">
-                            <a class="btn btn-sm btn-light" href="utente_reset_password.php?id=<?= $idUtente ?>">
-                                <i class="la la-key" aria-hidden="true"></i> Reset
-                            </a>
-                            <a class="btn btn-sm btn-light" href="utente_forza_password.php?id=<?= $idUtente ?>"
-                               onclick="return confirm('Vuoi obbligare questo utente a cambiare la password al prossimo accesso?');">
-                                <i class="la la-exclamation-circle" aria-hidden="true"></i> Forza
-                            </a>
-                        </div>
-                    <?php else: ?>
-                        <span class="meta admin-current-user-note">Utente corrente</span>
-                    <?php endif; ?>
-                </div>
-            </article>
-        <?php endforeach; ?>
-    </div>
-</div>
-
-<div class="card card-wide admin-archive-card">
-    <div class="hr-filter-toolbar admin-section-toolbar">
-        <div class="admin-section-title">
-            <h2>Archivio utenti</h2>
-            <div class="meta">Vista tabellare completa per controlli amministrativi.</div>
-        </div>
-        <?php renderAdminQuickFilter('filtroRapidoUtenti', 'tabellaUtenti'); ?>
-    </div>
-
-    <div class="table-wrap">
-        <table id="tabellaUtenti">
+    <div class="table-wrap admin-users-table-wrap">
+        <table id="tabellaUtenti" class="admin-users-table">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Nome e cognome</th>
-                    <th>Qual. INPS</th>
+                    <th>Dipendente</th>
                     <th>Ruoli attivi</th>
+                    <th>Qual. INPS</th>
                     <th>Stato</th>
-                    <th>Cambio password</th>
-                    <th>Creato il</th>
-                    <th>Aggiornato il</th>
+                    <th>Password</th>
                     <th>Azioni</th>
                 </tr>
             </thead>
@@ -354,18 +262,38 @@ layoutHeader('Gestione utenti');
                 <?php foreach ($utenti as $utente): ?>
                     <?php
                     $idUtente = (int)$utente['id_utente'];
+                    $username = trim((string)$utente['username']);
                     $nomeCompleto = adminUserDisplayName($utente);
                     $ruoli = trim((string)($utente['ruoli_attivi'] ?? ''));
                     $qualificaInps = strtoupper(trim((string)($utente['qualifica_inps'] ?? '')));
                     $qualificaInpsLabel = $qualificaInps !== '' ? ucfirst(strtolower($qualificaInps)) : 'Non assegnata';
+                    $utenteAttivo = (int)$utente['attivo'] === 1;
+                    $cambioPassword = (int)$utente['deve_cambiare_password'] === 1;
                     ?>
                     <tr>
-                        <td><?= $idUtente ?></td>
-                        <td><?= h((string)$utente['username']) ?></td>
-                        <td><?= h($nomeCompleto) ?></td>
-                        <td>
+                        <td class="admin-users-person" data-label="Dipendente">
+                            <div class="admin-users-person-main">
+                                <div class="admin-user-avatar" aria-hidden="true"><?= h(adminUserInitials($utente)) ?></div>
+                                <div class="admin-users-person-text">
+                                    <strong><?= h($nomeCompleto) ?></strong>
+                                    <span><?= h($username) ?></span>
+                                    <details class="admin-users-details">
+                                        <summary>Dettagli</summary>
+                                        <div>
+                                            <span><strong>ID:</strong> <?= $idUtente ?></span>
+                                            <span><strong>Creato:</strong> <?= h(adminFormatDate((string)$utente['data_creazione'])) ?></span>
+                                            <span><strong>Aggiornato:</strong> <?= h(adminFormatDate((string)($utente['data_aggiornamento'] ?? ''))) ?></span>
+                                        </div>
+                                    </details>
+                                </div>
+                            </div>
+                        </td>
+                        <td data-label="Ruoli attivi">
+                            <span class="admin-users-role"><?= h($ruoli !== '' ? $ruoli : 'Nessun ruolo') ?></span>
+                        </td>
+                        <td data-label="Qual. INPS">
                             <?php if ($puoGestireQualificaInps): ?>
-                                <form method="post" class="table-actions" style="align-items:center">
+                                <form method="post" class="admin-users-qualifica-form">
                                     <input type="hidden" name="azione" value="salva_qualifica_inps">
                                     <input type="hidden" name="id_utente" value="<?= $idUtente ?>">
                                     <select name="qualifica_inps" aria-label="Qualifica INPS di <?= h($nomeCompleto) ?>">
@@ -373,36 +301,34 @@ layoutHeader('Gestione utenti');
                                         <option value="OPERAIO" <?= $qualificaInps === 'OPERAIO' ? 'selected' : '' ?>>Operaio</option>
                                         <option value="IMPIEGATO" <?= $qualificaInps === 'IMPIEGATO' ? 'selected' : '' ?>>Impiegato</option>
                                     </select>
-                                    <button class="btn btn-sm btn-light" type="submit">
-                                        <i class="la la-save" aria-hidden="true"></i> Salva
+                                    <button class="btn btn-sm btn-light" type="submit" title="Salva Qualifica INPS">
+                                        <i class="la la-save" aria-hidden="true"></i><span class="admin-users-action-text">Salva</span>
                                     </button>
                                 </form>
                             <?php else: ?>
                                 <?= h($qualificaInpsLabel) ?>
                             <?php endif; ?>
                         </td>
-                        <td><?= h($ruoli !== '' ? $ruoli : 'nessun ruolo') ?></td>
-                        <td>
-                            <?= (int)$utente['attivo'] === 1
+                        <td data-label="Stato">
+                            <?= $utenteAttivo
                                 ? renderHrStatusBadge('ATTIVO', 'Attivo', ['class' => 'user-badge'])
                                 : renderHrStatusBadge('DISATTIVO', 'Disattivo', ['class' => 'user-badge']) ?>
                         </td>
-                        <td>
-                            <?= (int)$utente['deve_cambiare_password'] === 1
-                                ? renderHrStatusBadge('OBBLIGATORIO', 'Obbligatorio', ['class' => 'user-badge'])
-                                : renderHrStatusBadge('NO', 'No', ['class' => 'user-badge']) ?>
+                        <td data-label="Password">
+                            <?= $cambioPassword
+                                ? renderHrStatusBadge('OBBLIGATORIO', 'Cambio richiesto', ['class' => 'user-badge'])
+                                : renderHrStatusBadge('OK', 'OK', ['class' => 'user-badge']) ?>
                         </td>
-                        <td><?= h(adminFormatDate((string)$utente['data_creazione'])) ?></td>
-                        <td><?= h(adminFormatDate((string)($utente['data_aggiornamento'] ?? ''))) ?></td>
-                        <td>
+                        <td data-label="Azioni">
                             <?php if ($idUtente !== $idUtenteCorrente): ?>
-                                <div class="table-actions">
-                                    <a class="btn btn-sm btn-light" href="utente_reset_password.php?id=<?= $idUtente ?>">
-                                        <i class="la la-key" aria-hidden="true"></i> Reset password
+                                <div class="admin-users-row-actions">
+                                    <a class="btn btn-sm btn-light" href="utente_reset_password.php?id=<?= $idUtente ?>" title="Reset password">
+                                        <i class="la la-key" aria-hidden="true"></i><span class="admin-users-action-text">Reset</span>
                                     </a>
                                     <a class="btn btn-sm btn-light" href="utente_forza_password.php?id=<?= $idUtente ?>"
-                                       onclick="return confirm('Vuoi obbligare questo utente a cambiare la password al prossimo accesso?');">
-                                        <i class="la la-exclamation-circle" aria-hidden="true"></i> Forza cambio password
+                                       onclick="return confirm('Vuoi obbligare questo utente a cambiare la password al prossimo accesso?');"
+                                       title="Forza cambio password">
+                                        <i class="la la-exclamation-circle" aria-hidden="true"></i><span class="admin-users-action-text">Forza</span>
                                     </a>
                                 </div>
                             <?php else: ?>
