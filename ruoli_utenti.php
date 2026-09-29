@@ -348,7 +348,13 @@ layoutHeader('Ruoli utenti');
                     $utenteAttivo = (int)$utente['attivo'] === 1;
                     $utenteProtetto = adminUtenteRuoloProtetto($utente);
                     $piuRuoliAttivi = count($ruoliCorrenti) > 1;
-                    $ruoloSelezionato = count($ruoliCorrenti) === 1 ? $ruoliCorrenti[0] : ($piuRuoliAttivi ? -1 : 0);
+                    $ruoloCorrenteNonDisponibile =
+                        count($ruoliCorrenti) === 1
+                        && !isset($ruoliPerId[$ruoliCorrenti[0]]);
+                    $ruoloSelezionato =
+                        count($ruoliCorrenti) === 1 && !$ruoloCorrenteNonDisponibile
+                            ? $ruoliCorrenti[0]
+                            : (($piuRuoliAttivi || $ruoloCorrenteNonDisponibile) ? -1 : 0);
                     $testoFiltro = trim(
                         $nomeCompleto . ' ' .
                         $username . ' ' .
@@ -380,7 +386,7 @@ layoutHeader('Ruoli utenti');
                                 <span class="admin-role-locked"><i class="la la-lock" aria-hidden="true"></i> Non modificabile</span>
                             <?php else: ?>
                                 <select class="role-select admin-role-select" id="<?= h($chiave) ?>" name="<?= h($chiave) ?>">
-                                    <?php if ($piuRuoliAttivi): ?>
+                                    <?php if ($piuRuoliAttivi || $ruoloCorrenteNonDisponibile): ?>
                                         <option value="-1" selected>— Nessuna modifica —</option>
                                     <?php endif; ?>
                                     <option value="0" <?= $ruoloSelezionato === 0 ? 'selected' : '' ?>>Nessun ruolo</option>
