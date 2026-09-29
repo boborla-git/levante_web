@@ -48,6 +48,14 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Richiedente e responsabile possono annullare una richiesta auto-approvata finche' lo stato e il periodo lo consentono secondo le regole generali; i mesi chiusi restano bloccati ai non HR.
 - Il campo `annullata_da_richiedente` deve valere 1 solo quando l'annullamento e' eseguito dal richiedente stesso.
 
+### Causali HR riservate
+
+- Le causali `ALLATTAMENTO` e `CONGEDO_STRAORDINARIO_DISABILI` sono selezionabili solo da Giorgia HR (`test_GBettolini` con ruolo `hr_responsabile_personale`).
+- La restrizione deve esistere sia nell'interfaccia sia nella validazione server, per impedire inserimenti forzati da altri utenti.
+- Entrambe sono trattate come assenze personali: stato presenza `ASSENTE`, nessuna approvazione, dettaglio non mostrato a colleghi o responsabili, dettaglio visibile a HR.
+- Nel calendario la descrizione pubblica deve restare generica (`Assente`).
+- Sono consentiti sia inserimenti a giorni sia a ore, mantenendo le regole generali su date, orari, sovrapposizioni e mesi chiusi.
+
 ### UI
 
 - Il filtro rapido deve usare il comportamento comune centralizzato.
