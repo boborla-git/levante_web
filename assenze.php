@@ -16,6 +16,8 @@ $puoLeggereApprovazioni = haPermessoLettura('approvazioni_assenze');
 $puoLeggereCalendario = haPermessoLettura('calendario_assenze');
 $puoConfigurare = haPermessoLettura('configurazione_assenze');
 $isHrResponsabile = in_array('hr_responsabile_personale', (array)($_SESSION['ruoli'] ?? []), true);
+$isGiorgiaHr = $isHrResponsabile
+    && strtolower(trim((string)($_SESSION['username'] ?? ''))) === 'test_gbettolini';
 
 $errore = '';
 $messaggio = '';
@@ -607,6 +609,12 @@ try {
             $codiceTipologia = strtoupper(trim((string)$tipologiaSelezionata['codice']));
             if ($codiceTipologia === 'MALATTIA' && !$puoConfigurare) {
                 throw new RuntimeException('La gestione delle assenze per malattia è riservata a HR.');
+            }
+            if (
+                in_array($codiceTipologia, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true)
+                && !$isGiorgiaHr
+            ) {
+                throw new RuntimeException('Questa causale è riservata a Giorgia HR.');
             }
             if ($codiceTipologia === 'LEGGE_104' && !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'LEGGE_104', $dataDa)) {
                 throw new RuntimeException('Il dipendente selezionato non è abilitato da HR ai permessi Legge 104.');
@@ -1386,6 +1394,10 @@ layoutHeader('Assenze e permessi');
                                 <?php
                                 $codiceOpzione = strtoupper(trim((string)$tipologia['codice']));
                                 if ($codiceOpzione === 'MALATTIA' && !$isHrResponsabile) { continue; }
+                                if (
+                                    in_array($codiceOpzione, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true)
+                                    && !$isGiorgiaHr
+                                ) { continue; }
                                 if ($codiceOpzione === 'ALTRO' && !$puoUsareAltro) { continue; }
                                 ?>
                                 <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= (int)$form['id_tipologia_evento'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
