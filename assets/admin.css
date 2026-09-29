@@ -269,6 +269,73 @@
     flex-wrap: nowrap;
 }
 
+/* ===== utente_nuovo.php ===== */
+.admin-new-user-form {
+    display: grid;
+    gap: 18px;
+}
+
+.admin-new-user-section {
+    margin: 0;
+}
+
+.admin-new-user-heading {
+    margin-bottom: 14px;
+}
+
+.admin-new-user-heading h2 {
+    margin: 0 0 4px;
+}
+
+.admin-new-user-grid {
+    display: grid;
+    gap: 14px;
+    align-items: end;
+}
+
+.admin-new-user-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-new-user-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-new-user-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-new-user-grid .form-group {
+    margin: 0;
+    min-width: 0;
+}
+
+.admin-new-user-grid input,
+.admin-new-user-grid select {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.admin-new-user-active {
+    margin-top: 14px;
+}
+
+.admin-new-user-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 6px;
+}
+
+@media (max-width: 1050px) and (min-width: 701px) {
+    .admin-new-user-grid-4,
+    .admin-new-user-grid-3,
+    .admin-new-user-grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 1050px) and (min-width: 721px) {
     .admin-users-action-text {
         display: none;
@@ -438,6 +505,22 @@
 
     .admin-users-row-actions .btn {
         min-width: 82px;
+    }
+
+    .admin-new-user-grid-4,
+    .admin-new-user-grid-3,
+    .admin-new-user-grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-new-user-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-new-user-actions .btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 
