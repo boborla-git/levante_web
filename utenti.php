@@ -12,6 +12,65 @@ richiediPermessoLettura('utenti');
 
 $pdo = db();
 
+$errore = '';
+$messaggio = '';
+$ruoliSessione = $_SESSION['ruoli'] ?? [];
+$puoGestireQualificaInps =
+    !impersonazioneAttiva()
+    && is_array($ruoliSessione)
+    && in_array('admin_portale', $ruoliSessione, true)
+    && haPermessoScrittura('utenti');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $azione = trim((string)($_POST['azione'] ?? ''));
+
+    if ($azione === 'salva_qualifica_inps') {
+        if (!$puoGestireQualificaInps) {
+            http_response_code(403);
+            die('Solo l\'amministratore può modificare la qualifica INPS.');
+        }
+
+        $idUtenteQualifica = (int)($_POST['id_utente'] ?? 0);
+        $qualificaInps = strtoupper(trim((string)($_POST['qualifica_inps'] ?? '')));
+        $qualificheAmmesse = ['', 'OPERAIO', 'IMPIEGATO'];
+
+        if ($idUtenteQualifica <= 0 || !in_array($qualificaInps, $qualificheAmmesse, true)) {
+            $errore = 'Utente o qualifica INPS non validi.';
+        } else {
+            try {
+                $stmtUtente = $pdo->prepare('SELECT COUNT(*) FROM aut_utenti WHERE id_utente = :id_utente');
+                $stmtUtente->execute(['id_utente' => $idUtenteQualifica]);
+                if ((int)$stmtUtente->fetchColumn() !== 1) {
+                    throw new RuntimeException('Utente non trovato.');
+                }
+
+                $stmtQualifica = $pdo->prepare(
+                    "INSERT INTO hr_profili_dipendenti
+                        (id_utente, qualifica_inps, attivo, data_aggiornamento)
+                     VALUES
+                        (:id_utente, :qualifica_inps, 1, NOW())
+                     ON DUPLICATE KEY UPDATE
+                        qualifica_inps = VALUES(qualifica_inps),
+                        data_aggiornamento = NOW()"
+                );
+                $stmtQualifica->execute([
+                    'id_utente' => $idUtenteQualifica,
+                    'qualifica_inps' => $qualificaInps !== '' ? $qualificaInps : null,
+                ]);
+
+                header('Location: utenti.php?qualifica_ok=1');
+                exit;
+            } catch (Throwable $e) {
+                $errore = 'Impossibile salvare la qualifica INPS.';
+            }
+        }
+    }
+}
+
+if (isset($_GET['qualifica_ok'])) {
+    $messaggio = 'Qualifica INPS aggiornata correttamente.';
+}
+
 function h(?string $valore): string
 {
     return htmlspecialchars((string)$valore, ENT_QUOTES, 'UTF-8');
@@ -72,8 +131,11 @@ $stmt = $pdo->query(
         u.deve_cambiare_password,
         u.data_creazione,
         u.data_aggiornamento,
+        p.qualifica_inps,
         GROUP_CONCAT(DISTINCT ar.codice_ruolo ORDER BY ar.ordinamento, ar.codice_ruolo SEPARATOR ', ') AS ruoli_attivi
     FROM aut_utenti u
+    LEFT JOIN hr_profili_dipendenti p
+        ON p.id_utente = u.id_utente
     LEFT JOIN aut_utenti_ruoli aur
         ON aur.id_utente = u.id_utente
         AND aur.attivo = 1
@@ -89,7 +151,8 @@ $stmt = $pdo->query(
         u.attivo,
         u.deve_cambiare_password,
         u.data_creazione,
-        u.data_aggiornamento
+        u.data_aggiornamento,
+        p.qualifica_inps
     ORDER BY
         u.attivo DESC,
         COALESCE(NULLIF(u.cognome, ''), u.username),
@@ -105,6 +168,9 @@ $riepilogo = [
     'disattivi' => 0,
     'senza_ruolo' => 0,
     'cambio_password' => 0,
+    'operai' => 0,
+    'impiegati' => 0,
+    'senza_qualifica_inps' => 0,
 ];
 
 foreach ($utenti as $utente) {
@@ -120,6 +186,15 @@ foreach ($utenti as $utente) {
 
     if ((int)$utente['deve_cambiare_password'] === 1) {
         $riepilogo['cambio_password']++;
+    }
+
+    $qualificaInps = strtoupper(trim((string)($utente['qualifica_inps'] ?? '')));
+    if ($qualificaInps === 'OPERAIO') {
+        $riepilogo['operai']++;
+    } elseif ($qualificaInps === 'IMPIEGATO') {
+        $riepilogo['impiegati']++;
+    } else {
+        $riepilogo['senza_qualifica_inps']++;
     }
 }
 
@@ -146,12 +221,18 @@ layoutHeader('Gestione utenti');
     <?php renderAdminTabs('utenti'); ?>
 </div>
 
+<?php if ($errore !== ''): ?><?php renderAdminAlert($errore, 'danger'); ?><?php endif; ?>
+<?php if ($messaggio !== ''): ?><?php renderAdminAlert($messaggio, 'success'); ?><?php endif; ?>
+
 <section class="hr-config-summary">
     <span><strong><?= (int)$riepilogo['totali'] ?></strong> utenti</span>
     <span><strong><?= (int)$riepilogo['attivi'] ?></strong> attivi</span>
     <span><strong><?= (int)$riepilogo['disattivi'] ?></strong> disattivi</span>
     <span><strong><?= (int)$riepilogo['senza_ruolo'] ?></strong> senza ruolo</span>
     <span><strong><?= (int)$riepilogo['cambio_password'] ?></strong> cambio password</span>
+    <span><strong><?= (int)$riepilogo['operai'] ?></strong> operai</span>
+    <span><strong><?= (int)$riepilogo['impiegati'] ?></strong> impiegati</span>
+    <span><strong><?= (int)$riepilogo['senza_qualifica_inps'] ?></strong> senza Qual. INPS</span>
 </section>
 
 <div class="card card-wide">
@@ -175,7 +256,9 @@ layoutHeader('Gestione utenti');
             $ruoli = trim((string)($utente['ruoli_attivi'] ?? ''));
             $utenteAttivo = (int)$utente['attivo'] === 1;
             $cambioPassword = (int)$utente['deve_cambiare_password'] === 1;
-            $searchText = trim($username . ' ' . $nomeCompleto . ' ' . $ruoli . ' ' . ($utenteAttivo ? 'attivo' : 'disattivo') . ' ' . ($cambioPassword ? 'cambio password obbligatorio' : 'password ok'));
+            $qualificaInps = strtoupper(trim((string)($utente['qualifica_inps'] ?? '')));
+            $qualificaInpsLabel = $qualificaInps !== '' ? ucfirst(strtolower($qualificaInps)) : 'Non assegnata';
+            $searchText = trim($username . ' ' . $nomeCompleto . ' ' . $ruoli . ' ' . $qualificaInpsLabel . ' ' . ($utenteAttivo ? 'attivo' : 'disattivo') . ' ' . ($cambioPassword ? 'cambio password obbligatorio' : 'password ok'));
             ?>
             <article class="admin-user-card" data-card-filter-item="utentiCards" data-search-text="<?= h(mb_strtolower($searchText, 'UTF-8')) ?>">
                 <div class="admin-user-card-main">
@@ -193,6 +276,10 @@ layoutHeader('Gestione utenti');
                     <div class="admin-user-info-box admin-user-info-wide">
                         <span>Ruoli attivi</span>
                         <strong><?= h($ruoli !== '' ? $ruoli : 'Nessun ruolo') ?></strong>
+                    </div>
+                    <div class="admin-user-info-box">
+                        <span>Qual. INPS</span>
+                        <strong><?= h($qualificaInpsLabel) ?></strong>
                     </div>
                     <div class="admin-user-info-box">
                         <span>Password</span>
@@ -252,6 +339,7 @@ layoutHeader('Gestione utenti');
                     <th>ID</th>
                     <th>Username</th>
                     <th>Nome e cognome</th>
+                    <th>Qual. INPS</th>
                     <th>Ruoli attivi</th>
                     <th>Stato</th>
                     <th>Cambio password</th>
@@ -266,11 +354,31 @@ layoutHeader('Gestione utenti');
                     $idUtente = (int)$utente['id_utente'];
                     $nomeCompleto = adminUserDisplayName($utente);
                     $ruoli = trim((string)($utente['ruoli_attivi'] ?? ''));
+                    $qualificaInps = strtoupper(trim((string)($utente['qualifica_inps'] ?? '')));
+                    $qualificaInpsLabel = $qualificaInps !== '' ? ucfirst(strtolower($qualificaInps)) : 'Non assegnata';
                     ?>
                     <tr>
                         <td><?= $idUtente ?></td>
                         <td><?= h((string)$utente['username']) ?></td>
                         <td><?= h($nomeCompleto) ?></td>
+                        <td>
+                            <?php if ($puoGestireQualificaInps): ?>
+                                <form method="post" class="table-actions" style="align-items:center">
+                                    <input type="hidden" name="azione" value="salva_qualifica_inps">
+                                    <input type="hidden" name="id_utente" value="<?= $idUtente ?>">
+                                    <select name="qualifica_inps" aria-label="Qualifica INPS di <?= h($nomeCompleto) ?>">
+                                        <option value="" <?= $qualificaInps === '' ? 'selected' : '' ?>>Non assegnata</option>
+                                        <option value="OPERAIO" <?= $qualificaInps === 'OPERAIO' ? 'selected' : '' ?>>Operaio</option>
+                                        <option value="IMPIEGATO" <?= $qualificaInps === 'IMPIEGATO' ? 'selected' : '' ?>>Impiegato</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-light" type="submit">
+                                        <i class="la la-save" aria-hidden="true"></i> Salva
+                                    </button>
+                                </form>
+                            <?php else: ?>
+                                <?= h($qualificaInpsLabel) ?>
+                            <?php endif; ?>
+                        </td>
                         <td><?= h($ruoli !== '' ? $ruoli : 'nessun ruolo') ?></td>
                         <td>
                             <?= (int)$utente['attivo'] === 1
