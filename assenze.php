@@ -282,6 +282,23 @@ function hrUtenteHaBeneficioAttivo(PDO $pdo, int $idUtente, string $codiceBenefi
     return (bool)$stmt->fetchColumn();
 }
 
+function hrUtenteHaBeneficioConfigurato(PDO $pdo, int $idUtente, string $codiceBeneficio): bool
+{
+    $stmt = $pdo->prepare(
+        "SELECT 1 FROM hr_benefici_utenti
+         WHERE id_utente = :id_utente
+           AND codice_beneficio = :codice
+           AND attivo = 1
+           AND (data_fine IS NULL OR data_fine >= CURDATE())
+         LIMIT 1"
+    );
+    $stmt->execute([
+        'id_utente' => $idUtente,
+        'codice' => $codiceBeneficio,
+    ]);
+    return (bool)$stmt->fetchColumn();
+}
+
 function hrHaRecapitoEmailPersonale(PDO $pdo, int $idUtente): bool
 {
     $stmt = $pdo->prepare(
@@ -615,6 +632,22 @@ try {
                 && !$isGiorgiaHr
             ) {
                 throw new RuntimeException('Questa causale è riservata a Giorgia HR.');
+            }
+            if ($codiceTipologia === 'ALLATTAMENTO') {
+                if (
+                    !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'ALLATTAMENTO', $dataDa)
+                    || !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'ALLATTAMENTO', $dataA)
+                ) {
+                    throw new RuntimeException('Il dipendente selezionato non ha un diritto Allattamento attivo per tutto il periodo richiesto.');
+                }
+            }
+            if ($codiceTipologia === 'CONGEDO_STRAORDINARIO_DISABILI') {
+                if (
+                    !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'CONGEDO_STRAORDINARIO_DISABILI', $dataDa)
+                    || !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'CONGEDO_STRAORDINARIO_DISABILI', $dataA)
+                ) {
+                    throw new RuntimeException('Il dipendente selezionato non ha un diritto Congedo straordinario disabili attivo per tutto il periodo richiesto.');
+                }
             }
             if ($codiceTipologia === 'LEGGE_104' && !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'LEGGE_104', $dataDa)) {
                 throw new RuntimeException('Il dipendente selezionato non è abilitato da HR ai permessi Legge 104.');
@@ -1397,6 +1430,14 @@ layoutHeader('Assenze e permessi');
                                 if (
                                     in_array($codiceOpzione, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true)
                                     && !$isGiorgiaHr
+                                ) { continue; }
+                                if (
+                                    $codiceOpzione === 'ALLATTAMENTO'
+                                    && !hrUtenteHaBeneficioConfigurato($pdo, $idUtenteTarget, 'ALLATTAMENTO')
+                                ) { continue; }
+                                if (
+                                    $codiceOpzione === 'CONGEDO_STRAORDINARIO_DISABILI'
+                                    && !hrUtenteHaBeneficioConfigurato($pdo, $idUtenteTarget, 'CONGEDO_STRAORDINARIO_DISABILI')
                                 ) { continue; }
                                 if ($codiceOpzione === 'ALTRO' && !$puoUsareAltro) { continue; }
                                 ?>
