@@ -262,13 +262,14 @@ layoutHeader('Benefici e diritti HR');
 .hr-benefit-summary{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:12px 16px}
 .hr-benefit-summary span{white-space:nowrap}
 .hr-benefit-table td{vertical-align:middle}
-.hr-benefit-table .benefit-note{min-width:190px}
+.hr-benefit-table .benefit-note{min-width:215px}
 .hr-benefit-table .benefit-date{min-width:145px}
-.hr-benefit-table .benefit-params{min-width:285px}
-.hr-benefit-param-row{display:flex;align-items:flex-end;gap:8px;flex-wrap:nowrap}
+.hr-benefit-table .benefit-params{min-width:245px}
+.hr-benefit-param-row{display:flex;align-items:flex-end;gap:7px;flex-wrap:nowrap}
 .hr-benefit-param-item{display:flex;flex-direction:column;gap:3px;min-width:0}
-.hr-benefit-param-item strong{font-size:.78rem;line-height:1.1;white-space:nowrap}
-.hr-benefit-param-item input[type="number"]{width:78px!important;min-width:78px}
+.hr-benefit-param-item strong{font-size:.76rem;line-height:1.1;white-space:nowrap}
+.hr-benefit-param-item input[type="number"]{width:70px!important;min-width:70px}
+.hr-benefit-no-limit{font-size:.82rem;color:#64748b;white-space:nowrap}
 .hr-benefit-table .benefit-actions{min-width:160px}
 .hr-benefit-empty{padding:18px;color:#667085}
 @media(max-width:1050px){.hr-benefit-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -443,7 +444,7 @@ layoutHeader('Benefici e diritti HR');
                                         </label>
                                     </div>
                                 <?php else: ?>
-                                    <span class="meta">Nessun plafond</span>
+                                    <span class="hr-benefit-no-limit">— Nessun plafond</span>
                                     <input form="<?= h($formId) ?>" type="hidden" name="plafond_giorni_mese" value="0">
                                     <input form="<?= h($formId) ?>" type="hidden" name="plafond_ore_mese" value="0">
                                     <input form="<?= h($formId) ?>" type="hidden" name="ore_giornata_equivalenza" value="0">
