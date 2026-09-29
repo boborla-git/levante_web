@@ -97,6 +97,16 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Badge, pulsanti, alert e campi devono rimanere coerenti col design system.
 - Layout desktop/tablet/smartphone deve rimanere ordinato e leggibile.
 
+## Contratti funzionali - relazioni_organizzative.php
+
+- La pagina deve mantenere creazione, consultazione, filtro, storico e chiusura delle relazioni senza modificare la logica dati.
+- Il modulo di creazione nuova relazione resta chiuso di default e si apre solo quando serve.
+- La vista principale deve mostrare una riga compatta per ogni responsabile/referente con il numero di collaboratori collegati; il dettaglio dei collaboratori si espande su richiesta.
+- Nel dettaglio del responsabile non va ripetuta inutilmente la frase "risponde funzionalmente a" per ogni collaboratore; periodo, note ed eventuale indicazione Test/Reale restano disponibili.
+- L'archivio completo delle relazioni resta disponibile ma chiuso di default; quando aperto conserva filtro rapido, stato e azione di chiusura relazione.
+- La visibilita gerarchica resta limitata al primo livello diretto.
+- La vista deve restare responsive su desktop, tablet e smartphone.
+
 ## Contratti funzionali - approvazioni_assenze.php
 
 - La pagina deve mostrare le richieste coerenti con i filtri impostati.
