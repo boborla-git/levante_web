@@ -44,7 +44,7 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Per queste tre tipologie, se esiste un responsabile diretto/funzionale, il responsabile riceve una email di sola informazione e non deve confermare nulla.
 - Il `PERMESSO LEGGE 104` non richiede approvazione del responsabile. Se esiste un responsabile diretto/funzionale, il responsabile riceve una email di sola informazione.
 - Le email informative al responsabile devono indicare esplicitamente che non e' richiesta alcuna approvazione.
-- Nelle email al responsabile, quando esistono, devono essere mostrate anche le altre richieste attive o in attesa nello stesso periodo, limitate ai dipendenti di cui il destinatario e' responsabile diretto/funzionale.
+- Nelle email al responsabile, quando esistono, devono essere mostrate anche le altre richieste attive o in attesa nello stesso periodo, limitate ai dipendenti di cui il destinatario e' responsabile diretto/funzionale; per le altre richieste, la tipologia deve rispettare `mostra_dettaglio_responsabili` e restare generica quando il dettaglio non e' autorizzato.
 - Richiedente e responsabile possono annullare una richiesta auto-approvata finche' lo stato e il periodo lo consentono secondo le regole generali; i mesi chiusi restano bloccati ai non HR.
 - Il campo `annullata_da_richiedente` deve valere 1 solo quando l'annullamento e' eseguito dal richiedente stesso.
 
