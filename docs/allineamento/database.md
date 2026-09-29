@@ -376,3 +376,15 @@ Dump analizzato: `Sql1931055_1.sql` creato il 2026-05-15 alle 07:51. Server MySQ
 
 - Il dump conferma la presenza delle tabelle `aut_*`, `hr_*`, `ordini_fornitori_*`, `fornitori_contatti`, `sync_stato` e della vista `v_hr_email_log`.
 - Questo file documenta la struttura rilevata; eventuali modifiche DB future devono essere preparate con script SQL espliciti.
+
+
+## Migrazione 2026-09-29 - Qualifica INPS
+
+La tabella `hr_profili_dipendenti` contiene anche:
+- `qualifica_inps` varchar(20) DEFAULT NULL
+
+Valori gestiti inizialmente dall'applicazione:
+- `OPERAIO`
+- `IMPIEGATO`
+
+Il dato e' HR/anagrafico e non appartiene alla tabella di autenticazione `aut_utenti`.
