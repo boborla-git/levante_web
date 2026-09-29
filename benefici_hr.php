@@ -264,7 +264,11 @@ layoutHeader('Benefici e diritti HR');
 .hr-benefit-table td{vertical-align:middle}
 .hr-benefit-table .benefit-note{min-width:190px}
 .hr-benefit-table .benefit-date{min-width:145px}
-.hr-benefit-table .benefit-params{min-width:190px}
+.hr-benefit-table .benefit-params{min-width:285px}
+.hr-benefit-param-row{display:flex;align-items:flex-end;gap:8px;flex-wrap:nowrap}
+.hr-benefit-param-item{display:flex;flex-direction:column;gap:3px;min-width:0}
+.hr-benefit-param-item strong{font-size:.78rem;line-height:1.1;white-space:nowrap}
+.hr-benefit-param-item input[type="number"]{width:78px!important;min-width:78px}
 .hr-benefit-table .benefit-actions{min-width:160px}
 .hr-benefit-empty{padding:18px;color:#667085}
 @media(max-width:1050px){.hr-benefit-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -377,8 +381,9 @@ layoutHeader('Benefici e diritti HR');
                 <h2>Benefici e diritti assegnati</h2>
                 <div class="meta">Sono mostrati solo i benefici attivi. Revoca disattiva il diritto senza cancellarne la registrazione.</div>
             </div>
-            <div>
-                <input type="search" class="control-standard" placeholder="Filtra..." data-quick-filter="tabella-benefici-attivi">
+            <div class="quick-filter">
+                <label for="filtro-benefici-attivi">Filtro rapido</label>
+                <input type="search" id="filtro-benefici-attivi" class="quick-filter-input" placeholder="Cerca dipendente o beneficio..." data-quick-filter="tabella-benefici-attivi">
             </div>
         </div>
 
@@ -423,9 +428,20 @@ layoutHeader('Benefici e diritti HR');
                             </td>
                             <td class="benefit-params">
                                 <?php if ($is104): ?>
-                                    <div class="hr-inline-field"><strong>Giorni:</strong> <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="plafond_giorni_mese" value="<?= h((string)$beneficio['plafond_giorni_mese']) ?>"></div>
-                                    <div class="hr-inline-field"><strong>Ore:</strong> <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="plafond_ore_mese" value="<?= h(number_format($oreMese, 2, '.', '')) ?>"></div>
-                                    <div class="hr-inline-field"><strong>Ore/giorno:</strong> <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" value="<?= h(number_format($oreGiornata, 2, '.', '')) ?>"></div>
+                                    <div class="hr-benefit-param-row">
+                                        <label class="hr-benefit-param-item">
+                                            <strong>Giorni</strong>
+                                            <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="plafond_giorni_mese" value="<?= h((string)$beneficio['plafond_giorni_mese']) ?>">
+                                        </label>
+                                        <label class="hr-benefit-param-item">
+                                            <strong>Ore</strong>
+                                            <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="plafond_ore_mese" value="<?= h(number_format($oreMese, 2, '.', '')) ?>">
+                                        </label>
+                                        <label class="hr-benefit-param-item">
+                                            <strong>Ore/giorno</strong>
+                                            <input form="<?= h($formId) ?>" type="number" min="0.01" step="0.01" name="ore_giornata_equivalenza" value="<?= h(number_format($oreGiornata, 2, '.', '')) ?>">
+                                        </label>
+                                    </div>
                                 <?php else: ?>
                                     <span class="meta">Nessun plafond</span>
                                     <input form="<?= h($formId) ?>" type="hidden" name="plafond_giorni_mese" value="0">
