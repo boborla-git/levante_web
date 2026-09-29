@@ -246,6 +246,24 @@ function hrUtenteAttivo(PDO $pdo, int $idUtente): ?array
     return $row;
 }
 
+function hrQualificaInpsUtente(PDO $pdo, int $idUtente): string
+{
+    if ($idUtente <= 0) {
+        return '';
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT UPPER(TRIM(COALESCE(qualifica_inps, '')))
+         FROM hr_profili_dipendenti
+         WHERE id_utente = :id_utente
+           AND attivo = 1
+         LIMIT 1"
+    );
+    $stmt->execute(['id_utente' => $idUtente]);
+
+    return strtoupper(trim((string)($stmt->fetchColumn() ?: '')));
+}
+
 function hrUtenteHaBeneficioAttivo(PDO $pdo, int $idUtente, string $codiceBeneficio, ?string $dataRiferimento = null): bool
 {
     $dataRiferimento = $dataRiferimento !== null && $dataRiferimento !== '' ? $dataRiferimento : date('Y-m-d');
@@ -637,10 +655,32 @@ try {
 
             $richiedeApprovazione = (int)$tipologiaSelezionata['richiede_approvazione'] === 1;
             $idResponsabile = hrTrovaResponsabileDiretto($pdo, $idUtenteTarget);
+            $qualificaInps = hrQualificaInpsUtente($pdo, $idUtenteTarget);
+
+            // Regola fiducia:
+            // gli IMPIEGATI auto-approvano Visita cliente, Visita fornitore e Formazione.
+            // Il Permesso Legge 104 e' sempre registrato senza passaggio approvativo.
+            $autoApprovaImpegnoImpiegato =
+                $qualificaInps === 'IMPIEGATO'
+                && in_array($codiceTipologia, ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE'], true);
+            $autoApprovaLegge104 = $codiceTipologia === 'LEGGE_104';
+            $autoApprovaPerRegola = $autoApprovaImpegnoImpiegato || $autoApprovaLegge104;
+
             $codiceStato = 'APPROVATA';
-            if (!$isDelegato && $richiedeApprovazione && $idResponsabile !== null) {
+            if (
+                !$isDelegato
+                && $richiedeApprovazione
+                && $idResponsabile !== null
+                && !$autoApprovaPerRegola
+            ) {
                 $codiceStato = 'IN_ATTESA';
             }
+
+            $informaResponsabileSenzaApprovazione =
+                $autoApprovaPerRegola
+                && $idResponsabile !== null
+                && $idResponsabile > 0
+                && $idResponsabile !== $idUtenteLoggato;
 
             $idStato = hrIdStatoRichiesta($pdo, $codiceStato);
             $codiceRichiesta = hrGeneraCodiceRichiesta($pdo);
@@ -805,13 +845,21 @@ try {
                 exit;
             }
 
+            $dettaglioAutoApprovazione = $isDelegato
+                ? 'Richiesta inserita da responsabile/HR e approvata automaticamente.'
+                : 'Richiesta registrata come approvata in automatico.';
+
+            if ($autoApprovaImpegnoImpiegato) {
+                $dettaglioAutoApprovazione = 'Auto-approvazione per impegno di lavoro di dipendente con Qualifica INPS Impiegato.';
+            } elseif ($autoApprovaLegge104) {
+                $dettaglioAutoApprovazione = 'Permesso Legge 104 registrato senza passaggio approvativo; responsabile informato se presente.';
+            }
+
             $stmtStorico->execute([
                 'id_richiesta' => $idRichiesta,
                 'azione' => 'APPROVAZIONE_AUTOMATICA',
                 'id_utente_azione' => $idUtenteLoggato,
-                'dettagli' => $isDelegato
-                    ? 'Richiesta inserita da responsabile/HR e approvata automaticamente.'
-                    : 'Richiesta registrata come approvata in automatico.',
+                'dettagli' => $dettaglioAutoApprovazione,
                 'origine' => 'web',
             ]);
 
@@ -840,6 +888,34 @@ try {
                 $idUtenteLoggato,
                 [$idUtenteTarget]
             );
+
+            if ($informaResponsabileSenzaApprovazione) {
+                $nominativoRichiedente = trim((string)($utenteSelezionato['nominativo'] ?? ''));
+                $descrizioneTipologia = trim((string)($tipologiaSelezionata['descrizione'] ?? ''));
+
+                $messaggioResponsabile = $autoApprovaLegge104
+                    ? 'È stato registrato un Permesso Legge 104'
+                    : 'È stato registrato un impegno di lavoro';
+
+                if ($nominativoRichiedente !== '') {
+                    $messaggioResponsabile .= ' per ' . $nominativoRichiedente;
+                }
+                if (!$autoApprovaLegge104 && $descrizioneTipologia !== '') {
+                    $messaggioResponsabile .= ' (' . $descrizioneTipologia . ')';
+                }
+                $messaggioResponsabile .= '. La comunicazione è solo informativa: non è richiesta alcuna approvazione.';
+
+                hrAccodaEmailWorkflow(
+                    $emailHrDaInviare,
+                    'RICHIESTA_ASSENZA_INFORMATIVA_RESPONSABILE',
+                    'Informazione: richiesta registrata',
+                    $messaggioResponsabile,
+                    '/assenze.php?id_utente=' . $idUtenteTarget,
+                    $idRichiesta,
+                    $idUtenteLoggato,
+                    [$idResponsabile]
+                );
+            }
 
             $pdo->commit();
             hrInviaEmailWorkflowAccodate($pdo, $emailHrDaInviare);
@@ -978,9 +1054,18 @@ try {
             $idStatoAnnullata = hrIdStatoRichiesta($pdo, 'ANNULLATA');
             $pdo->beginTransaction();
 
-            $stmtUpd = $pdo->prepare('UPDATE hr_richieste SET id_stato_richiesta = :id_stato_richiesta, annullata_da_richiedente = 1, data_chiusura = NOW(), data_aggiornamento = NOW() WHERE id_richiesta = :id_richiesta');
+            $annullataDaRichiedente = $idUtenteLoggato === $idUtenteTarget ? 1 : 0;
+            $stmtUpd = $pdo->prepare(
+                'UPDATE hr_richieste
+                 SET id_stato_richiesta = :id_stato_richiesta,
+                     annullata_da_richiedente = :annullata_da_richiedente,
+                     data_chiusura = NOW(),
+                     data_aggiornamento = NOW()
+                 WHERE id_richiesta = :id_richiesta'
+            );
             $stmtUpd->execute([
                 'id_stato_richiesta' => $idStatoAnnullata,
+                'annullata_da_richiedente' => $annullataDaRichiedente,
                 'id_richiesta' => $idRichiesta,
             ]);
 
@@ -992,7 +1077,9 @@ try {
                 'id_richiesta' => $idRichiesta,
                 'azione' => 'ANNULLAMENTO',
                 'id_utente_azione' => $idUtenteLoggato,
-                'dettagli' => 'Richiesta annullata dal richiedente o da operatore autorizzato.',
+                'dettagli' => $annullataDaRichiedente === 1
+                    ? 'Richiesta annullata dal richiedente.'
+                    : 'Richiesta annullata dal responsabile o da operatore autorizzato.',
                 'origine' => 'web',
             ]);
 
@@ -1051,7 +1138,7 @@ try {
     if (isset($_GET['ok']) && $_GET['ok'] === '1') {
         $messaggio = 'Richiesta registrata correttamente.';
     } elseif (isset($_GET['ok']) && $_GET['ok'] === '2') {
-        $messaggio = 'Richiesta registrata e approvata automaticamente per il dipendente selezionato.';
+        $messaggio = 'Richiesta registrata e approvata automaticamente.';
     } elseif (isset($_GET['annullata']) && $_GET['annullata'] === '1') {
         $messaggio = 'Richiesta annullata correttamente.';
     } elseif (isset($_GET['riclassificata']) && $_GET['riclassificata'] === '1') {
