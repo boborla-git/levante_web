@@ -410,7 +410,6 @@ layoutHeader('Benefici e diritti HR');
                             <td>
                                 <strong><?= h(trim((string)$beneficio['nominativo']) !== '' ? (string)$beneficio['nominativo'] : (string)$beneficio['username']) ?></strong>
                                 <form method="post" id="<?= h($formId) ?>">
-                                    <input type="hidden" name="azione" value="salva_beneficio">
                                     <input type="hidden" name="id_utente" value="<?= (int)$beneficio['id_utente'] ?>">
                                     <input type="hidden" name="tipo_beneficio" value="<?= h((string)$beneficio['codice_beneficio']) ?>">
                                 </form>
@@ -440,7 +439,7 @@ layoutHeader('Benefici e diritti HR');
                             <td class="benefit-actions">
                                 <?php if ($puoScrivere): ?>
                                     <div class="hr-benefit-actions">
-                                        <button form="<?= h($formId) ?>" type="submit" class="btn btn-light"><i class="la la-save" aria-hidden="true"></i> Salva</button>
+                                        <button form="<?= h($formId) ?>" type="submit" name="azione" value="salva_beneficio" class="btn btn-light"><i class="la la-save" aria-hidden="true"></i> Salva</button>
                                         <button form="<?= h($formId) ?>" type="submit" name="azione" value="revoca_beneficio" class="btn btn-danger" onclick="return confirm('Revocare questo beneficio/diritto?');"><i class="la la-ban" aria-hidden="true"></i> Revoca</button>
                                     </div>
                                 <?php else: ?>
