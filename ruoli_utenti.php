@@ -299,18 +299,31 @@ layoutHeader('Ruoli utenti');
         <div class="meta">Riepilogo compatto dei ruoli attivi e del numero di utenti assegnati.</div>
     </div>
 
-    <div class="admin-role-chip-list">
-        <?php foreach ($ruoli as $ruolo): ?>
-            <?php
+    <?php
+    $ruoliAssegnati = array_values(array_filter(
+        $ruoli,
+        static function (array $ruolo) use ($conteggioRuoli): bool {
             $idRuolo = (int)$ruolo['id_ruolo'];
-            $descrizioneRuolo = trim((string)($ruolo['descrizione'] ?? ''));
-            ?>
-            <span class="admin-role-chip" title="<?= h($descrizioneRuolo) ?>">
-                <strong><?= h((string)$ruolo['codice_ruolo']) ?></strong>
-                <span><?= (int)($conteggioRuoli[$idRuolo] ?? 0) ?></span>
-            </span>
-        <?php endforeach; ?>
-    </div>
+            return (int)($conteggioRuoli[$idRuolo] ?? 0) > 0;
+        }
+    ));
+    ?>
+    <?php if ($ruoliAssegnati): ?>
+        <div class="admin-role-chip-list">
+            <?php foreach ($ruoliAssegnati as $ruolo): ?>
+                <?php
+                $idRuolo = (int)$ruolo['id_ruolo'];
+                $descrizioneRuolo = trim((string)($ruolo['descrizione'] ?? ''));
+                ?>
+                <span class="admin-role-chip" title="<?= h($descrizioneRuolo) ?>">
+                    <strong><?= h((string)$ruolo['codice_ruolo']) ?></strong>
+                    <span><?= (int)($conteggioRuoli[$idRuolo] ?? 0) ?></span>
+                </span>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <div class="meta">Nessun ruolo attualmente assegnato.</div>
+    <?php endif; ?>
 </section>
 
 <form method="post" id="ruoliUtentiForm">
