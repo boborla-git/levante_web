@@ -78,3 +78,12 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Se modificati CSS o layout, verificare responsive e coerenza campi/pulsanti/badge.
 - Se modificati permessi o menu, verificare coerenza con `aut_risorse`.
 - Se modificato SQL, indicare se va eseguito o se e' solo storico/documentazione.
+
+
+### Qualifica INPS
+
+- La qualifica INPS e' memorizzata nel profilo HR del dipendente, non in `aut_utenti`.
+- Valori inizialmente ammessi: `OPERAIO` e `IMPIEGATO`.
+- La qualifica e' visibile nella pagina `utenti.php`.
+- La modifica della qualifica dalla pagina utenti e' consentita solo al ruolo `admin_portale` e non durante la modalita "Visualizza come".
+- Gli utenti attivi non presenti nell'elenco HR possono restare senza qualifica finche' HR non fornisce il dato.
