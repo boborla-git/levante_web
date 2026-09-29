@@ -349,8 +349,14 @@ layoutHeader('Ruoli utenti');
                     $utenteProtetto = adminUtenteRuoloProtetto($utente);
                     $piuRuoliAttivi = count($ruoliCorrenti) > 1;
                     $ruoloSelezionato = count($ruoliCorrenti) === 1 ? $ruoliCorrenti[0] : ($piuRuoliAttivi ? -1 : 0);
+                    $testoFiltro = trim(
+                        $nomeCompleto . ' ' .
+                        $username . ' ' .
+                        $ruoloCorrenteLabel . ' ' .
+                        ($utenteAttivo ? 'attivo' : 'disattivo')
+                    );
                     ?>
-                    <tr>
+                    <tr data-filter-text="<?= h($testoFiltro) ?>">
                         <td class="admin-roles-person" data-label="Dipendente">
                             <div class="admin-users-person-main">
                                 <div class="admin-user-avatar" aria-hidden="true"><?= h(adminRuoliUserInitials($utente)) ?></div>
@@ -397,7 +403,7 @@ layoutHeader('Ruoli utenti');
                 <?php endforeach; ?>
                 </tbody>
             </table>
-            <div class="admin-filter-empty" data-table-filter-empty="tabellaRuoliUtenti" hidden>Nessun utente corrisponde al filtro.</div>
+            <div class="admin-filter-empty" data-quick-filter-empty="tabellaRuoliUtenti" style="display:none">Nessun utente corrisponde al filtro.</div>
         </div>
 
         <?php renderAdminSaveActions('Salva modifiche ruoli'); ?>
