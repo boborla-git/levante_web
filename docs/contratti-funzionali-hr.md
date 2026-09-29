@@ -57,6 +57,19 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Nel calendario la descrizione pubblica deve restare generica (`Assente`).
 - Sono consentiti sia inserimenti a giorni sia a ore, mantenendo le regole generali su date, orari, sovrapposizioni e mesi chiusi.
 
+### Creazione nuovo utente
+
+- `utente_nuovo.php` crea in una sola transazione l'account portale, il profilo HR, l'eventuale ruolo, l'eventuale responsabile e i recapiti email.
+- Campi richiesti: username, nome, cognome, Qualifica INPS e password iniziale con conferma.
+- La matricola e' facoltativa ma, se valorizzata, deve restare univoca.
+- La Qualifica INPS ammessa e' `OPERAIO` o `IMPIEGATO` e viene salvata in `hr_profili_dipendenti.qualifica_inps`.
+- Il ruolo `interno_base` e' preselezionato per i nuovi utenti quando disponibile, ma l'amministratore puo' scegliere un altro ruolo o nessun ruolo.
+- Il responsabile e' facoltativo; quando valorizzato viene registrato in `hr_relazioni_organizzative` usando il tipo `RESPONSABILE_FUNZIONALE` se disponibile, altrimenti `RESPONSABILE_DIRETTO`.
+- Email di lavoro ed email personale sono salvate come recapiti HR distinti. L'email di lavoro ha priorita' nelle notifiche; in sua assenza viene usata quella personale, con `aut_utenti.email` come fallback anagrafico coerente.
+- Le email inserite da amministrazione/HR in fase di creazione sono considerate confermate.
+- La password iniziale deve avere almeno 6 caratteri e il nuovo utente deve cambiarla al primo accesso.
+- La creazione e' atomica: se uno dei salvataggi fallisce, la transazione viene annullata per evitare account e profilo HR parzialmente creati.
+
 ### Benefici e diritti HR
 
 - La pagina `benefici_hr.php` usa `hr_benefici_utenti` come registro unico per `LEGGE_104`, `ALLATTAMENTO`, `CONGEDO_STRAORDINARIO_DISABILI` e `SMART_WORKING`.
