@@ -3,14 +3,14 @@
 ## Accesso e pagina personale
 
 - Voce `Il mio calendario` sotto `menu.profilo`, risorsa `pagina.mio_calendario`.
-- Pagina `mio_calendario.php`: autenticazione obbligatoria, identita' solo da sessione, controllo account attivo nel database. Disponibile anche a un account senza ruolo; non espone dati di altre persone e non modifica dati durante la consultazione.
+- Pagina `mio_calendario.php`: autenticazione obbligatoria, identita' solo da sessione, controllo account attivo nel database. Il link e' mostrato solo se l'utente ha accesso al Calendario assenze. La consultazione non modifica dati. Il feed include le persone e i dettagli autorizzati nel calendario web.
 - Link assoluto costruito esclusivamente da `HR_URL_PORTALE` (HTTPS) e username corrente dal DB, non dall'Host della richiesta o da parametri del browser.
 - Campo readonly selezionabile, copia tramite Clipboard API con fallback e selezione manuale, pulsanti da almeno 44px e layout responsive.
 - Pagina privata con `no-store`, `no-referrer` e `noindex`. Non carica script esterni per la copia.
 
 ## Token e inizializzazione
 
-- Eseguire `sql/2026-09-30_ics_tutti_utenti.sql` dopo avere caricato `mio_calendario.php` e `includes/layout.php`.
+- Per la prima inizializzazione, caricare i file PHP del calendario, il helper condiviso e il menu, poi eseguire `sql/2026-09-30_ics_tutti_utenti.sql`. Per l'estensione del feed, se i token sono gia' stati generati, non rieseguire SQL.
 - Crea un token casuale di 32 byte (64 caratteri esadecimali) per ogni account esistente. La generazione avviene sul server MySQL tramite `RANDOM_BYTES(32)`, non nel file distribuito.
 - Il token recuperabile e' conservato in `hr_ics_token_utenti`: serve per mostrare nuovamente il link. Questa tabella e i backup contengono segreti e devono restare riservati; mai esportarli in GitHub o nei pacchetti di distribuzione.
 - L'hash SHA-256 resta in `hr_configurazioni` con codice `HR_ICS_TOKEN_SHA256_USER_<id_utente>`, compatibile con l'endpoint esistente.
@@ -21,23 +21,43 @@
 - I token sono indipendenti dalla password: il cambio password non cambia il link.
 - Lo username resta un parametro dell'endpoint: una futura rinomina richiede di aggiornare l'abbonamento, senza cambiare il token.
 
-## Endpoint e contenuto (invariati)
+## Endpoint e visibilita' condivisa con il calendario web
 
 `/calendario_personale_ics.php?utente=<username>&token=<token_personale>`
 
-Accesso senza sessione con token verificato tramite `hash_equals`; l'account deve essere attivo. Feed limitato alle proprie richieste `APPROVATA` e `IN_ATTESA` di tipologie attive e visibili nel calendario. Per il proprietario sono esposti descrizione calendario/tipologia, stato, eventuale oggetto e codice richiesta. Le note del richiedente non vengono esportate.
+URL e token gia' creati restano invariati. Il token identifica il proprietario; cookie, sessione e altri parametri non possono ampliare i suoi permessi.
 
-Le richieste in attesa hanno prefisso `[In attesa]` e stato ICS `TENTATIVE`; le approvate `CONFIRMED`. Le annullate e rifiutate scompaiono al successivo aggiornamento del client. UID stabili per richiesta e periodo. Smart working trasparente/free, altri eventi busy. Gli aggiornamenti dipendono dalla frequenza del client calendario: usare un abbonamento da URL, non una singola importazione.
+`includes/hr_calendario.php` e' la fonte comune per web e ICS:
+
+- permessi correnti da account attivo, ruoli attivi e assegnazioni non scadute; precedenza admin globale, permessi read/write espliciti (anche negati), fallback legacy view/edit per le pagine;
+- ambito: proprietario, riporti diretti di primo livello, membri dei gruppi correnti; tutti gli utenti attivi solo se autorizzati dalla configurazione HR o dal permesso globale;
+- nessuna ricorsione ai riporti dei propri riporti; persone comuni a gruppo e gerarchia incluse una sola volta;
+- richieste approvate; richieste in attesa soltanto per proprietario, approvatore assegnato con approvazione in attesa, oppure permesso globale sui pendenti;
+- tipologie attive e visibili nel calendario; persone inattive, bozze, rifiuti e annullamenti esclusi;
+- dettaglio proprio completo; dettaglio delle altre persone secondo mostra_dettaglio_hr/responsabili/colleghi, con la stessa priorita' del calendario web;
+- causale, oggetto e categoria ICS nascosti quando il dettaglio non e' autorizzato; rimane la descrizione generica dello stato presenza. Le note non vengono mai esportate.
+
+Il titolo di ogni evento comprende il nominativo, per distinguere le persone nel calendario esterno. Il codice richiesta rimane presente solo negli eventi del proprietario. Le richieste in attesa hanno prefisso `[In attesa]` e stato ICS `TENTATIVE`; le approvate `CONFIRMED`. UID stabili e invariati per richiesta e periodo. Smart working trasparente/free, altri eventi busy.
+
+Il feed contiene gli eventi autorizzati senza limitarsi alle due settimane o al mese selezionato nella pagina web: vista/data e il filtro Vedi tutti della pagina non modificano l'ambito autorizzativo. Le giornate verdi senza assenza non generano eventi ICS.
+
+Permessi, relazioni e gruppi vengono riletti ad ogni aggiornamento del feed. Se viene revocato il permesso di leggere il calendario, il feed risponde 403 anche con token valido. Errori durante il caricamento producono 503 senza feed parziale. Date non interpretabili non producono VEVENT incompleti. Il feed ha intestazioni private/no-store e no-referrer.
+
+Gli aggiornamenti e la scomparsa degli eventi non piu' autorizzati dipendono dalla frequenza del client calendario. Usare un abbonamento da URL, non una singola importazione.
 
 ## Revoca
 
 Impostare `attivo=0` sulla configurazione `HR_ICS_TOKEN_SHA256_USER_<id_utente>`. Il feed nega l'accesso e la pagina personale non mostra il link. La riesecuzione dello script conserva la revoca. Disattivare l'account nega comunque l'accesso, indipendentemente dal token. I dati gia' scaricati da un client non possono essere cancellati a distanza.
 
-## Installazione
+## Installazione dell'estensione al calendario condiviso
 
-1. Caricare `mio_calendario.php` nella radice e sostituire `includes/layout.php` con il file completo.
-2. Importare lo script SQL in phpMyAdmin nel database del portale.
-3. Verificare `esito_finale = OK - calendari personali configurati` e `transazione = COMMIT`.
-4. Aprire il menu con il proprio nome, poi `Il mio calendario`. Provare la copia e un abbonamento esterno. Per l'account che aveva gia' il calendario di prova, sostituire il vecchio abbonamento.
+1. Caricare il nuovo `includes/hr_calendario.php` nella cartella includes.
+2. Sostituire `calendario_assenze.php`, `calendario_personale_ics.php` e `mio_calendario.php` nella radice con i file completi del pacchetto.
+3. Nessuno script SQL da eseguire: tabelle, link e token gia' generati restano validi.
+4. Gli abbonamenti esistenti riceveranno anche gli eventi delle persone autorizzate al successivo aggiornamento del client; non occorre sostituire i link.
 
-Commit summary: aggiunge una pagina personale per il link ICS, token individuali generati nel DB e migrazione idempotente del menu; conserva endpoint e regole HR esistenti.
+Commit summary: centralizza visibilita', permessi e selezione eventi tra calendario web e ICS; estende il feed alle persone autorizzate, mantenendo privacy dei dettagli e dei pendenti, e aggiorna la spiegazione nella pagina personale.
+
+## Verifiche della modifica
+
+Sintassi PHP 8.3, query su fixture SQL in MariaDB 10.11 e confronto degli ID evento web/ICS per responsabile, collega, Direzione con visibilita' globale senza dettagli/pendenti, HR e amministratore. Verificati anche livelli gerarchici, gruppi scaduti/futuri, account/ruoli inattivi, permessi scaduti/revocati, token errato/revocato, duplicati di approvazione, categorie e oggetti riservati, UID, giornata intera e conversione delle ore nel fuso Europe/Rome. Test di precedenza permessi atomici/legacy e piu' ruoli. HTML/CSS/JavaScript del calendario web conservati; funzioni di scope e dettaglio estratte senza modifiche.

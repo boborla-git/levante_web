@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/hr_email.php';
+require_once __DIR__ . '/includes/hr_calendario.php';
 
 richiediLogin();
 header('Cache-Control: private, no-store, max-age=0');
@@ -19,6 +20,10 @@ $avviso = '';
 try {
     // L'identita' viene esclusivamente dalla sessione. Nessun parametro
     // GET/POST puo' selezionare o cambiare il calendario di un'altra persona.
+    $permessiCalendario = hrCalendarioPermessiUtente($pdo, $idUtente);
+    if (!$permessiCalendario['leggere']) {
+        throw new RuntimeException('Calendario non abilitato.');
+    }
     $stmt = $pdo->prepare(
         "SELECT u.username, t.token, c.valore AS token_hash
          FROM aut_utenti u
@@ -65,9 +70,9 @@ layoutHeader('Il mio calendario');
 <div class="card card-form">
     <div class="section-head"><div>
         <h1>Il mio calendario</h1>
-        <div class="meta">Le tue assenze e i tuoi impegni anche nel calendario che usi ogni giorno.</div>
+        <div class="meta">Il calendario Levante anche nell’app che usi ogni giorno.</div>
     </div></div>
-    <p>Questo collegamento ti permette di aggiungere il tuo calendario Levante a Outlook, Google Calendar o al calendario del telefono. Include le tue richieste approvate e quelle in attesa di approvazione, indicate con “In attesa”.</p>
+    <p>Questo collegamento ti permette di aggiungere il tuo calendario Levante a Outlook, Google Calendar o al calendario del telefono. Include i tuoi eventi e quelli delle persone che puoi vedere in Calendario assenze: riporti diretti, membri dei tuoi gruppi ed eventuali altre persone consentite dai tuoi permessi. Mostra gli stessi dettagli e le stesse richieste in attesa autorizzati nel portale.</p>
     <?php if ($link !== ''): ?>
         <div class="form-group">
             <label for="ics-link">Collegamento personale al calendario</label>
@@ -85,7 +90,7 @@ layoutHeader('Il mio calendario');
     <div class="ics-help">
         <p>Nel tuo calendario scegli <strong>Aggiungi calendario da Internet</strong>, <strong>Da URL</strong> o <strong>Abbonamento</strong> e incolla il collegamento. Gli aggiornamenti saranno automatici, con i tempi previsti dall’app che utilizzi. Importare un file ICS una sola volta, invece, non mantiene il calendario aggiornato.</p>
         <p>Le modifiche alle richieste si fanno in Levante. <strong>Il collegamento rimane lo stesso anche se cambi password.</strong></p>
-        <p>Il collegamento è personale: chi lo possiede può vedere il tuo calendario. Conservalo e non condividerlo con altre persone.</p>
+        <p>Il collegamento è personale: chi lo possiede può vedere gli eventi e le persone inclusi nel tuo calendario Levante. Conservalo e non condividerlo con altre persone.</p>
     </div>
 </div>
 <script>
@@ -124,3 +129,4 @@ layoutHeader('Il mio calendario');
 })();
 </script>
 <?php layoutFooter(); ?>
+

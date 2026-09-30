@@ -159,12 +159,18 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 
 ## Contratti funzionali - calendario personale ICS
 
-- Ogni utente autenticato puo' consultare esclusivamente il proprio collegamento in `Il mio calendario`, sotto il menu personale, anche senza ruolo assegnato.
+- Ogni utente autenticato puo' consultare esclusivamente il proprio collegamento in `Il mio calendario`, sotto il menu personale. Il feed richiede il permesso di leggere il Calendario assenze, verificato sul DB corrente.
 - Il link deve essere non modificabile, selezionabile e copiabile con un pulsante su PC e smartphone.
 - La pagina spiega in modo semplice l'abbonamento da URL e i tempi di aggiornamento del client.
 - Token individuali stabili e indipendenti dalla password. La rigenerazione non deve avvenire durante la normale consultazione ne' al cambio password.
 - La migrazione genera solo i token mancanti e conserva successive revoche; i precedenti token di prova vengono sostituiti una sola volta.
 - Username corrente letto dal DB, identita' proprietario dalla sessione. Nessun parametro puo' selezionare un altro utente.
 - Token recuperabili solo nella tabella riservata `hr_ics_token_utenti`; hash di verifica nelle configurazioni. Nessun segreto nel repository o nei file distribuiti.
-- Restano invariate le regole del feed: solo proprie richieste approvate/in attesa e tipologie visibili, note escluse, UID stabili, account inattivo o token revocato senza accesso.
+- Il feed comprende gli eventi di tutte le persone autorizzate nel calendario web: proprietario, riporti diretti di primo livello, gruppi ed eventuale ambito globale. Non include livelli gerarchici ulteriori.
+- Web e ICS usano `includes/hr_calendario.php` per permessi correnti, scope, selezione richieste e mascheramento dettagli.
+- Pendenti visibili solo al proprietario, all'approvatore assegnato in attesa, o con permesso globale dedicato.
+- Nominativo nei titoli degli eventi. Causali, oggetti e categorie ICS restano generici quando manca il diritto al dettaglio. Note sempre escluse, codice richiesta solo per eventi propri.
+- UID, URL e token restano stabili. Account inattivo, token revocato o permesso calendario revocato non danno accesso.
+- Le giornate senza eventi non generano impegni ICS; il feed non e' limitato alla vista temporale selezionata sul web.
+
 
