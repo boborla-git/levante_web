@@ -298,21 +298,24 @@ function hrUtenteHaBeneficioConfigurato(PDO $pdo, int $idUtente, string $codiceB
     return (bool)$stmt->fetchColumn();
 }
 
-function hrHaRecapitoEmailPersonale(PDO $pdo, int $idUtente): bool
+function hrHaRecapitoEmailPersonaleVerificato(PDO $pdo, int $idUtente): bool
 {
     $stmt = $pdo->prepare(
-        "SELECT 1
+        "SELECT ru.valore
          FROM hr_recapiti_utenti ru
          INNER JOIN hr_tipi_recapito tr ON tr.id_tipo_recapito = ru.id_tipo_recapito
          WHERE ru.id_utente = :id_utente
            AND ru.attivo = 1
+           AND ru.verificato = 1
+           AND tr.attivo = 1
            AND tr.codice = 'EMAIL_PERSONALE'
            AND TRIM(COALESCE(ru.valore, '')) <> ''
+         ORDER BY ru.principale DESC, ru.id_recapito_utente DESC
          LIMIT 1"
     );
     $stmt->execute(['id_utente' => $idUtente]);
 
-    return (bool)$stmt->fetchColumn();
+    return hrEmailValida((string)($stmt->fetchColumn() ?: '')) !== null;
 }
 
 function hrEsisteSovrapposizioneRichiesta(PDO $pdo, int $idUtente, string $dataDa, string $dataA, string $modalita, string $oraDa = '', string $oraA = '', ?int $idRichiestaDaEscludere = null): ?array
@@ -687,10 +690,6 @@ try {
                     . ' - ' . (string)$sovrapposizione['tipologia']
                     . ' (' . $periodoSovrapposto . ', stato: ' . (string)$sovrapposizione['stato'] . ').'
                 );
-            }
-
-            if (!$isDelegato && !hrHaRecapitoEmailPersonale($pdo, $idUtenteTarget)) {
-                throw new RuntimeException('Per inserire richieste personali devi avere almeno una email personale attiva nei recapiti HR.');
             }
 
             $richiedeApprovazione = (int)$tipologiaSelezionata['richiede_approvazione'] === 1;
@@ -1291,7 +1290,7 @@ if (!$isHrResponsabile) {
 }
 
 $scopeLabel = $utenteSelezionato ? (string)$utenteSelezionato['nominativo'] : ('Utente #' . $idUtenteTarget);
-$infoRecapitoMancante = (!$isDelegato && !hrHaRecapitoEmailPersonale($pdo, $idUtenteTarget));
+$infoRecapitoMancante = (!$isDelegato && !hrHaRecapitoEmailPersonaleVerificato($pdo, $idUtenteTarget));
 
 layoutHeader('Assenze e permessi');
 ?>
@@ -1375,8 +1374,10 @@ layoutHeader('Assenze e permessi');
             Le richieste inserite per un altro dipendente vengono registrate come già approvate, con storico dell'operatore che le ha create. È consentito anche un inserimento retroattivo, purché il periodo appartenga a un mese non ancora chiuso da HR.
         </div>
     <?php elseif ($infoRecapitoMancante): ?>
-        <div class="errore" style="margin-top:16px;">
-            Per inserire richieste personali devi avere almeno una email personale attiva nei recapiti HR.
+        <div class="info-box" role="status" style="margin-top:16px;">
+            Puoi inserire richieste anche senza una mail personale verificata, ma non riceverai gli aggiornamenti via email.
+            Puoi consultare lo storico in questa pagina.
+            Se vuoi ricevere le email, aggiungi e verifica il tuo indirizzo in <a href="miei_recapiti.php">I miei recapiti</a>.
         </div>
     <?php endif; ?>
 </div>
@@ -1512,7 +1513,7 @@ layoutHeader('Assenze e permessi');
                     </div>
 
                     <div class="actions hr-request-submit">
-                        <button type="submit" class="btn btn-primary" <?= $infoRecapitoMancante ? 'disabled' : '' ?>><i class="la la-save" aria-hidden="true"></i> Registra richiesta</button>
+                        <button type="submit" class="btn btn-primary"><i class="la la-save" aria-hidden="true"></i> Registra richiesta</button>
                     </div>
                 </div>
             </div>
