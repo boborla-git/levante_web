@@ -30,6 +30,10 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 
 ### Validazioni
 
+- L'email personale e' facoltativa: la sua assenza o mancata verifica non deve impedire l'inserimento di richieste personali ne' disabilitare il pulsante di registrazione.
+- In assenza di email personale attiva, valida e verificata, la pagina mostra un avviso informativo con link a `miei_recapiti.php`: le richieste restano inseribili e consultabili nello storico, ma gli aggiornamenti personali via email non vengono recapitati.
+- Il controllo dell'avviso deve usare gli stessi requisiti del recapito utilizzato per le notifiche al richiedente. Le notifiche ai responsabili e a HR restano invariate.
+
 - Per una richiesta personale di un utente non HR non devono essere accettate date retroattive: la prima data selezionabile e' oggi, oppure il primo giorno del primo mese aperto se il mese corrente e' gia' chiuso.
 - Un responsabile, quando inserisce una richiesta in modalita' delegata per un proprio riporto diretto, puo' inserire anche una data retroattiva purche' il periodo ricada interamente in mesi non ancora chiusi da HR.
 - La possibilita' di inserimento retroattivo del responsabile non si applica alle sue richieste personali.
