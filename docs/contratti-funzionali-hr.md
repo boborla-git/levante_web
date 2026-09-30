@@ -50,7 +50,8 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 
 ### Causali HR riservate
 
-- Le causali `ALLATTAMENTO` e `CONGEDO_STRAORDINARIO_DISABILI` sono selezionabili solo da Giorgia HR (`test_GBettolini` con ruolo `hr_responsabile_personale`).
+- Le causali `ALLATTAMENTO` e `CONGEDO_STRAORDINARIO_DISABILI` sono selezionabili solo dagli utenti con ruolo `hr_responsabile_personale`, indipendentemente dallo username e dal prefisso `test_`.
+- La rinomina di un account non deve modificarne password, ruoli, permessi o diritti HR.
 - La restrizione deve esistere sia nell'interfaccia sia nella validazione server, per impedire inserimenti forzati da altri utenti.
 - Le due causali sono disponibili per un dipendente solo se il corrispondente diritto e' attivo in `hr_benefici_utenti` per l'intero periodo richiesto.
 - Entrambe sono trattate come assenze personali: stato presenza `ASSENTE`, nessuna approvazione, dettaglio non mostrato a colleghi o responsabili, dettaglio visibile a HR.
