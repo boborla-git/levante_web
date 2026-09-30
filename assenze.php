@@ -16,8 +16,7 @@ $puoLeggereApprovazioni = haPermessoLettura('approvazioni_assenze');
 $puoLeggereCalendario = haPermessoLettura('calendario_assenze');
 $puoConfigurare = haPermessoLettura('configurazione_assenze');
 $isHrResponsabile = in_array('hr_responsabile_personale', (array)($_SESSION['ruoli'] ?? []), true);
-$isGiorgiaHr = $isHrResponsabile
-    && strtolower(trim((string)($_SESSION['username'] ?? ''))) === 'test_gbettolini';
+// Le causali HR riservate dipendono dal ruolo, indipendentemente dallo username.
 
 $errore = '';
 $messaggio = '';
@@ -629,9 +628,9 @@ try {
             }
             if (
                 in_array($codiceTipologia, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true)
-                && !$isGiorgiaHr
+                && !$isHrResponsabile
             ) {
-                throw new RuntimeException('Questa causale è riservata a Giorgia HR.');
+                throw new RuntimeException('Questa causale è riservata al ruolo HR responsabile personale.');
             }
             if ($codiceTipologia === 'ALLATTAMENTO') {
                 if (
@@ -1429,7 +1428,7 @@ layoutHeader('Assenze e permessi');
                                 if ($codiceOpzione === 'MALATTIA' && !$isHrResponsabile) { continue; }
                                 if (
                                     in_array($codiceOpzione, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true)
-                                    && !$isGiorgiaHr
+                                    && !$isHrResponsabile
                                 ) { continue; }
                                 if (
                                     $codiceOpzione === 'ALLATTAMENTO'
