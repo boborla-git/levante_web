@@ -155,3 +155,16 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - La qualifica e' visibile nella pagina `utenti.php`.
 - La modifica della qualifica dalla pagina utenti e' consentita solo al ruolo `admin_portale` e non durante la modalita "Visualizza come".
 - Gli utenti attivi non presenti nell'elenco HR possono restare senza qualifica finche' HR non fornisce il dato.
+
+
+## Contratti funzionali - calendario personale ICS
+
+- Ogni utente autenticato puo' consultare esclusivamente il proprio collegamento in `Il mio calendario`, sotto il menu personale, anche senza ruolo assegnato.
+- Il link deve essere non modificabile, selezionabile e copiabile con un pulsante su PC e smartphone.
+- La pagina spiega in modo semplice l'abbonamento da URL e i tempi di aggiornamento del client.
+- Token individuali stabili e indipendenti dalla password. La rigenerazione non deve avvenire durante la normale consultazione ne' al cambio password.
+- La migrazione genera solo i token mancanti e conserva successive revoche; i precedenti token di prova vengono sostituiti una sola volta.
+- Username corrente letto dal DB, identita' proprietario dalla sessione. Nessun parametro puo' selezionare un altro utente.
+- Token recuperabili solo nella tabella riservata `hr_ics_token_utenti`; hash di verifica nelle configurazioni. Nessun segreto nel repository o nei file distribuiti.
+- Restano invariate le regole del feed: solo proprie richieste approvate/in attesa e tipologie visibili, note escluse, UID stabili, account inattivo o token revocato senza accesso.
+

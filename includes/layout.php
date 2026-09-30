@@ -120,6 +120,11 @@ function layoutUserDisplayName(int $idUtente): string
 
 function layoutNodeCanOpen(array $node): bool
 {
+    // Pagina strettamente personale: come il cambio password, e' disponibile
+    // a ogni utente autenticato, anche senza un ruolo assegnato.
+    if (($node['codice_risorsa'] ?? '') === 'pagina.mio_calendario') {
+        return utenteAutenticato();
+    }
     $percorso = trim((string)($node['percorso'] ?? ''));
     if ($percorso === '') return false;
     $codice = trim((string)($node['codice_risorsa'] ?? ''));
