@@ -15,8 +15,10 @@ $puoScrivere = haPermessoScrittura('assenze');
 $puoLeggereApprovazioni = haPermessoLettura('approvazioni_assenze');
 $puoLeggereCalendario = haPermessoLettura('calendario_assenze');
 $puoConfigurare = haPermessoLettura('configurazione_assenze');
-$isHrResponsabile = in_array('hr_responsabile_personale', (array)($_SESSION['ruoli'] ?? []), true);
-// Le causali HR riservate dipendono dal ruolo, indipendentemente dallo username.
+$puoOperareComeHr = utenteAdminGlobale()
+    || in_array('hr_responsabile_personale', (array)($_SESSION['ruoli'] ?? []), true);
+// Amministratore globale e HR condividono le funzioni riservate di questa pagina.
+// La verifica usa il profilo corrente, anche durante "Visualizza come".
 
 $errore = '';
 $messaggio = '';
@@ -574,7 +576,7 @@ try {
             if ($dataA < $dataDa) {
                 throw new RuntimeException('Il giorno finale non può essere precedente al giorno iniziale.');
             }
-            if (!$isHrResponsabile) {
+            if (!$puoOperareComeHr) {
                 $oggiItalia = (new DateTimeImmutable('today', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
                 if (!$isDelegato && $dataDa < $oggiItalia) {
                     throw new RuntimeException('Non è possibile inserire richieste personali per un giorno già trascorso. Seleziona oggi o una data futura.');
@@ -626,14 +628,14 @@ try {
             }
 
             $codiceTipologia = strtoupper(trim((string)$tipologiaSelezionata['codice']));
-            if ($codiceTipologia === 'MALATTIA' && !$puoConfigurare) {
-                throw new RuntimeException('La gestione delle assenze per malattia è riservata a HR.');
+            if ($codiceTipologia === 'MALATTIA' && !$puoOperareComeHr) {
+                throw new RuntimeException('La gestione delle assenze per malattia è riservata a HR o all’amministratore.');
             }
             if (
                 in_array($codiceTipologia, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true)
-                && !$isHrResponsabile
+                && !$puoOperareComeHr
             ) {
-                throw new RuntimeException('Questa causale è riservata al ruolo HR responsabile personale.');
+                throw new RuntimeException('Questa causale è riservata a HR o all’amministratore.');
             }
             if ($codiceTipologia === 'ALLATTAMENTO') {
                 if (
@@ -967,8 +969,8 @@ try {
         }
 
         if ($azione === 'riclassifica_altro') {
-            if (!$isHrResponsabile) {
-                throw new RuntimeException('La riclassificazione delle richieste Altro è riservata a HR.');
+            if (!$puoOperareComeHr) {
+                throw new RuntimeException('La riclassificazione delle richieste Altro è riservata a HR o all’amministratore.');
             }
 
             $idRichiesta = (int)($_POST['id_richiesta'] ?? 0);
@@ -1083,10 +1085,10 @@ try {
             if (!in_array((string)$riga['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true)) {
                 throw new RuntimeException('La richiesta non può essere annullata nello stato attuale.');
             }
-            if (!$isHrResponsabile) {
+            if (!$puoOperareComeHr) {
                 $meseChiuso = hrMeseChiusoTraDate($pdo, (string)($riga['data_da'] ?? ''), (string)($riga['data_a'] ?? ''));
                 if ($meseChiuso !== null) {
-                    throw new RuntimeException('Il mese ' . $meseChiuso . ' è chiuso da HR: solo HR può annullare richieste relative a periodi chiusi.');
+                    throw new RuntimeException('Il mese ' . $meseChiuso . ' è chiuso da HR: solo HR o l’amministratore può annullare richieste relative a periodi chiusi.');
                 }
             }
 
@@ -1240,7 +1242,7 @@ try {
 
     $richiesteAltroDaRiclassificare = 0;
     $richiesteAltroDettaglio = [];
-    if ($isHrResponsabile) {
+    if ($puoOperareComeHr) {
         $stmtAltro = $pdo->query(
             "SELECT
                 r.id_richiesta,
@@ -1275,7 +1277,7 @@ try {
     $errore = $e->getMessage();
 }
 
-if (!$isHrResponsabile) {
+if (!$puoOperareComeHr) {
     try {
         $primaDataInseribile = $isDelegato ? '' : hrPrimaDataInseribile($pdo);
         $mesiChiusiInserimento = hrMesiChiusiInserimento($pdo);
@@ -1328,7 +1330,7 @@ layoutHeader('Assenze e permessi');
     <div class="ok"><?= h($messaggio) ?></div>
 <?php endif; ?>
 
-<?php if ($isHrResponsabile && ($richiesteAltroDaRiclassificare ?? 0) > 0): ?>
+<?php if ($puoOperareComeHr && ($richiesteAltroDaRiclassificare ?? 0) > 0): ?>
     <div class="info-box" style="border-left:4px solid #ffc107;">
         <strong>Attenzione HR:</strong>
         <?= (int)$richiesteAltroDaRiclassificare === 1 ? 'c\'è 1 richiesta classificata' : 'ci sono ' . (int)$richiesteAltroDaRiclassificare . ' richieste classificate' ?>
@@ -1371,7 +1373,7 @@ layoutHeader('Assenze e permessi');
 
     <?php if ($isDelegato): ?>
         <div class="info-box" style="margin-top:16px;">
-            Le richieste inserite per un altro dipendente vengono registrate come già approvate, con storico dell'operatore che le ha create. È consentito anche un inserimento retroattivo, purché il periodo appartenga a un mese non ancora chiuso da HR.
+            Le richieste inserite per un altro dipendente vengono registrate come già approvate, con storico dell'operatore che le ha create. <?= $puoOperareComeHr ? 'HR e amministratore possono operare anche su date trascorse e mesi chiusi.' : 'È consentito anche un inserimento retroattivo, purché il periodo appartenga a un mese non ancora chiuso da HR.' ?>
         </div>
     <?php elseif ($infoRecapitoMancante): ?>
         <div class="info-box" role="status" style="margin-top:16px;">
@@ -1426,10 +1428,10 @@ layoutHeader('Assenze e permessi');
                             <?php foreach ($tipologie as $tipologia): ?>
                                 <?php
                                 $codiceOpzione = strtoupper(trim((string)$tipologia['codice']));
-                                if ($codiceOpzione === 'MALATTIA' && !$isHrResponsabile) { continue; }
+                                if ($codiceOpzione === 'MALATTIA' && !$puoOperareComeHr) { continue; }
                                 if (
                                     in_array($codiceOpzione, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true)
-                                    && !$isHrResponsabile
+                                    && !$puoOperareComeHr
                                 ) { continue; }
                                 if (
                                     $codiceOpzione === 'ALLATTAMENTO'
@@ -1565,10 +1567,10 @@ layoutHeader('Assenze e permessi');
                         }
                         $annullabile = in_array((string)$r['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true);
                         $meseChiusoRichiesta = hrMeseChiusoTraDate($pdo, (string)($r['data_da_iso'] ?? ''), (string)($r['data_a_iso'] ?? ''));
-                        if ($meseChiusoRichiesta !== null && !$isHrResponsabile) {
+                        if ($meseChiusoRichiesta !== null && !$puoOperareComeHr) {
                             $annullabile = false;
                         }
-                        $riclassificabileHr = $isHrResponsabile && strtoupper((string)($r['tipologia_codice'] ?? '')) === 'ALTRO';
+                        $riclassificabileHr = $puoOperareComeHr && strtoupper((string)($r['tipologia_codice'] ?? '')) === 'ALTRO';
                         ?>
                         <tr>
                             <td><strong><?= h((string)$r['codice_richiesta']) ?></strong></td>
@@ -1612,7 +1614,7 @@ layoutHeader('Assenze e permessi');
                                         <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="la la-times" aria-hidden="true"></i> Annulla</button>
                                     </form>
-                                <?php elseif ($meseChiusoRichiesta !== null && !$isHrResponsabile): ?>
+                                <?php elseif ($meseChiusoRichiesta !== null && !$puoOperareComeHr): ?>
                                     <span class="meta">Periodo chiuso</span>
                                 <?php elseif (!$riclassificabileHr): ?>
                                     <span class="meta">-</span>

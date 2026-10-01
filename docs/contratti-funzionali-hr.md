@@ -54,7 +54,7 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 
 ### Causali HR riservate
 
-- Le causali `ALLATTAMENTO` e `CONGEDO_STRAORDINARIO_DISABILI` sono selezionabili solo dagli utenti con ruolo `hr_responsabile_personale`, indipendentemente dallo username e dal prefisso `test_`.
+- Le causali `MALATTIA`, `ALLATTAMENTO` e `CONGEDO_STRAORDINARIO_DISABILI` sono selezionabili e registrabili dagli utenti con ruolo `hr_responsabile_personale` e dall'amministratore globale (`utenteAdminGlobale()`), indipendentemente dal prefisso `test_`. In `assenze.php` la stessa capacità abilita le funzioni HR di riclassificazione Altro, inserimento retroattivo e gestione dei mesi chiusi. Restano i controlli sui benefici individuali e sulle sovrapposizioni; il profilo corrente in "Visualizza come" non eredita le capacità dell'amministratore originario. L'estensione non assegna ruoli HR né modifica i destinatari dei riepiloghi email.
 - La rinomina di un account non deve modificarne password, ruoli, permessi o diritti HR.
 - La restrizione deve esistere sia nell'interfaccia sia nella validazione server, per impedire inserimenti forzati da altri utenti.
 - Le due causali sono disponibili per un dipendente solo se il corrispondente diritto e' attivo in `hr_benefici_utenti` per l'intero periodo richiesto.
