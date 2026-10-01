@@ -5,11 +5,14 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/badge.php';
+require_once __DIR__ . '/includes/hr_organizzazione.php';
 
 richiediPermessoLettura('profili_dipendenti');
 
 $pdo = db();
 $puoScrivere = haPermessoScrittura('profili_dipendenti');
+$csrfToken = hrOrgCsrfToken();
+$idProfiloSelezionato = (int)($_GET['profilo'] ?? $_POST['id_profilo_dipendente'] ?? 0);
 $errore = '';
 $messaggio = '';
 $profili = [];
@@ -19,16 +22,6 @@ $utentiResponsabili = [];
 $responsabiliByUtente = [];
 $responsabilePrincipaleByUtente = [];
 $teamByUtente = [];
-$riepilogo = [
-    'profili_totali' => 0,
-    'profili_reali' => 0,
-    'profili_test' => 0,
-    'profili_compilati' => 0,
-    'senza_reparto' => 0,
-    'senza_centro_costo' => 0,
-    'senza_responsabile' => 0,
-];
-
 function h(?string $v): string
 {
     return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
@@ -41,7 +34,7 @@ function hrProfiloData(?string $valore): ?string
         return null;
     }
 
-    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $valore) ? $valore : null;
+    return hrOrgData($valore);
 }
 
 function hrProfiloLabelUtente(array $profilo): string
@@ -98,7 +91,13 @@ try {
             throw new RuntimeException('Non hai i permessi di modifica.');
         }
 
+        hrOrgVerificaCsrf();
         $azione = trim((string)($_POST['azione'] ?? ''));
+        if ($azione === 'crea_profili_mancanti') {
+            $pdo->exec('INSERT INTO hr_profili_dipendenti (id_utente, attivo) SELECT u.id_utente, 1 FROM aut_utenti u WHERE u.attivo = 1 AND NOT EXISTS (SELECT 1 FROM hr_profili_dipendenti p WHERE p.id_utente = u.id_utente)');
+            header('Location: profili_dipendenti.php?creati=1');
+            exit;
+        }
 
         if ($azione === 'salva_profilo') {
             $idProfilo = (int)($_POST['id_profilo_dipendente'] ?? 0);
@@ -106,7 +105,7 @@ try {
                 throw new RuntimeException('Profilo dipendente non valido.');
             }
 
-            $stmtProfilo = $pdo->prepare('SELECT id_utente FROM hr_profili_dipendenti WHERE id_profilo_dipendente = :id');
+            $stmtProfilo = $pdo->prepare('SELECT p.id_utente FROM hr_profili_dipendenti p INNER JOIN aut_utenti u ON u.id_utente = p.id_utente AND u.attivo = 1 WHERE p.id_profilo_dipendente = :id');
             $stmtProfilo->execute(['id' => $idProfilo]);
             $profiloCorrente = $stmtProfilo->fetch(PDO::FETCH_ASSOC);
             if (!$profiloCorrente) {
@@ -134,8 +133,7 @@ try {
             $stmtTipo = $pdo->prepare(
                 "SELECT id_tipo_relazione
                  FROM hr_tipi_relazione_organizzativa
-                 WHERE codice = 'RESPONSABILE_FUNZIONALE'
-                    OR codice = 'RESPONSABILE_DIRETTO'
+                 WHERE attivo = 1 AND codice IN ('RESPONSABILE_FUNZIONALE', 'RESPONSABILE_DIRETTO')
                  ORDER BY CASE WHEN codice = 'RESPONSABILE_FUNZIONALE' THEN 0 ELSE 1 END
                  LIMIT 1"
             );
@@ -150,6 +148,14 @@ try {
                 $stmtUtente->execute(['id_utente' => $idResponsabile]);
                 if ((int)$stmtUtente->fetchColumn() === 0) {
                     throw new RuntimeException('Responsabile selezionato non valido o non attivo.');
+                }
+            }
+
+            foreach (['hr_reparti' => ['id_reparto', $idReparto], 'hr_centri_costo' => ['id_centro_costo', $idCentroCosto]] as $tabella => $riferimento) {
+                if ($riferimento[1] > 0) {
+                    $controllo = $pdo->prepare("SELECT COUNT(*) FROM {$tabella} WHERE {$riferimento[0]} = :id AND attivo = 1");
+                    $controllo->execute(['id' => $riferimento[1]]);
+                    if ((int)$controllo->fetchColumn() !== 1) throw new RuntimeException('Reparto o centro di costo non valido o non attivo.');
                 }
             }
 
@@ -180,60 +186,12 @@ try {
                 'id_profilo_dipendente' => $idProfilo,
             ]);
 
-            $stmtRelazioneAttuale = $pdo->prepare(
-                "SELECT ro.id_relazione_organizzativa, ro.id_utente_collegato
-                 FROM hr_relazioni_organizzative ro
-                 INNER JOIN hr_tipi_relazione_organizzativa tro ON tro.id_tipo_relazione = ro.id_tipo_relazione
-                 WHERE ro.id_utente = :id_utente
-                   AND ro.attiva = 1
-                   AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE())
-                   AND tro.codice IN ('RESPONSABILE_FUNZIONALE', 'RESPONSABILE_DIRETTO')
-                 ORDER BY CASE WHEN tro.codice = 'RESPONSABILE_FUNZIONALE' THEN 0 ELSE 1 END,
-                          ro.data_inizio DESC,
-                          ro.id_relazione_organizzativa DESC"
-            );
-            $stmtRelazioneAttuale->execute(['id_utente' => $idUtenteProfilo]);
-            $relazioniAttuali = $stmtRelazioneAttuale->fetchAll(PDO::FETCH_ASSOC);
-
-            $responsabileAttuale = 0;
-            foreach ($relazioniAttuali as $relazioneAttuale) {
-                if ($responsabileAttuale === 0) {
-                    $responsabileAttuale = (int)$relazioneAttuale['id_utente_collegato'];
-                }
-            }
-
-            if ($idResponsabile !== $responsabileAttuale || count($relazioniAttuali) > 1) {
-                $stmtChiudi = $pdo->prepare(
-                    "UPDATE hr_relazioni_organizzative ro
-                     INNER JOIN hr_tipi_relazione_organizzativa tro ON tro.id_tipo_relazione = ro.id_tipo_relazione
-                     SET ro.attiva = 0,
-                         ro.data_fine = COALESCE(ro.data_fine, CURDATE()),
-                         ro.note = TRIM(CONCAT(COALESCE(ro.note, ''), CASE WHEN COALESCE(ro.note, '') = '' THEN '' ELSE ' | ' END, 'Chiusa da anagrafica HR'))
-                     WHERE ro.id_utente = :id_utente
-                       AND ro.attiva = 1
-                       AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE())
-                       AND tro.codice IN ('RESPONSABILE_FUNZIONALE', 'RESPONSABILE_DIRETTO')"
-                );
-                $stmtChiudi->execute(['id_utente' => $idUtenteProfilo]);
-
-                if ($idResponsabile > 0) {
-                    $stmtInserisci = $pdo->prepare(
-                        'INSERT INTO hr_relazioni_organizzative
-                         (id_utente, id_utente_collegato, id_tipo_relazione, data_inizio, data_fine, attiva, note)
-                         VALUES (:id_utente, :id_utente_collegato, :id_tipo_relazione, CURDATE(), NULL, 1, :note)'
-                    );
-                    $stmtInserisci->execute([
-                        'id_utente' => $idUtenteProfilo,
-                        'id_utente_collegato' => $idResponsabile,
-                        'id_tipo_relazione' => $idTipoResponsabile,
-                        'note' => 'Assegnata da anagrafica HR',
-                    ]);
-                }
-            }
+            $oggi = (string)$pdo->query('SELECT CURDATE()')->fetchColumn();
+            hrOrgAssegnaResponsabile($pdo, $idUtenteProfilo, $idResponsabile, $idTipoResponsabile, $oggi, null, 'Assegnata da anagrafica HR', true);
 
             $pdo->commit();
 
-            header('Location: profili_dipendenti.php?ok=1');
+            header('Location: profili_dipendenti.php?' . http_build_query(['ok'=>1,'profilo'=>$idProfilo,'q'=>trim((string)($_GET['q'] ?? '')),'reparto'=>(int)($_GET['reparto'] ?? 0),'centro'=>(int)($_GET['centro'] ?? 0),'stato'=>(string)($_GET['stato'] ?? '')]));
             exit;
         }
     }
@@ -242,18 +200,8 @@ try {
         $messaggio = 'Profilo dipendente aggiornato correttamente.';
     }
 
-    // Allineamento prudente: crea eventuali profili mancanti per utenti attivi senza assegnare dati HR.
-    $pdo->exec(
-        'INSERT INTO hr_profili_dipendenti (id_utente, attivo)
-         SELECT u.id_utente, 1
-         FROM aut_utenti u
-         WHERE u.attivo = 1
-           AND NOT EXISTS (
-               SELECT 1
-               FROM hr_profili_dipendenti p
-               WHERE p.id_utente = u.id_utente
-           )'
-    );
+    if (isset($_GET['creati'])) $messaggio = 'Profili mancanti creati.';
+    $profiliMancanti = (int)$pdo->query('SELECT COUNT(*) FROM aut_utenti u WHERE u.attivo = 1 AND NOT EXISTS (SELECT 1 FROM hr_profili_dipendenti p WHERE p.id_utente = u.id_utente)')->fetchColumn();
 
     $reparti = $pdo->query('SELECT id_reparto, codice, nome FROM hr_reparti WHERE attivo = 1 ORDER BY ordinamento, nome')->fetchAll(PDO::FETCH_ASSOC);
     $centriCosto = $pdo->query('SELECT id_centro_costo, codice, nome FROM hr_centri_costo WHERE attivo = 1 ORDER BY ordinamento, nome')->fetchAll(PDO::FETCH_ASSOC);
@@ -267,9 +215,11 @@ try {
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $profili = $pdo->query(
-        'SELECT *
-         FROM v_hr_profili_dipendenti
-         ORDER BY cognome, nome, utente_test, username'
+        'SELECT v.*, u.attivo AS account_attivo, p.attivo AS profilo_hr_attivo
+         FROM v_hr_profili_dipendenti v
+         INNER JOIN aut_utenti u ON u.id_utente = v.id_utente
+         INNER JOIN hr_profili_dipendenti p ON p.id_profilo_dipendente = v.id_profilo_dipendente
+         ORDER BY v.cognome, v.nome, v.utente_test, v.username'
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $responsabiliRows = $pdo->query(
@@ -284,6 +234,7 @@ try {
          INNER JOIN hr_tipi_relazione_organizzativa tro ON tro.id_tipo_relazione = ro.id_tipo_relazione
          INNER JOIN aut_utenti u ON u.id_utente = ro.id_utente_collegato
          WHERE ro.attiva = 1
+           AND ro.data_inizio <= CURDATE()
            AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE())
          ORDER BY ro.id_utente,
                   CASE WHEN tro.codice = 'RESPONSABILE_FUNZIONALE' THEN 0 WHEN tro.codice = 'RESPONSABILE_DIRETTO' THEN 1 ELSE 2 END,
@@ -319,6 +270,7 @@ try {
          FROM hr_gruppi_utenti gu
          INNER JOIN hr_gruppi_lavoro gl ON gl.id_gruppo_lavoro = gu.id_gruppo_lavoro
          WHERE gu.attivo = 1
+           AND gu.data_inizio <= CURDATE()
            AND gl.attivo = 1
            AND (gu.data_fine IS NULL OR gu.data_fine >= CURDATE())
          ORDER BY gu.id_utente, gl.nome"
@@ -333,35 +285,6 @@ try {
         ];
     }
 
-    $riepilogo['profili_totali'] = count($profili);
-    foreach ($profili as $profilo) {
-        $idUtente = (int)$profilo['id_utente'];
-        if ((int)$profilo['utente_test'] === 1) {
-            $riepilogo['profili_test']++;
-        } else {
-            $riepilogo['profili_reali']++;
-        }
-
-        if (trim((string)($profilo['reparto'] ?? '')) === '') {
-            $riepilogo['senza_reparto']++;
-        }
-        if (trim((string)($profilo['centro_costo'] ?? '')) === '') {
-            $riepilogo['senza_centro_costo']++;
-        }
-        if (!isset($responsabilePrincipaleByUtente[$idUtente])) {
-            $riepilogo['senza_responsabile']++;
-        }
-
-        if (
-            trim((string)($profilo['matricola'] ?? '')) !== '' ||
-            trim((string)($profilo['mansione'] ?? '')) !== '' ||
-            trim((string)($profilo['reparto'] ?? '')) !== '' ||
-            trim((string)($profilo['centro_costo'] ?? '')) !== '' ||
-            isset($responsabilePrincipaleByUtente[$idUtente])
-        ) {
-            $riepilogo['profili_compilati']++;
-        }
-    }
 } catch (Throwable $e) {
     if ($pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
@@ -369,164 +292,67 @@ try {
     $errore = $e->getMessage();
 }
 
+function hrProfiloTestoRicerca(string $s): string
+{
+    return strtolower(strtr($s, ['À'=>'a','È'=>'e','É'=>'e','Ì'=>'i','Ò'=>'o','Ù'=>'u','à'=>'a','è'=>'e','é'=>'e','ì'=>'i','ò'=>'o','ù'=>'u']));
+}
+$q = trim((string)($_GET['q'] ?? ''));
+$filtroReparto = (int)($_GET['reparto'] ?? 0);
+$filtroCentro = (int)($_GET['centro'] ?? 0);
+$filtroStato = (string)($_GET['stato'] ?? '');
+$profiliVisibili = [];
+$profiloSelezionato = null;
+$profiliAttivi = 0;
+foreach ($profili as $profilo) {
+    $idUtente = (int)$profilo['id_utente'];
+    if ((int)$profilo['id_profilo_dipendente'] === $idProfiloSelezionato) $profiloSelezionato = $profilo;
+    $operativo = (int)$profilo['account_attivo'] === 1 && (int)$profilo['profilo_hr_attivo'] === 1;
+    if ($operativo) $profiliAttivi++;
+    $testo = implode(' ', [hrProfiloLabelUtente($profilo), $profilo['username'], $profilo['matricola'] ?? '', $profilo['mansione'] ?? '', $profilo['reparto'] ?? '', $profilo['centro_costo'] ?? '', $profilo['codice_centro_costo'] ?? '', $profilo['note_hr'] ?? '', implode(' ', array_column($responsabiliByUtente[$idUtente] ?? [], 'label')), implode(' ', array_column($teamByUtente[$idUtente] ?? [], 'nome'))]);
+    if ($q !== '' && strpos(hrProfiloTestoRicerca($testo), hrProfiloTestoRicerca($q)) === false) continue;
+    if ($filtroReparto > 0 && (int)($profilo['id_reparto'] ?? 0) !== $filtroReparto) continue;
+    if ($filtroCentro > 0 && (int)($profilo['id_centro_costo'] ?? 0) !== $filtroCentro) continue;
+    if ($filtroStato === 'attivi' && !$operativo) continue;
+    if ($filtroStato === 'account_disattivo' && (int)$profilo['account_attivo'] === 1) continue;
+    if ($filtroStato === 'hr_disattivo' && (int)$profilo['profilo_hr_attivo'] === 1) continue;
+    $profiliVisibili[] = $profilo;
+}
+$parametriFiltro = ['q'=>$q,'reparto'=>$filtroReparto,'centro'=>$filtroCentro,'stato'=>$filtroStato];
 layoutHeader('Profili dipendenti');
 ?>
 <link rel="stylesheet" href="/assets/hr.css">
-
-<div class="hr-profile-stack">
-    <section class="card card-compact">
-        <div class="section-head hr-profile-hero">
-            <div>
-                <h1>Profili dipendenti</h1>
-                <div class="meta">Directory organizzativa HR: reparto, centro di costo, mansione, responsabile diretto e team in un'unica scheda leggibile.</div>
-            </div>
-            <div class="section-head-actions">
-                <a class="btn btn-light" href="reparti.php">Reparti</a>
-                <a class="btn btn-light" href="centri_costo.php">Centri di costo</a>
-                <a class="btn btn-light" href="configurazione_assenze.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla configurazione</a>
-            </div>
-        </div>
-    </section>
-
-    <section class="hr-profile-summary">
-        <span><strong><?= (int)$riepilogo['profili_totali'] ?></strong> profili</span>
-        <span><strong><?= (int)$riepilogo['profili_reali'] ?></strong> utenti reali</span>
-        <span><strong><?= (int)$riepilogo['profili_test'] ?></strong> utenti test</span>
-        <span><strong><?= (int)$riepilogo['profili_compilati'] ?></strong> profili compilati</span>
-        <span><strong><?= (int)$riepilogo['senza_reparto'] ?></strong> senza reparto</span>
-        <span><strong><?= (int)$riepilogo['senza_centro_costo'] ?></strong> senza centro di costo</span>
-        <span><strong><?= (int)$riepilogo['senza_responsabile'] ?></strong> senza responsabile</span>
-    </section>
-
-    <?php if ($errore !== ''): ?><div class="alert alert-error"><?= h($errore) ?></div><?php endif; ?>
-    <?php if ($messaggio !== ''): ?><div class="alert alert-success"><?= h($messaggio) ?></div><?php endif; ?>
-
-    <section class="card card-wide">
-        <div class="hr-profile-toolbar">
-            <div>
-                <h2>Anagrafica organizzativa</h2>
-                <div class="meta">Vista unica per HR: i cambi reparto, centro di costo e responsabile aggiornano i dati usati da calendario, approvazioni e visibilità.</div>
-            </div>
-            <div class="form-group hr-filter-search-group">
-                <label for="profiliSearch">Filtro rapido</label>
-                <input type="search" id="profiliSearch" data-card-filter="profiliDipendenti" placeholder="Cerca persona, reparto, responsabile, team...">
-            </div>
-        </div>
-    </section>
-
-    <section class="hr-profile-grid" id="profiliGrid">
-        <?php foreach ($profili as $profilo): ?>
-            <?php
-            $idProfilo = (int)$profilo['id_profilo_dipendente'];
-            $idUtente = (int)$profilo['id_utente'];
-            $isTest = (int)$profilo['utente_test'] === 1;
-            $nomeUtente = hrProfiloLabelUtente($profilo);
-            $usernameLabel = hrProfiloDescrizioneUtente($profilo);
-            $reparto = hrProfiloValore((string)($profilo['reparto'] ?? ''));
-            $centroCosto = hrProfiloValore((string)($profilo['centro_costo'] ?? ''));
-            $codiceReparto = trim((string)($profilo['codice_reparto'] ?? ''));
-            $codiceCentroCosto = trim((string)($profilo['codice_centro_costo'] ?? ''));
-            $mansione = hrProfiloValore((string)($profilo['mansione'] ?? ''), 'Mansione non indicata');
-            $matricola = hrProfiloValore((string)($profilo['matricola'] ?? ''), 'Matricola non indicata');
-            $responsabili = $responsabiliByUtente[$idUtente] ?? [];
-            $idResponsabilePrincipale = (int)($responsabilePrincipaleByUtente[$idUtente] ?? 0);
-            $teams = $teamByUtente[$idUtente] ?? [];
-            $searchText = strtolower(trim(implode(' ', [
-                $nomeUtente,
-                $usernameLabel,
-                $reparto,
-                $centroCosto,
-                $codiceReparto,
-                $codiceCentroCosto,
-                $mansione,
-                $matricola,
-                (string)($profilo['note_hr'] ?? ''),
-                implode(' ', array_map(static fn(array $r): string => (string)$r['label'] . ' ' . (string)$r['tipo'], $responsabili)),
-                implode(' ', array_map(static fn(array $t): string => (string)$t['nome'] . ' ' . (string)$t['codice'] . ' ' . (string)$t['ruolo'], $teams)),
-            ])));
-            ?>
-            <article class="hr-profile-card <?= $isTest ? 'is-test' : '' ?><?= (int)$profilo['profilo_attivo'] === 1 ? '' : ' is-inactive' ?>" data-card-filter-item="profiliDipendenti" data-search-text="<?= h($searchText) ?>">
-                <div class="hr-profile-card-header">
-                    <div class="hr-profile-person">
-                        <div class="hr-profile-name"><?= h($nomeUtente) ?></div>
-                        <div class="hr-profile-username"><?= h($usernameLabel) ?></div>
-                        <div class="hr-profile-tags">
-                            <?= hrProfiloBadgeHtml($reparto, trim((string)($profilo['reparto'] ?? '')) !== '' ? 'primary' : 'warning') ?>
-                            <?= hrProfiloBadgeHtml($codiceCentroCosto !== '' ? $codiceCentroCosto : $centroCosto, trim((string)($profilo['centro_costo'] ?? '')) !== '' ? 'muted' : 'warning') ?>
-                            <?php if ($idResponsabilePrincipale <= 0): ?><?= hrProfiloBadgeHtml('Senza responsabile', 'warning') ?><?php endif; ?>
-                            <?php if ($isTest): ?><?= hrProfiloBadgeHtml('Test', 'warning') ?><?php else: ?><?= hrProfiloBadgeHtml('Reale', 'admin') ?><?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="hr-profile-status">
-                        <?= renderHrStatusBadge((int)$profilo['profilo_attivo'] === 1 ? 'ATTIVO' : 'DISATTIVO', (int)$profilo['profilo_attivo'] === 1 ? 'Attivo' : 'Disattivo') ?>
-                    </div>
-                </div>
-
-                <div class="hr-profile-body">
-                    <div class="hr-profile-main">
-                        <div class="hr-profile-info">
-                            <div class="hr-profile-info-label">Mansione</div>
-                            <div class="hr-profile-info-value"><?= h($mansione) ?></div>
-                            <div class="hr-profile-info-sub"><?= h($matricola) ?></div>
-                        </div>
-                        <div class="hr-profile-info">
-                            <div class="hr-profile-info-label">Centro di costo</div>
-                            <div class="hr-profile-info-value"><?= h($centroCosto) ?></div>
-                            <div class="hr-profile-info-sub"><?= h($codiceCentroCosto !== '' ? $codiceCentroCosto : 'Amministrativo') ?></div>
-                        </div>
-                    </div>
-
-                    <div class="hr-profile-org">
-                        <div class="hr-profile-org-row">
-                            <i class="la la-sitemap" aria-hidden="true"></i>
-                            <div>
-                                <strong>Responsabile / referente</strong><br>
-                                <?php if (count($responsabili) > 0): ?>
-                                    <?php foreach ($responsabili as $responsabile): ?>
-                                        <span><?= h((string)$responsabile['label']) ?></span><span class="meta"> · <?= h((string)$responsabile['tipo']) ?></span><br>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <span class="hr-profile-empty">Non assegnato</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="hr-profile-org-row">
-                            <i class="la la-users" aria-hidden="true"></i>
-                            <div>
-                                <strong>Team</strong><br>
-                                <?php if (count($teams) > 0): ?>
-                                    <?php foreach ($teams as $team): ?>
-                                        <span><?= h((string)$team['nome']) ?></span><?php if ((string)$team['ruolo'] !== ''): ?><span class="meta"> · <?= h((string)$team['ruolo']) ?></span><?php endif; ?><br>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <span class="hr-profile-empty">Nessun team attivo</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <?php if ((int)$profilo['profilo_attivo'] === 1): ?>
-                <details class="hr-profile-details">
-                    <summary>Dettagli e modifica profilo</summary>
-                    <form method="post" action="profili_dipendenti.php" class="hr-profile-form">
+<style>
+.hr-directory-stack{display:grid;gap:20px;min-width:0}.hr-directory-stack>.card{min-width:0}.hr-directory-filters{display:grid;grid-template-columns:minmax(200px,2fr) repeat(3,minmax(130px,1fr));gap:16px}.hr-directory-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.hr-directory-table th,.hr-directory-table td{vertical-align:middle}.hr-directory-table .meta{font-size:13px}.hr-directory-editor{scroll-margin-top:24px}.hr-directory-table{min-width:920px}@media(max-width:750px){.hr-directory-filters{grid-template-columns:1fr}.hr-directory-stack .section-head{flex-direction:column}.hr-directory-stack .section-head-actions{width:100%}}
+</style>
+<div class="hr-directory-stack">
+<section class="card card-compact"><div class="section-head"><div><h1>Profili dipendenti</h1><div class="meta">Assegnazioni e dati HR delle persone.</div></div><div class="section-head-actions"><a class="btn btn-light" href="reparti.php">Reparti</a><a class="btn btn-light" href="centri_costo.php">Centri di costo</a><a class="btn btn-light" href="relazioni_organizzative.php">Relazioni organizzative</a><a class="btn btn-light" href="export_profili_dipendenti.php">Esporta Excel</a><a class="btn btn-light" href="configurazione_assenze.php">Configurazione</a></div></div></section>
+<?php if ($errore !== ''): ?><div class="alert alert-error" role="alert"><?= h($errore) ?></div><?php endif; ?>
+<?php if ($messaggio !== ''): ?><div class="alert alert-success" role="status"><?= h($messaggio) ?></div><?php endif; ?>
+<?php if (($profiliMancanti ?? 0) > 0): ?><section class="card"><p><?= (int)$profiliMancanti ?> account attivi non hanno ancora un profilo HR.</p><?php if ($puoScrivere): ?><form method="post"><input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>"><input type="hidden" name="azione" value="crea_profili_mancanti"><button class="btn btn-primary" type="submit">Crea profili mancanti</button></form><?php endif; ?></section><?php endif; ?>
+<?php if ($profiloSelezionato !== null): ?>
+<?php $profilo = $profiloSelezionato; $idProfilo = (int)$profilo['id_profilo_dipendente']; $idUtente = (int)$profilo['id_utente']; $idResponsabilePrincipale = (int)($responsabilePrincipaleByUtente[$idUtente] ?? 0); $puoModificareProfilo = $puoScrivere && (int)$profilo['account_attivo'] === 1; ?>
+<section class="card hr-directory-editor" id="profilo"><div class="section-head"><div><h2><?= h(hrProfiloLabelUtente($profilo)) ?></h2><div class="meta"><?= h(hrProfiloDescrizioneUtente($profilo)) ?> · Account <?= (int)$profilo['account_attivo'] === 1 ? 'attivo' : 'disattivo' ?> · Profilo HR <?= (int)$profilo['profilo_hr_attivo'] === 1 ? 'attivo' : 'disattivo' ?></div></div><a class="btn btn-light" href="profili_dipendenti.php?<?= h(http_build_query($parametriFiltro)) ?>">Chiudi scheda</a></div>
+<?php $responsabilitaGerarchiche = array_filter($responsabiliByUtente[$idUtente] ?? [], static fn(array $r): bool => in_array($r['codice'], ['RESPONSABILE_DIRETTO','RESPONSABILE_FUNZIONALE'], true)); if (count($responsabilitaGerarchiche) > 1): ?><div class="info-box">Questa persona ha più responsabilità attuali. Verifica il responsabile selezionato: salvando il profilo verrà mantenuto un solo responsabile da oggi, conservando lo storico precedente.</div><?php endif; ?>
+<?php if (!$puoModificareProfilo): ?><p class="info-box">Scheda consultabile in sola lettura.</p><?php endif; ?>
+                    <form method="post" action="profili_dipendenti.php?<?= h(http_build_query($parametriFiltro)) ?>" class="hr-profile-form">
+                        <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
                         <input type="hidden" name="azione" value="salva_profilo">
                         <input type="hidden" name="id_profilo_dipendente" value="<?= $idProfilo ?>">
 
-                        <div class="info-box">La modifica del responsabile chiude la relazione responsabile precedente e ne apre una nuova da oggi, senza cancellare lo storico.</div>
+                        <div class="info-box">Il cambio di responsabile vale da oggi e conserva lo storico. Le assegnazioni con altre date si gestiscono in Relazioni organizzative.</div>
 
                         <div class="hr-profile-form-grid">
                             <div class="form-group">
                                 <label for="matricola_<?= $idProfilo ?>">Matricola</label>
-                                <input type="text" id="matricola_<?= $idProfilo ?>" name="matricola" value="<?= h((string)($profilo['matricola'] ?? '')) ?>" maxlength="50" <?= $puoScrivere ? '' : 'readonly' ?>>
+                                <input type="text" id="matricola_<?= $idProfilo ?>" name="matricola" value="<?= h((string)($profilo['matricola'] ?? '')) ?>" maxlength="50" <?= $puoModificareProfilo ? '' : 'readonly' ?>>
                             </div>
                             <div class="form-group">
                                 <label for="mansione_<?= $idProfilo ?>">Mansione</label>
-                                <input type="text" id="mansione_<?= $idProfilo ?>" name="mansione" value="<?= h((string)($profilo['mansione'] ?? '')) ?>" maxlength="150" <?= $puoScrivere ? '' : 'readonly' ?>>
+                                <input type="text" id="mansione_<?= $idProfilo ?>" name="mansione" value="<?= h((string)($profilo['mansione'] ?? '')) ?>" maxlength="150" <?= $puoModificareProfilo ? '' : 'readonly' ?>>
                             </div>
                             <div class="form-group">
                                 <label for="reparto_<?= $idProfilo ?>">Reparto</label>
-                                <select id="reparto_<?= $idProfilo ?>" name="id_reparto" <?= $puoScrivere ? '' : 'disabled' ?>>
+                                <select id="reparto_<?= $idProfilo ?>" name="id_reparto" <?= $puoModificareProfilo ? '' : 'disabled' ?>>
                                     <option value="">Non assegnato</option>
                                     <?php foreach ($reparti as $repartoRow): ?>
                                         <option value="<?= (int)$repartoRow['id_reparto'] ?>" <?= (int)($profilo['id_reparto'] ?? 0) === (int)$repartoRow['id_reparto'] ? 'selected' : '' ?>>
@@ -537,7 +363,7 @@ layoutHeader('Profili dipendenti');
                             </div>
                             <div class="form-group">
                                 <label for="centro_costo_<?= $idProfilo ?>">Centro di costo</label>
-                                <select id="centro_costo_<?= $idProfilo ?>" name="id_centro_costo" <?= $puoScrivere ? '' : 'disabled' ?>>
+                                <select id="centro_costo_<?= $idProfilo ?>" name="id_centro_costo" <?= $puoModificareProfilo ? '' : 'disabled' ?>>
                                     <option value="">Non assegnato</option>
                                     <?php foreach ($centriCosto as $centroCostoRow): ?>
                                         <option value="<?= (int)$centroCostoRow['id_centro_costo'] ?>" <?= (int)($profilo['id_centro_costo'] ?? 0) === (int)$centroCostoRow['id_centro_costo'] ? 'selected' : '' ?>>
@@ -548,7 +374,7 @@ layoutHeader('Profili dipendenti');
                             </div>
                             <div class="form-group hr-profile-form-wide">
                                 <label for="responsabile_<?= $idProfilo ?>">Responsabile funzionale</label>
-                                <select id="responsabile_<?= $idProfilo ?>" name="id_responsabile" <?= $puoScrivere ? '' : 'disabled' ?>>
+                                <select id="responsabile_<?= $idProfilo ?>" name="id_responsabile" <?= $puoModificareProfilo ? '' : 'disabled' ?>>
                                     <option value="">Non assegnato</option>
                                     <?php foreach ($utentiResponsabili as $utenteResponsabile): ?>
                                         <?php $idOpzioneResponsabile = (int)$utenteResponsabile['id_utente']; ?>
@@ -561,36 +387,42 @@ layoutHeader('Profili dipendenti');
                             </div>
                             <div class="form-group">
                                 <label for="assunzione_<?= $idProfilo ?>">Data assunzione</label>
-                                <input type="date" id="assunzione_<?= $idProfilo ?>" name="data_assunzione" value="<?= h((string)($profilo['data_assunzione'] ?? '')) ?>" <?= $puoScrivere ? '' : 'readonly' ?>>
+                                <input type="date" id="assunzione_<?= $idProfilo ?>" name="data_assunzione" value="<?= h((string)($profilo['data_assunzione'] ?? '')) ?>" <?= $puoModificareProfilo ? '' : 'readonly' ?>>
                             </div>
                             <div class="form-group">
                                 <label for="cessazione_<?= $idProfilo ?>">Data cessazione</label>
-                                <input type="date" id="cessazione_<?= $idProfilo ?>" name="data_cessazione" value="<?= h((string)($profilo['data_cessazione'] ?? '')) ?>" <?= $puoScrivere ? '' : 'readonly' ?>>
+                                <input type="date" id="cessazione_<?= $idProfilo ?>" name="data_cessazione" value="<?= h((string)($profilo['data_cessazione'] ?? '')) ?>" <?= $puoModificareProfilo ? '' : 'readonly' ?>>
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="note_hr_<?= $idProfilo ?>">Note HR</label>
-                            <textarea id="note_hr_<?= $idProfilo ?>" name="note_hr" rows="3" <?= $puoScrivere ? '' : 'readonly' ?>><?= h((string)($profilo['note_hr'] ?? '')) ?></textarea>
+                            <textarea id="note_hr_<?= $idProfilo ?>" name="note_hr" rows="3" <?= $puoModificareProfilo ? '' : 'readonly' ?>><?= h((string)($profilo['note_hr'] ?? '')) ?></textarea>
                         </div>
 
                         <div class="hr-profile-form-actions">
-                            <label class="meta"><input type="checkbox" name="attivo" value="1" <?= (int)$profilo['profilo_attivo'] === 1 ? 'checked' : '' ?> <?= $puoScrivere ? '' : 'disabled' ?>> profilo attivo</label>
-                            <button type="submit" class="btn btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>>
+                            <label class="meta"><input type="checkbox" name="attivo" value="1" <?= (int)$profilo['profilo_hr_attivo'] === 1 ? 'checked' : '' ?> <?= $puoModificareProfilo ? '' : 'disabled' ?>> Profilo HR attivo (non modifica l’accesso al portale)</label>
+                            <button type="submit" class="btn btn-primary" <?= $puoModificareProfilo ? '' : 'disabled' ?>>
                                 <i class="la la-save" aria-hidden="true"></i> Salva profilo
                             </button>
                         </div>
                     </form>
-                </details>
-                <?php else: ?>
-                    <div class="info-box" style="margin:0 16px 16px;">Utente non attivo: il profilo resta consultabile per lo storico, ma non sono disponibili azioni operative.</div>
-                <?php endif; ?>
-            </article>
-        <?php endforeach; ?>
-    </section>
-</div>
-
-<script src="/assets/hr-common.js"></script>
-
+</section>
+<?php endif; ?>
+<section class="card"><form method="get" action="profili_dipendenti.php"><div class="hr-directory-filters">
+<div class="form-group"><label for="q">Cerca persona</label><input type="text" id="q" name="q" value="<?= h($q) ?>" placeholder="Nome, matricola, mansione, responsabile o team"></div>
+<div class="form-group"><label for="reparto">Reparto</label><select id="reparto" name="reparto"><option value="">Tutti</option><?php foreach ($reparti as $r): ?><option value="<?= (int)$r['id_reparto'] ?>" <?= $filtroReparto === (int)$r['id_reparto'] ? 'selected' : '' ?>><?= h($r['nome']) ?></option><?php endforeach; ?></select></div>
+<div class="form-group"><label for="centro">Centro di costo</label><select id="centro" name="centro"><option value="">Tutti</option><?php foreach ($centriCosto as $c): ?><option value="<?= (int)$c['id_centro_costo'] ?>" <?= $filtroCentro === (int)$c['id_centro_costo'] ? 'selected' : '' ?>><?= h($c['nome']) ?></option><?php endforeach; ?></select></div>
+<div class="form-group"><label for="stato">Stato</label><select id="stato" name="stato"><option value="">Tutti</option><?php foreach (['attivi'=>'Account e profilo HR attivi','account_disattivo'=>'Account disattivo','hr_disattivo'=>'Profilo HR disattivo'] as $k=>$v): ?><option value="<?= h($k) ?>" <?= $filtroStato === $k ? 'selected' : '' ?>><?= h($v) ?></option><?php endforeach; ?></select></div>
+</div><div class="hr-directory-actions"><button type="submit" class="btn btn-primary">Filtra</button><a class="btn btn-light" href="profili_dipendenti.php">Azzera filtri</a></div></form>
+<p class="meta"><?= count($profiliVisibili) ?> persone visualizzate su <?= count($profili) ?> · <?= $profiliAttivi ?> con account e profilo HR attivi</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Elenco profili dipendenti"><table class="hr-directory-table"><thead><tr><th scope="col">Dipendente</th><th scope="col">Reparto</th><th scope="col">Centro di costo</th><th scope="col">Mansione</th><th scope="col">Responsabile / referente</th><th scope="col">Team</th><th scope="col">Stato</th><th scope="col">Scheda</th></tr></thead><tbody>
+<?php foreach ($profiliVisibili as $p): $uid=(int)$p['id_utente']; ?>
+<tr><td><strong><?= h(hrProfiloLabelUtente($p)) ?></strong><div class="meta"><?= h(hrProfiloDescrizioneUtente($p)) ?></div></td><td><?= h(hrProfiloValore($p['reparto'] ?? null)) ?></td><td><?= h(hrProfiloValore($p['centro_costo'] ?? null)) ?><?php if (trim((string)($p['codice_centro_costo'] ?? '')) !== ''): ?><div class="meta"><?= h($p['codice_centro_costo']) ?></div><?php endif; ?></td><td><?= h(hrProfiloValore($p['mansione'] ?? null, 'Non indicata')) ?></td>
+<td><?php $rr=$responsabiliByUtente[$uid] ?? []; if (!$rr): ?>Non assegnato<?php else: foreach ($rr as $resp): ?><div><?= h($resp['label']) ?> <span class="meta"><?= h($resp['tipo']) ?></span></div><?php endforeach; endif; ?></td>
+<td><?php $tt=$teamByUtente[$uid] ?? []; if (!$tt): ?>Non assegnato<?php else: foreach ($tt as $team): ?><div><?= h($team['nome']) ?><?php if ($team['ruolo'] !== ''): ?><span class="meta"> · <?= h($team['ruolo']) ?></span><?php endif; ?></div><?php endforeach; endif; ?></td>
+<td><div class="meta">Account: <?= (int)$p['account_attivo'] === 1 ? 'attivo' : 'disattivo' ?></div><div class="meta">Profilo HR: <?= (int)$p['profilo_hr_attivo'] === 1 ? 'attivo' : 'disattivo' ?></div></td><td><a class="btn btn-light" href="profili_dipendenti.php?<?= h(http_build_query($parametriFiltro + ['profilo'=>(int)$p['id_profilo_dipendente']])) ?>#profilo">Apri profilo</a></td></tr>
+<?php endforeach; ?>
+<?php if (!$profiliVisibili): ?><tr><td colspan="8">Nessun profilo corrisponde ai filtri.</td></tr><?php endif; ?>
+</tbody></table></div></section></div>
 <?php layoutFooter(); ?>
-

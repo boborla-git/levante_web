@@ -38,6 +38,7 @@ $responsabiliRows = $pdo->query(
      INNER JOIN hr_tipi_relazione_organizzativa tro ON tro.id_tipo_relazione = ro.id_tipo_relazione
      INNER JOIN aut_utenti u ON u.id_utente = ro.id_utente_collegato
      WHERE ro.attiva = 1
+       AND ro.data_inizio <= CURDATE()
        AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE())
      ORDER BY ro.id_utente,
               CASE WHEN tro.codice = 'RESPONSABILE_FUNZIONALE' THEN 0 WHEN tro.codice = 'RESPONSABILE_DIRETTO' THEN 1 ELSE 2 END,
@@ -64,6 +65,7 @@ $teamRows = $pdo->query(
      FROM hr_gruppi_utenti gu
      INNER JOIN hr_gruppi_lavoro gl ON gl.id_gruppo_lavoro = gu.id_gruppo_lavoro
      WHERE gu.attivo = 1
+       AND gu.data_inizio <= CURDATE()
        AND gl.attivo = 1
        AND (gu.data_fine IS NULL OR gu.data_fine >= CURDATE())
      ORDER BY gu.id_utente, gl.nome"

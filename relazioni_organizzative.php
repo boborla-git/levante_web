@@ -5,11 +5,13 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/badge.php';
+require_once __DIR__ . '/includes/hr_organizzazione.php';
 
 richiediPermessoLettura('configurazione_assenze');
 
 $pdo = db();
 $puoScrivere = haPermessoScrittura('configurazione_assenze');
+$csrfToken = hrOrgCsrfToken();
 $errore = '';
 $messaggio = '';
 $utenti = [];
@@ -80,6 +82,7 @@ try {
             throw new RuntimeException('Non hai i permessi di modifica.');
         }
 
+        hrOrgVerificaCsrf();
         $azione = trim((string)($_POST['azione'] ?? ''));
 
         if ($azione === 'nuova_relazione') {
@@ -100,19 +103,9 @@ try {
                 throw new RuntimeException('La data fine non può precedere la data inizio.');
             }
 
-            $stmt = $pdo->prepare(
-                'INSERT INTO hr_relazioni_organizzative
-                (id_utente, id_utente_collegato, id_tipo_relazione, data_inizio, data_fine, attiva, note)
-                VALUES (:id_utente, :id_utente_collegato, :id_tipo_relazione, :data_inizio, :data_fine, 1, :note)'
-            );
-            $stmt->execute([
-                'id_utente' => $idUtente,
-                'id_utente_collegato' => $idCollegato,
-                'id_tipo_relazione' => $idTipo,
-                'data_inizio' => $dataInizio,
-                'data_fine' => $dataFine !== '' ? $dataFine : null,
-                'note' => $note !== '' ? $note : null,
-            ]);
+            $pdo->beginTransaction();
+            hrOrgAssegnaResponsabile($pdo, $idUtente, $idCollegato, $idTipo, $dataInizio, $dataFine !== '' ? $dataFine : null, $note !== '' ? $note : null);
+            $pdo->commit();
 
             header('Location: relazioni_organizzative.php?ok=1');
             exit;
@@ -123,8 +116,9 @@ try {
             if ($idRelazione <= 0) {
                 throw new RuntimeException('Relazione non valida.');
             }
-            $stmt = $pdo->prepare('UPDATE hr_relazioni_organizzative SET attiva = 0, data_fine = COALESCE(data_fine, CURDATE()) WHERE id_relazione_organizzativa = :id');
-            $stmt->execute(['id' => $idRelazione]);
+            $pdo->beginTransaction();
+            hrOrgChiudiRelazione($pdo, $idRelazione);
+            $pdo->commit();
 
             header('Location: relazioni_organizzative.php?chiusa=1');
             exit;
@@ -147,7 +141,7 @@ try {
     $tipiRelazione = $pdo->query("SELECT * FROM hr_tipi_relazione_organizzativa WHERE attivo = 1 AND codice IN ('RESPONSABILE_FUNZIONALE','RESPONSABILE_DIRETTO') ORDER BY CASE WHEN codice = 'RESPONSABILE_FUNZIONALE' THEN 0 ELSE 1 END, descrizione")->fetchAll();
 
     $relazioni = $pdo->query(
-        "SELECT ro.*, tr.codice, tr.descrizione AS tipo_relazione,
+        "SELECT ro.*, CASE WHEN ro.attiva = 1 AND ro.data_inizio <= CURDATE() AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE()) THEN 1 ELSE 0 END AS vigente, CASE WHEN ro.data_inizio > CURDATE() THEN 1 ELSE 0 END AS futura, tr.codice, tr.descrizione AS tipo_relazione,
                 u.username AS utente_username, u.nome AS utente_nome, u.cognome AS utente_cognome,
                 uc.username AS collegato_username, uc.nome AS collegato_nome, uc.cognome AS collegato_cognome,
                 CONCAT(COALESCE(u.nome,''), ' ', COALESCE(u.cognome,''), ' (', u.username, ')') AS utente,
@@ -161,7 +155,7 @@ try {
 
     foreach ($relazioni as $r) {
         $riepilogo['relazioni_totali']++;
-        if ((int)$r['attiva'] === 1) {
+        if ((int)$r['vigente'] === 1) {
             $riepilogo['relazioni_attive']++;
             $relazioniAttive[] = $r;
             $idResponsabile = (int)$r['id_utente_collegato'];
@@ -188,6 +182,7 @@ try {
         return strcmp((string)$a['responsabile']['nome'], (string)$b['responsabile']['nome']);
     });
 } catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
     $errore = $e->getMessage();
 }
 
@@ -212,7 +207,7 @@ layoutHeader('Relazioni organizzative');
     <span><strong><?= (int)$riepilogo['relazioni_attive'] ?></strong> relazioni attive</span>
     <span><strong><?= (int)$riepilogo['responsabili'] ?></strong> responsabili / referenti</span>
     <span><strong><?= (int)$riepilogo['collaboratori'] ?></strong> collaboratori collegati</span>
-    <span><strong><?= (int)$riepilogo['relazioni_chiuse'] ?></strong> relazioni chiuse</span>
+    <span><strong><?= (int)$riepilogo['relazioni_chiuse'] ?></strong> altre relazioni / storico</span>
 </section>
 
 <?php if ($errore !== ''): ?><div class="alert alert-error"><?= h($errore) ?></div><?php endif; ?>
@@ -233,8 +228,9 @@ layoutHeader('Relazioni organizzative');
     </summary>
     <div class="hr-org-create-body">
         <form method="post" action="relazioni_organizzative.php">
+            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
             <input type="hidden" name="azione" value="nuova_relazione">
-            <div class="info-box">Compila la frase organizzativa: <strong>Utente</strong> → <strong>risponde funzionalmente a</strong> → <strong>responsabile / referente</strong>.</div>
+            <div class="info-box">Il salvataggio assegna un solo responsabile nel periodo scelto, conservando lo storico precedente. Un’altra assegnazione già pianificata nel periodo deve essere verificata prima di procedere.<br>Compila la frase organizzativa: <strong>Utente</strong> → <strong>risponde funzionalmente a</strong> → <strong>responsabile / referente</strong>.</div>
             <div class="hr-wide-form-row hr-relazioni-form-row">
                 <div class="form-group">
                     <label for="id_utente">Utente</label>
@@ -393,11 +389,12 @@ layoutHeader('Relazioni organizzative');
                         <td><strong><?= h(hrRelazioneNomeUtente($r, 'collegato')) ?></strong></td>
                         <td><?= h(hrRelazionePeriodo($r)) ?></td>
                         <td><?= h((string)$r['note']) ?></td>
-                        <td><?= renderHrStatusBadge((int)$r['attiva'] === 1 ? 'ATTIVA' : 'CHIUSA', (int)$r['attiva'] === 1 ? 'Attiva' : 'Chiusa') ?></td>
+                        <td><?= renderHrStatusBadge((int)$r['vigente'] === 1 ? 'ATTIVA' : 'CHIUSA', (int)$r['vigente'] === 1 ? 'Attiva oggi' : ((int)$r['attiva'] === 1 && (int)$r['futura'] === 1 ? 'Pianificata' : 'Storico / chiusa')) ?></td>
                         <td>
-                            <?php if ($puoScrivere && (int)$r['attiva'] === 1): ?>
+                            <?php if ($puoScrivere && (int)$r['attiva'] === 1 && ((int)$r['vigente'] === 1 || (int)$r['futura'] === 1)): ?>
                                 <form method="post" action="relazioni_organizzative.php" onsubmit="return confirm('Chiudere questa relazione?');">
-                                    <input type="hidden" name="azione" value="chiudi_relazione">
+                                    <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+            <input type="hidden" name="azione" value="chiudi_relazione">
                                     <input type="hidden" name="id_relazione_organizzativa" value="<?= (int)$r['id_relazione_organizzativa'] ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-primary"><i class="la la-times" aria-hidden="true"></i> Chiudi</button>
                                 </form>

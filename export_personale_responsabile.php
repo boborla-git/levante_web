@@ -60,7 +60,8 @@ $sql = "SELECT p.*,
         INNER JOIN v_hr_profili_dipendenti p ON p.id_utente = ro.id_utente
         WHERE ro.id_utente_collegato = :id_responsabile
           AND ro.attiva = 1
-          AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE())
+          AND ro.data_inizio <= CURDATE()
+       AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE())
           AND tro.codice IN ('RESPONSABILE_FUNZIONALE', 'RESPONSABILE_DIRETTO')
         ORDER BY p.cognome, p.nome, p.username";
 $stmt = $pdo->prepare($sql);
@@ -75,6 +76,7 @@ $teamRows = $pdo->query(
      FROM hr_gruppi_utenti gu
      INNER JOIN hr_gruppi_lavoro gl ON gl.id_gruppo_lavoro = gu.id_gruppo_lavoro
      WHERE gu.attivo = 1
+       AND gu.data_inizio <= CURDATE()
        AND gl.attivo = 1
        AND (gu.data_fine IS NULL OR gu.data_fine >= CURDATE())
      ORDER BY gu.id_utente, gl.nome"

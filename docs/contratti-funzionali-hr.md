@@ -194,3 +194,12 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Duplicati di codice respinti anche per voci inattive; CSRF, transazione e serializzazione per tabella.
 - Nessuna migrazione SQL; restano valide tutte le precedenti regole HR, ICS, recapiti ed email.
 
+## Profili dipendenti e responsabilità — 1 ottobre 2026
+
+- Elenco compatto, filtri e un solo modulo completo per persona selezionata.
+- Account attivo e profilo HR attivo restano dati diversi; gli accessi non sono modificati dal profilo.
+- GET senza scritture DB; profili mancanti creati solo con POST esplicito e autorizzato.
+- Profili e Relazioni organizzative condividono il salvataggio del responsabile, con transazione e lock per dipendente.
+- Responsabile invariato: preservare date, scadenze e pianificazioni. Cambi: conservare storico e note; impedire conflitti con assegnazioni pianificate.
+- Consultazione ed export considerano le date effettive delle relazioni e dei team.
+- Permessi preesistenti, privacy calendario, ICS, email e approvazioni conservati.
