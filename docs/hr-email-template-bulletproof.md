@@ -44,3 +44,9 @@ Le email HR devono mantenere:
 
 Nessuna modifica SQL.
 Nessuna modifica al workflow HR.
+
+
+## Standard vigente dal 1 ottobre 2026
+
+Per struttura, tipografia, trasporto MIME e verifiche ripetibili seguire `docs/hr-email-layout-standard.md`. Tutti i tipi di email, riepiloghi e verifica recapito usano la cornice e il trasporto comuni di `includes/hr_email.php`.
+

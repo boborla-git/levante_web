@@ -174,3 +174,13 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Le giornate senza eventi non generano impegni ICS; il feed non e' limitato alla vista temporale selezionata sul web.
 
 
+
+
+## Contratti funzionali - layout e trasporto email HR
+
+- Tutte le email HR, compresa la verifica del recapito, usano la cornice, gli stili e il trasporto comuni di `includes/hr_email.php`.
+- Standard grafico e tecnico: `docs/hr-email-layout-standard.md`. I nuovi invii non devono usare template autonomi o HTML 8bit su una sola riga.
+- Il layout deve mantenere saluti, dettagli, badge stato, codice e CTA del workflow; font e footer devono essere coerenti anche per richieste a giorni e a ore.
+- I riepiloghi automatici, gli aggiornamenti e le prove manuali condividono lo stesso renderer. HR vede motivi e pendenti; BASE solo approvate senza motivo, conservando l'oggetto breve.
+- Qualsiasi modifica ai template o al trasporto deve superare i test MIME e di rendering in `tests/email-layout/run_tests.py`, oltre al controllo nel client email effettivamente usato prima del go live.
+

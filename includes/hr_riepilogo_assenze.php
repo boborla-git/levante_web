@@ -200,47 +200,26 @@ if (!function_exists('hrRiepilogoAssenzeHtml')) {
     {
         $dataObj = DateTimeImmutable::createFromFormat('Y-m-d', $data);
         $dataTitolo = $dataObj ? $dataObj->format('d/m/Y') : $data;
-        $h = static fn ($v): string => htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-
-        $intestazione = '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Dipendente</th>';
-        if ($livello === 'HR') {
-            $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Motivo</th>';
-        }
-        $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Periodo</th>';
-        $intestazione .= '<th align="left" style="padding:9px 10px;border-bottom:2px solid #cbd5e1;font:12px Arial,sans-serif;color:#475569;white-space:nowrap">Oggetto</th>';
-
-        $corpo = '';
+        $livello = strtoupper(trim($livello));
+        $colonne = [['titolo' => 'Dipendente', 'larghezza' => $livello === 'HR' ? 25 : 32]];
+        if ($livello === 'HR') $colonne[] = ['titolo' => 'Motivo', 'larghezza' => 23];
+        $colonne[] = ['titolo' => 'Periodo', 'larghezza' => $livello === 'HR' ? 29 : 36];
+        $colonne[] = ['titolo' => 'Oggetto', 'larghezza' => $livello === 'HR' ? 23 : 32];
+        $celle = [];
         foreach ($righe as $riga) {
             $nominativo = trim((string)($riga['nome'] ?? '') . ' ' . (string)($riga['cognome'] ?? ''));
-            if ($nominativo === '') {
-                $nominativo = (string)($riga['username'] ?? '');
-            }
-
-            $corpo .= '<tr>';
-            $corpo .= '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;font:13px Arial,sans-serif;color:#0f172a;font-weight:700">' . $h($nominativo) . '</td>';
-            if ($livello === 'HR') {
-                $corpo .= '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;font:13px Arial,sans-serif;color:#0f172a">' . $h(hrRiepilogoAssenzeMotivo($riga, $livello)) . '</td>';
-            }
-            $corpo .= '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;font:13px Arial,sans-serif;color:#0f172a">' . $h(hrRiepilogoAssenzePeriodo($riga)) . '</td>';
+            if ($nominativo === '') $nominativo = (string)($riga['username'] ?? '');
+            $cella = [['html' => hrEmailH($nominativo), 'grassetto' => true]];
+            if ($livello === 'HR') $cella[] = ['html' => hrEmailH(hrRiepilogoAssenzeMotivo($riga, $livello))];
+            $cella[] = ['html' => hrEmailH(hrRiepilogoAssenzePeriodo($riga))];
             $oggettoBreve = trim((string)($riga['oggetto'] ?? ''));
-            $corpo .= '<td style="padding:9px 10px;border-bottom:1px solid #e5e7eb;font:13px Arial,sans-serif;color:#0f172a">' . ($oggettoBreve !== '' ? $h($oggettoBreve) : '&ndash;') . '</td>';
-            $corpo .= '</tr>';
+            $cella[] = ['html' => hrEmailH($oggettoBreve !== '' ? $oggettoBreve : '–')];
+            $celle[] = $cella;
         }
-
-        if ($corpo === '') {
-            $corpo = '<tr><td colspan="' . ($livello === 'HR' ? '4' : '3') . '" style="padding:14px 10px;font:13px Arial,sans-serif;color:#475569">Nessuna assenza prevista per oggi.</td></tr>';
-        }
-
-        return '<!doctype html><html><body style="margin:0;background:#f8fafc;color:#0f172a">'
-            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px">'
-            . '<table role="presentation" width="720" cellpadding="0" cellspacing="0" style="width:720px;max-width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:8px">'
-            . '<tr><td style="padding:22px 24px;border-bottom:1px solid #e2e8f0">'
-            . '<div style="font:700 20px Arial,sans-serif">Portale HR Ravioli S.p.A.</div>'
-            . '<div style="margin-top:6px;font:14px Arial,sans-serif;color:#475569">Assenze del ' . $h($dataTitolo) . '</div>'
-            . '</td></tr><tr><td style="padding:20px 24px">'
-            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>' . $intestazione . '</tr>' . $corpo . '</table>'
-            . '</td></tr><tr><td style="padding:14px 24px;border-top:1px solid #e2e8f0;font:12px Arial,sans-serif;color:#64748b">Messaggio automatico del Portale HR Ravioli S.p.A.</td></tr>'
-            . '</table></td></tr></table></body></html>';
+        $contenuto = count($celle) > 0
+            ? hrEmailTabellaHtml($colonne, $celle)
+            : '<p style="margin:0;' . hrEmailStileTesto(13, '#475569') . '">Nessuna assenza prevista per oggi.</p>';
+        return hrEmailCorniceHtml('Assenze del ' . $dataTitolo, $contenuto);
     }
 }
 
@@ -370,27 +349,14 @@ if (!function_exists('hrRiepilogoAssenzeInvia')) {
                     $righePerLivello[$livello] = hrRiepilogoAssenzeRighe($pdo, $data, $livello);
                 }
                 $html = hrRiepilogoAssenzeHtml($data, $righePerLivello[$livello], $livello);
-                $headers = [
-                    'MIME-Version: 1.0',
-                    'Content-Type: text/html; charset=UTF-8',
-                    'Content-Transfer-Encoding: 8bit',
-                    'From: ' . hrEmailEncodeHeader((string)$config['from_name']) . ' <' . $fromEmail . '>',
-                    'Reply-To: ' . $fromEmail,
-                    'X-Mailer: Ravioli Portale HR',
-                ];
+                $bccInvio = null;
 
                 if ($bccAdmin !== null && empty($bccGiaUsataPerLivello[$livello]) && strcasecmp($bccAdmin, $email) !== 0) {
-                    $headers[] = 'Bcc: ' . $bccAdmin;
+                    $bccInvio = $bccAdmin;
                     $bccGiaUsataPerLivello[$livello] = true;
                 }
 
-                $ok = @mail(
-                    $email,
-                    hrEmailEncodeHeader($oggetto),
-                    $html,
-                    implode("\r\n", $headers),
-                    '-f' . $fromEmail
-                );
+                $ok = hrEmailInviaHtml($config, $email, $oggetto, $html, $bccInvio);
 
                 hrRiepilogoAssenzeLog(
                     $pdo,
@@ -441,22 +407,8 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestAdmin')) {
             $oggetto = 'Assenze del ' . $dataOggetto;
             $righe = hrRiepilogoAssenzeRighe($pdo, $data, $livello);
             $html = hrRiepilogoAssenzeHtml($data, $righe, $livello);
-            $headers = [
-                'MIME-Version: 1.0',
-                'Content-Type: text/html; charset=UTF-8',
-                'Content-Transfer-Encoding: 8bit',
-                'From: ' . hrEmailEncodeHeader((string)$config['from_name']) . ' <' . $fromEmail . '>',
-                'Reply-To: ' . $fromEmail,
-                'X-Mailer: Ravioli Portale HR',
-            ];
 
-            $ok = @mail(
-                $emailAdmin,
-                hrEmailEncodeHeader($oggetto),
-                $html,
-                implode("\r\n", $headers),
-                '-f' . $fromEmail
-            );
+            $ok = hrEmailInviaHtml($config, $emailAdmin, $oggetto, $html);
 
             if ($ok) {
                 $risultato['inviate']++;
@@ -508,19 +460,12 @@ if (!function_exists('hrRiepilogoAssenzeInviaTestDestinatari')) {
                     $righePerLivello[$livello] = hrRiepilogoAssenzeRighe($pdo, $data, $livello);
                 }
                 $html = hrRiepilogoAssenzeHtml($data, $righePerLivello[$livello], $livello);
-                $headers = [
-                    'MIME-Version: 1.0',
-                    'Content-Type: text/html; charset=UTF-8',
-                    'Content-Transfer-Encoding: 8bit',
-                    'From: ' . hrEmailEncodeHeader((string)$config['from_name']) . ' <' . $fromEmail . '>',
-                    'Reply-To: ' . $fromEmail,
-                    'X-Mailer: Ravioli Portale HR',
-                ];
+                $bccInvio = null;
                 if ($bccAdmin !== null && empty($bccGiaUsataPerLivello[$livello]) && strcasecmp($bccAdmin, $email) !== 0) {
-                    $headers[] = 'Bcc: ' . $bccAdmin;
+                    $bccInvio = $bccAdmin;
                     $bccGiaUsataPerLivello[$livello] = true;
                 }
-                $ok = @mail($email, hrEmailEncodeHeader($oggetto), $html, implode("\r\n", $headers), '-f' . $fromEmail);
+                $ok = hrEmailInviaHtml($config, $email, $oggetto, $html, $bccInvio);
                 if ($ok) {
                     $risultato['inviate']++;
                 } else {
@@ -604,3 +549,4 @@ if (!function_exists('hrRiepilogoAssenzeInviaAggiornamentoSeNecessario')) {
         hrRiepilogoAssenzeInvia($pdo, $oggi, 'AGGIORNAMENTO', $idRichiesta, $soloLivello);
     }
 }
+

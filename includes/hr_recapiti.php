@@ -141,19 +141,12 @@ function hrRecapitiInviaVerifica(PDO $pdo, int $idUtente, string $email, string 
     $link = hrUrlAssoluto($pdo, '/verifica_recapito.php?token=' . rawurlencode($token));
     $nome = hrEmailNomeUtente($pdo, $idUtente);
     $saluto = $nome !== '' ? 'Buongiorno <strong>' . hrEmailH($nome) . '</strong>,' : 'Buongiorno,';
-    $html = '<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#0f172a">'
-        . '<h2>Portale HR Ravioli S.p.A.</h2><p>' . $saluto . '</p>'
-        . '<p>È stato inserito o modificato questo indirizzo email nel portale HR. Per confermarlo, usa il pulsante seguente entro 24 ore.</p>'
-        . '<p><a href="' . hrEmailH($link) . '" style="display:inline-block;background:#005bd3;color:#fff;text-decoration:none;padding:10px 16px;border-radius:4px;font-weight:700">Conferma indirizzo email</a></p>'
-        . '<p style="color:#64748b;font-size:12px">Se non hai richiesto questa modifica, contatta HR.</p>'
-        . '</body></html>';
-    $headers = [
-        'MIME-Version: 1.0',
-        'Content-Type: text/html; charset=UTF-8',
-        'From: ' . hrEmailEncodeHeader((string)$config['from_name']) . ' <' . $from . '>',
-        'Reply-To: ' . $from,
-        'X-Mailer: Ravioli Portale HR',
-    ];
-    $ok = @mail($to, hrEmailEncodeHeader('Verifica indirizzo email - Portale HR Ravioli'), $html, implode("\r\n", $headers), '-f' . $from);
+    $contenuto = '<p style="margin:0 0 12px 0;' . hrEmailStileTesto(14) . '">' . $saluto . '</p>'
+        . hrEmailTestoPrincipale('È stato inserito o modificato questo indirizzo email nel portale HR. Per confermarlo, usa il pulsante seguente entro 24 ore.')
+        . hrEmailPulsanteHtml($link, 'Conferma indirizzo email')
+        . '<p style="margin:18px 0 0 0;' . hrEmailStileTesto(12, '#64748b') . '">Se non hai richiesto questa modifica, contatta HR.</p>';
+    $html = hrEmailCorniceHtml('Verifica indirizzo email', $contenuto);
+    $ok = hrEmailInviaHtml($config, $to, 'Verifica indirizzo email - Portale HR Ravioli', $html);
     return ['inviata' => (bool)$ok, 'motivo' => $ok ? null : 'Invio email non riuscito.'];
 }
+

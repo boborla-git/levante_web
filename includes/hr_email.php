@@ -79,17 +79,23 @@ if (!function_exists('hrEmailConfig')) {
 if (!function_exists('hrEmailEncodeHeader')) {
     function hrEmailEncodeHeader(string $valore): string
     {
-        $valore = trim($valore);
-
-        if ($valore === '') {
-            return '';
+        $valore = trim((string)preg_replace('/[\r\n]+/', ' ', $valore));
+        if ($valore === '') return '';
+        // RFC 2047, anche senza mbstring. Ogni parola resta sotto 75 byte
+        // e ogni carattere UTF-8 resta intero nel proprio blocco.
+        $caratteri = preg_split('//u', $valore, -1, PREG_SPLIT_NO_EMPTY);
+        if ($caratteri === false) $caratteri = str_split($valore);
+        $parti = [];
+        $blocco = '';
+        foreach ($caratteri as $carattere) {
+            if (strlen($blocco . $carattere) > 42) {
+                $parti[] = '=?UTF-8?B?' . base64_encode($blocco) . '?=';
+                $blocco = '';
+            }
+            $blocco .= $carattere;
         }
-
-        if (function_exists('mb_encode_mimeheader')) {
-            return mb_encode_mimeheader($valore, 'UTF-8', 'B', "\r\n");
-        }
-
-        return $valore;
+        if ($blocco !== '') $parti[] = '=?UTF-8?B?' . base64_encode($blocco) . '?=';
+        return implode("\r\n ", $parti);
     }
 }
 
@@ -475,17 +481,121 @@ if (!function_exists('hrEmailRichiestePresentiNelPeriodo')) {
     }
 }
 
+if (!function_exists('hrEmailStileTesto')) {
+    function hrEmailStileTesto(int $dimensione = 13, string $colore = '#0f172a', bool $grassetto = false): string
+    {
+        return 'font-family:Arial,Helvetica,sans-serif;font-size:' . $dimensione . 'px;'
+            . 'line-height:' . ($dimensione + 5) . 'px;font-weight:' . ($grassetto ? '700' : '400') . ';'
+            . 'color:' . $colore . ';text-align:left;mso-line-height-rule:at-least;';
+    }
+}
+
+if (!function_exists('hrEmailStileCella')) {
+    function hrEmailStileCella(bool $intestazione = false, bool $grassetto = false): string
+    {
+        return 'padding:9px 10px;vertical-align:top;background:#ffffff;'
+            . 'border-bottom:' . ($intestazione ? '2px solid #cbd5e1;' : '1px solid #e5e7eb;')
+            . 'word-wrap:break-word;overflow-wrap:anywhere;'
+            . hrEmailStileTesto($intestazione ? 12 : 13, $intestazione ? '#475569' : '#0f172a', $intestazione || $grassetto);
+    }
+}
+
+if (!function_exists('hrEmailTabellaHtml')) {
+    /** Celle HTML gia' escapate; larghezze percentuali con somma 100. */
+    function hrEmailTabellaHtml(array $colonne, array $righe): string
+    {
+        $html = '<table class="hr-email-data" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;'
+            . hrEmailStileTesto() . '"><colgroup>';
+        foreach ($colonne as $colonna) {
+            $larghezza = (int)$colonna['larghezza'];
+            $html .= '<col width="' . $larghezza . '%" style="width:' . $larghezza . '%;">';
+        }
+        $html .= '</colgroup><thead><tr>';
+        foreach ($colonne as $colonna) {
+            $html .= '<th scope="col" align="left" valign="top" style="'
+                . hrEmailStileCella(true) . '">' . hrEmailH((string)$colonna['titolo']) . '</th>';
+        }
+        $html .= '</tr></thead><tbody>';
+        foreach ($righe as $riga) {
+            $html .= '<tr>';
+            foreach ($riga as $cella) {
+                $html .= '<td align="left" valign="top" style="' . hrEmailStileCella(false, !empty($cella['grassetto'])) . '">'
+                    . (string)$cella['html'] . '</td>';
+            }
+            $html .= '</tr>';
+        }
+        return $html . '</tbody></table>';
+    }
+}
+
+if (!function_exists('hrEmailPulsanteHtml')) {
+    function hrEmailPulsanteHtml(string $url, string $etichetta): string
+    {
+        if ($url === '') return '';
+        return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:18px 0 0 0;'
+            . hrEmailStileTesto() . '"><tr><td align="left" bgcolor="#005bd3" style="background:#005bd3;border-radius:4px;'
+            . hrEmailStileTesto() . '"><a href="' . hrEmailH($url) . '" style="display:inline-block;padding:10px 16px;text-decoration:none;'
+            . hrEmailStileTesto(13, '#ffffff', true) . '">' . hrEmailH($etichetta) . '</a></td></tr></table>';
+    }
+}
+
+if (!function_exists('hrEmailCorniceHtml')) {
+    /** Unica cornice per workflow, riepiloghi e verifica recapito. */
+    function hrEmailCorniceHtml(string $titolo, string $contenutoHtml, string $footerExtraHtml = ''): string
+    {
+        $font = hrEmailStileTesto();
+        return '<!doctype html><html lang="it"><head><meta charset="UTF-8">'
+            . '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
+            . '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            . '<title>' . hrEmailH($titolo) . '</title>'
+            . '<style>@media only screen and (max-width:480px){.hr-email-body{padding:16px 12px!important}.hr-email-data th,.hr-email-data td{padding:8px 6px!important;font-size:12px!important;line-height:17px!important}.hr-email-data td span{padding:3px 4px!important}}</style></head>'
+            . '<body style="margin:0;padding:0;background:#f8fafc;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;' . $font . '">'
+            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f8fafc" style="width:100%;border-collapse:collapse;background:#f8fafc;' . $font . '">'
+            . '<tr><td align="center" style="padding:24px 12px;">'
+            . '<!--[if mso]><table role="presentation" width="720" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->'
+            . '<div style="width:100%;max-width:720px;margin:0 auto;">'
+            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:720px;border-collapse:collapse;background:#ffffff;border:1px solid #e2e8f0;' . $font . '">'
+            . '<tr><td align="left" style="padding:22px 24px;border-bottom:1px solid #e2e8f0;' . $font . '">'
+            . '<h1 style="margin:0;padding:0;' . hrEmailStileTesto(20, '#0f172a', true) . '">Portale HR Ravioli S.p.A.</h1>'
+            . '<p style="margin:6px 0 0 0;padding:0;' . hrEmailStileTesto(14, '#475569') . '">' . hrEmailH($titolo) . '</p>'
+            . '</td></tr><tr><td class="hr-email-body" align="left" style="padding:20px 24px;' . $font . '">' . $contenutoHtml . '</td></tr>'
+            . '<tr><td align="left" style="padding:14px 24px;border-top:1px solid #e2e8f0;' . hrEmailStileTesto(12, '#64748b') . '">'
+            . 'Messaggio automatico del Portale HR Ravioli S.p.A.' . $footerExtraHtml . '</td></tr>'
+            . '</table></div><!--[if mso]></td></tr></table><![endif]-->'
+            . '</td></tr></table></body></html>';
+    }
+}
+
+if (!function_exists('hrEmailInviaHtml')) {
+    /** MIME base64: nessun tag, entita' o carattere UTF-8 puo' essere spezzato dal trasporto. */
+    function hrEmailInviaHtml(array $config, string $destinatario, string $oggetto, string $html, ?string $bcc = null): bool
+    {
+        $to = hrEmailValida($destinatario);
+        $from = hrEmailValida((string)($config['from_email'] ?? ''));
+        if (empty($config['attiva']) || $to === null || $from === null) return false;
+        $headers = [
+            'MIME-Version: 1.0',
+            'Content-Type: text/html; charset=UTF-8',
+            'Content-Transfer-Encoding: base64',
+            'From: ' . hrEmailEncodeHeader((string)$config['from_name']) . ' <' . $from . '>',
+            'Reply-To: ' . $from,
+            'X-Mailer: Ravioli Portale HR',
+        ];
+        $bcc = hrEmailValida($bcc);
+        if ($bcc !== null && strcasecmp($bcc, $to) !== 0) $headers[] = 'Bcc: ' . $bcc;
+        $corpo = chunk_split(base64_encode($html), 76, "\r\n");
+        return (bool)@mail($to, hrEmailEncodeHeader($oggetto), $corpo, implode("\r\n", $headers), '-f' . $from);
+    }
+}
+
+
 if (!function_exists('hrEmailRigaTabella')) {
     function hrEmailRigaTabella(string $label, string $valoreHtml): string
     {
-        if (trim(strip_tags($valoreHtml)) === '') {
-            return '';
-        }
-
-        return '<tr>'
-            . '<td width="170" valign="top" style="width:170px; padding:9px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#475569; font-weight:700;">' . hrEmailH($label) . '</td>'
-            . '<td valign="top" style="padding:9px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a;">' . $valoreHtml . '</td>'
-            . '</tr>';
+        if (trim(strip_tags($valoreHtml)) === '') return '';
+        return '<tr><td align="left" valign="top" width="28%" style="width:28%;' . hrEmailStileCella(false, true) . '">'
+            . hrEmailH($label) . '</td><td align="left" valign="top" style="' . hrEmailStileCella() . '">'
+            . $valoreHtml . '</td></tr>';
     }
 }
 
@@ -527,14 +637,13 @@ if (!function_exists('hrEmailRichiestePresentiHtml')) {
             return '';
         }
 
-        $html = ''
-            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; table-layout:fixed; width:100%; margin-top:6px;">'
-            . '<tr>'
-            . '<th align="left" width="28%" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:16px; color:#475569; font-weight:700;">Persona</th>'
-            . '<th align="left" width="22%" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:16px; color:#475569; font-weight:700;">Tipologia</th>'
-            . '<th align="left" width="30%" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:16px; color:#475569; font-weight:700;">Periodo</th>'
-            . '<th align="left" width="20%" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:16px; color:#475569; font-weight:700;">Stato</th>'
-            . '</tr>';
+        $colonne = [
+            ['titolo' => 'Persona', 'larghezza' => 28],
+            ['titolo' => 'Tipologia', 'larghezza' => 22],
+            ['titolo' => 'Periodo', 'larghezza' => 30],
+            ['titolo' => 'Stato', 'larghezza' => 20],
+        ];
+        $celle = [];
 
         foreach ($righe as $riga) {
             $periodo = hrEmailDataIt($riga['data_da'] ?? '');
@@ -554,15 +663,15 @@ if (!function_exists('hrEmailRichiestePresentiHtml')) {
                 $periodo .= ' · giornata intera';
             }
 
-            $html .= '<tr>'
-                . '<td valign="top" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a; font-weight:700;">' . hrEmailH((string)($riga['persona'] ?? '')) . '</td>'
-                . '<td valign="top" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a;">' . hrEmailH((string)($riga['tipologia'] ?? '')) . '</td>'
-                . '<td valign="top" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a;">' . hrEmailH($periodo) . '</td>'
-                . '<td valign="top" style="padding:8px 10px; border-bottom:1px solid #e5e7eb; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#0f172a;">' . hrEmailStatoBadge((string)($riga['stato_codice'] ?? ''), (string)($riga['stato'] ?? '')) . '</td>'
-                . '</tr>';
+            $celle[] = [
+                ['html' => hrEmailH((string)($riga['persona'] ?? '')), 'grassetto' => true],
+                ['html' => hrEmailH((string)($riga['tipologia'] ?? ''))],
+                ['html' => hrEmailH($periodo)],
+                ['html' => hrEmailStatoBadge((string)($riga['stato_codice'] ?? ''), (string)($riga['stato'] ?? ''))],
+            ];
         }
 
-        return $html . '</table>';
+        return hrEmailTabellaHtml($colonne, $celle);
     }
 }
 
@@ -570,14 +679,9 @@ if (!function_exists('hrEmailTestoPrincipale')) {
     function hrEmailTestoPrincipale(string $messaggio): string
     {
         $messaggio = trim($messaggio);
-
-        if ($messaggio === '') {
-            return '';
-        }
-
-        return '<p style="margin:0 0 18px 0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#0f172a;">'
-            . nl2br(hrEmailH($messaggio))
-            . '</p>';
+        if ($messaggio === '') return '';
+        return '<p style="margin:0 0 18px 0;' . hrEmailStileTesto(14) . '">'
+            . nl2br(hrEmailH($messaggio)) . '</p>';
     }
 }
 
@@ -591,86 +695,35 @@ if (!function_exists('hrEmailHtml')) {
         ?string $tipoEvento = null,
         ?int $idDestinatario = null
     ): string {
-        $config = hrEmailConfig($pdo);
         $url = hrUrlAssoluto($pdo, $link);
         $richiesta = hrEmailRichiestaDettaglio($pdo, $idRichiesta);
         $nomeDestinatario = $idDestinatario !== null ? hrEmailNomeUtente($pdo, $idDestinatario) : '';
-
         if ($nomeDestinatario === '' && $richiesta !== null && !empty($richiesta['richiedente'])) {
             $nomeDestinatario = (string)$richiesta['richiedente'];
         }
-
         $saluto = $nomeDestinatario !== ''
             ? 'Buongiorno <strong>' . hrEmailH($nomeDestinatario) . '</strong>,'
             : 'Buongiorno,';
-
         $titoloPulito = trim($titolo) !== '' ? trim($titolo) : 'Notifica HR';
         $tipoEvento = strtoupper(trim((string)$tipoEvento));
-        $mostraPresenti =
-            str_contains($tipoEvento, 'DA_APPROVARE')
+        $mostraPresenti = str_contains($tipoEvento, 'DA_APPROVARE')
             || str_contains($tipoEvento, 'INFORMATIVA_RESPONSABILE');
-
-        $presentiHtml = '';
+        $contenuto = '<p style="margin:0 0 12px 0;' . hrEmailStileTesto(14) . '">' . $saluto . '</p>'
+            . hrEmailTestoPrincipale($messaggio);
+        if ($richiesta !== null) {
+            $contenuto .= '<h2 style="margin:4px 0 8px 0;' . hrEmailStileTesto(18, '#005bd3', true) . '">Dettaglio richiesta</h2>'
+                . hrEmailDettaglioHtml($richiesta);
+        }
         if ($mostraPresenti && $idRichiesta !== null) {
             $presenti = hrEmailRichiestePresentiNelPeriodo($pdo, $idRichiesta, $idDestinatario);
             if (count($presenti) > 0) {
-                $presentiHtml = ''
-                    . '<tr><td style="padding:18px 0 6px 0; font-family:Arial,Helvetica,sans-serif;">'
-                    . '<h3 style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:18px; line-height:24px; color:#005bd3; font-weight:700;">Altre assenze/richieste già presenti nel periodo</h3>'
-                    . '</td></tr>'
-                    . '<tr><td style="padding:0 0 18px 0;">'
-                    . hrEmailRichiestePresentiHtml($presenti)
-                    . '</td></tr>';
+                $contenuto .= '<h3 style="margin:18px 0 6px 0;' . hrEmailStileTesto(18, '#005bd3', true) . '">Altre assenze/richieste già presenti nel periodo</h3>'
+                    . hrEmailRichiestePresentiHtml($presenti);
             }
         }
-
-        $codice = '';
-        if ($richiesta !== null && !empty($richiesta['codice_richiesta'])) {
-            $codice = (string)$richiesta['codice_richiesta'];
-        }
-
-        $ctaHtml = '';
-        if ($url !== '') {
-            $ctaHtml = ''
-                . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; margin:18px 0 0 0;">'
-                . '<tr>'
-                . '<td bgcolor="#005bd3" style="border-radius:4px; background:#005bd3;">'
-                . '<a href="' . hrEmailH($url) . '" style="display:inline-block; padding:10px 16px; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:18px; color:#ffffff; text-decoration:none; font-weight:700;">↗ Apri richiesta nel portale</a>'
-                . '</td>'
-                . '</tr>'
-                . '</table>';
-        }
-
-        $footerCodice = $codice !== ''
-            ? '<br>Codice: ' . hrEmailH($codice)
-            : '';
-
-        return '<!doctype html>'
-            . '<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>' . hrEmailH($titoloPulito) . '</title></head>'
-            . '<body style="margin:0; padding:0; background:#ffffff; font-family:Arial,Helvetica,sans-serif; color:#0f172a;">'
-            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; width:100%; background:#ffffff;">'
-            . '<tr>'
-            . '<td align="center" style="padding:36px 16px; font-family:Arial,Helvetica,sans-serif;">'
-            . '<table role="presentation" width="760" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; width:760px; max-width:760px;">'
-            . '<tr><td style="padding:0 0 18px 0; font-family:Arial,Helvetica,sans-serif;">'
-            . '<h1 style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:22px; line-height:28px; color:#0f172a; font-weight:700;">Portale HR Ravioli S.p.A.</h1>'
-            . '</td></tr>'
-            . '<tr><td style="padding:0 0 12px 0; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:21px; color:#0f172a;">' . $saluto . '</td></tr>'
-            . '<tr><td style="padding:0 0 4px 0;">' . hrEmailTestoPrincipale($messaggio) . '</td></tr>'
-            . '<tr><td style="padding:4px 0 8px 0; font-family:Arial,Helvetica,sans-serif;">'
-            . '<h2 style="margin:0; font-family:Arial,Helvetica,sans-serif; font-size:18px; line-height:24px; color:#005bd3; font-weight:700;">Dettaglio richiesta</h2>'
-            . '</td></tr>'
-            . '<tr><td style="padding:0 0 0 0;">' . hrEmailDettaglioHtml($richiesta) . '</td></tr>'
-            . $presentiHtml
-            . '<tr><td style="padding:0 0 18px 0;">' . $ctaHtml . '</td></tr>'
-            . '<tr><td style="padding:0; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:18px; color:#64748b;">'
-            . 'Messaggio automatico del portale HR Ravioli S.p.A.' . $footerCodice
-            . '</td></tr>'
-            . '</table>'
-            . '</td>'
-            . '</tr>'
-            . '</table>'
-            . '</body></html>';
+        $contenuto .= hrEmailPulsanteHtml($url, 'Apri richiesta nel portale');
+        $codice = $richiesta !== null ? (string)($richiesta['codice_richiesta'] ?? '') : '';
+        return hrEmailCorniceHtml($titoloPulito, $contenuto, $codice !== '' ? '<br>Codice: ' . hrEmailH($codice) : '');
     }
 }
 
@@ -729,29 +782,8 @@ if (!function_exists('hrInviaEmail')) {
             ];
         }
 
-        $oggetto = trim($oggetto);
-        $fromName = hrEmailEncodeHeader((string)$config['from_name']);
-        $subject = hrEmailEncodeHeader($oggetto);
-
         $html = hrEmailHtml($pdo, $oggetto, $messaggioTesto, $link, $idRichiesta, $tipoEvento, $idDestinatario);
-
-        $headers = [
-            'MIME-Version: 1.0',
-            'Content-Type: text/html; charset=UTF-8',
-            'Content-Transfer-Encoding: 8bit',
-            'From: ' . $fromName . ' <' . $fromEmail . '>',
-            'Reply-To: ' . $fromEmail,
-            'X-Mailer: Ravioli Portale HR',
-        ];
-
-        $parametri = '';
-        if ($fromEmail !== '') {
-            $parametri = '-f' . $fromEmail;
-        }
-
-        $ok = $parametri !== ''
-            ? @mail($to, $subject, $html, implode("\r\n", $headers), $parametri)
-            : @mail($to, $subject, $html, implode("\r\n", $headers));
+        $ok = hrEmailInviaHtml($config, $to, trim($oggetto), $html);
 
         return [
             'inviata' => (bool)$ok,
@@ -759,3 +791,4 @@ if (!function_exists('hrInviaEmail')) {
         ];
     }
 }
+

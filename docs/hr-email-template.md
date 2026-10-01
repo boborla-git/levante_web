@@ -30,3 +30,9 @@ Le email HR tornano a usare il layout approvato:
 ## Nota metodologica
 
 Il template email HTML HR va considerato golden master: futuri interventi su email/notifiche non devono degradarlo a testo semplice o layout minimale.
+
+
+## Standard vigente dal 1 ottobre 2026
+
+Per struttura, tipografia, trasporto MIME e verifiche ripetibili seguire `docs/hr-email-layout-standard.md`. Tutti i tipi di email, riepiloghi e verifica recapito usano la cornice e il trasporto comuni di `includes/hr_email.php`.
+
