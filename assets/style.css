@@ -177,7 +177,7 @@ h2 { font-size: 22px; margin-bottom: 18px; }
 .links, .actions { margin-top: 18px; }
 .form-group { margin-bottom: 16px; min-width: 0; }
 label { display: block; font-weight: 700; margin-bottom: 8px; }
-input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
+input:not([type]), input[type="text"], input[type="tel"], input[type="email"], input[type="password"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
     width: 100%;
     min-height: 42px;
     padding: 8px 12px;
@@ -191,7 +191,7 @@ input[type="text"], input[type="email"], input[type="password"], input[type="dat
     line-height: 1.4;
     min-width: 0;
 }
-input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+input:not([type]):focus, input[type="text"]:focus, input[type="tel"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
     outline: none; border-color: #8aaed0; box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.12);
 }
 
@@ -1264,4 +1264,3 @@ table td a:not(.btn):hover {
     line-height: 1;
     border: 1px solid rgba(0, 104, 201, 0.25);
 }
-

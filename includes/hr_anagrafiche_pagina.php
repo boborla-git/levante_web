@@ -74,8 +74,8 @@ layoutHeader((string)$config['titolo']);
                 <input type="hidden" name="azione" value="crea_voce">
                 <input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['hr_anagrafiche_csrf']) ?>">
                 <div class="hr-anagrafiche-fields">
-                    <div class="form-group"><label for="codice">Codice</label><input id="codice" name="codice" required maxlength="<?= (int)$limiti['codice'] ?>" value="<?= $esc($form['codice']) ?>" placeholder="<?= $tipoAnagrafica === 'reparti' ? 'AMM' : 'AMM01' ?>"><div class="meta">Codice univoco, ad esempio <?= $tipoAnagrafica === 'reparti' ? 'AMM' : 'AMM01' ?>.</div></div>
-                    <div class="form-group"><label for="nome">Nome</label><input id="nome" name="nome" required maxlength="<?= (int)$limiti['nome'] ?>" value="<?= $esc($form['nome']) ?>" placeholder="Amministrazione"><div class="meta">Nome visualizzato nelle tendine del profilo.</div></div>
+                    <div class="form-group"><label for="codice">Codice</label><input type="text" id="codice" name="codice" required maxlength="<?= (int)$limiti['codice'] ?>" value="<?= $esc($form['codice']) ?>" placeholder="<?= $tipoAnagrafica === 'reparti' ? 'AMM' : 'AMM01' ?>"><div class="meta">Codice univoco, ad esempio <?= $tipoAnagrafica === 'reparti' ? 'AMM' : 'AMM01' ?>.</div></div>
+                    <div class="form-group"><label for="nome">Nome</label><input type="text" id="nome" name="nome" required maxlength="<?= (int)$limiti['nome'] ?>" value="<?= $esc($form['nome']) ?>" placeholder="Amministrazione"><div class="meta">Nome visualizzato nelle tendine del profilo.</div></div>
                 </div>
                 <div class="hr-anagrafiche-actions"><button type="submit" class="btn btn-primary">Crea <?= $esc($config['singolare']) ?></button></div>
             </form>

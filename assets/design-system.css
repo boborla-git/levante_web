@@ -165,7 +165,9 @@ a:hover { color: var(--rav-blue-hover); }
 .action-link-danger:hover { color: var(--rav-red-hover); }
 
 /* Form e filtri */
+input:not([type]),
 input[type="text"],
+input[type="tel"],
 input[type="email"],
 input[type="password"],
 input[type="date"],
