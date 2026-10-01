@@ -381,6 +381,8 @@ layoutHeader('Profili dipendenti');
                 <div class="meta">Directory organizzativa HR: reparto, centro di costo, mansione, responsabile diretto e team in un'unica scheda leggibile.</div>
             </div>
             <div class="section-head-actions">
+                <a class="btn btn-light" href="reparti.php">Reparti</a>
+                <a class="btn btn-light" href="centri_costo.php">Centri di costo</a>
                 <a class="btn btn-light" href="configurazione_assenze.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla configurazione</a>
             </div>
         </div>
@@ -591,3 +593,4 @@ layoutHeader('Profili dipendenti');
 <script src="/assets/hr-common.js"></script>
 
 <?php layoutFooter(); ?>
+

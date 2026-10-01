@@ -184,3 +184,13 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - I riepiloghi automatici, gli aggiornamenti e le prove manuali condividono lo stesso renderer. HR vede motivi e pendenti; BASE solo approvate senza motivo, conservando l'oggetto breve.
 - Qualsiasi modifica ai template o al trasporto deve superare i test MIME e di rendering in `tests/email-layout/run_tests.py`, oltre al controllo nel client email effettivamente usato prima del go live.
 
+
+
+## Creazione reparti e centri di costo — 1 ottobre 2026
+
+- Profili dipendenti offre accessi a reparti.php e centri_costo.php.
+- Le nuove pagine condividono i permessi di profili_dipendenti; impersonazione senza scritture.
+- Creazione con codice e nome, voce subito attiva, nessuna modifica delle assegnazioni esistenti.
+- Duplicati di codice respinti anche per voci inattive; CSRF, transazione e serializzazione per tabella.
+- Nessuna migrazione SQL; restano valide tutte le precedenti regole HR, ICS, recapiti ed email.
+
