@@ -203,3 +203,9 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Responsabile invariato: preservare date, scadenze e pianificazioni. Cambi: conservare storico e note; impedire conflitti con assegnazioni pianificate.
 - Consultazione ed export considerano le date effettive delle relazioni e dei team.
 - Permessi preesistenti, privacy calendario, ICS, email e approvazioni conservati.
+
+## Filtro temporale ICS — 7 ottobre 2026
+
+- ICS include oggi e futuro secondo Europe/Rome; esclude i periodi terminati prima di oggi.
+- Assenze iniziate prima di oggi ma ancora in corso restano incluse con date e UID originali.
+- Nessun cambiamento a token, password, scope, privacy, pendenti o storico del calendario web.

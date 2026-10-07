@@ -61,3 +61,11 @@ Commit summary: centralizza visibilita', permessi e selezione eventi tra calenda
 ## Verifiche della modifica
 
 Sintassi PHP 8.3, query su fixture SQL in MariaDB 10.11 e confronto degli ID evento web/ICS per responsabile, collega, Direzione con visibilita' globale senza dettagli/pendenti, HR e amministratore. Verificati anche livelli gerarchici, gruppi scaduti/futuri, account/ruoli inattivi, permessi scaduti/revocati, token errato/revocato, duplicati di approvazione, categorie e oggetti riservati, UID, giornata intera e conversione delle ore nel fuso Europe/Rome. Test di precedenza permessi atomici/legacy e piu' ruoli. HTML/CSS/JavaScript del calendario web conservati; funzioni di scope e dettaglio estratte senza modifiche.
+
+## Eventi da oggi in avanti — 7 ottobre 2026
+
+Il feed esporta solo i periodi con data finale uguale o successiva a oggi, calcolato in Europe/Rome. Include gli eventi a ore di tutta la giornata odierna e le assenze iniziate prima di oggi ma ancora in corso. Le date originali, gli UID e la separazione dei periodi sono conservati. Nessuna scadenza pratica per gli eventi futuri: la query usa il limite massimo DATE del database, 9999-12-31.
+
+Il filtro usa l'intervallo già previsto da hrEventiCalendario; calendario web, scope, privacy e autorizzazioni ai pendenti non cambiano. Token e collegamenti restano validi. Il feed non cancella copie di eventi precedentemente importate manualmente in un calendario esterno.
+
+Verificati: lint PHP; esecuzione del feed con query comune reale e PDO simulato (ieri, oggi, futuro, a cavallo di oggi, richieste con più periodi, scope e mascheramento); rifiuto token errato/revocato e accesso negato; errore DB senza feed parziale; data italiana al confine UTC e in ora solare. Nessuna scrittura sul database di produzione.

@@ -141,7 +141,10 @@ try {
             'gruppo' => (int)($persona['scope_gruppo'] ?? 0) === 1,
         ];
     }
-    $eventi = hrEventiCalendario($pdo, $idUtente, $scopeIds, $permessiCalendario['pendenti']);
+    // Oggi in Italia, compreso: mantieni anche le assenze iniziate prima
+    // di oggi ma non ancora terminate. Nessun limite pratico agli eventi futuri.
+    $oggiRoma = (new DateTimeImmutable('today', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
+    $eventi = hrEventiCalendario($pdo, $idUtente, $scopeIds, $permessiCalendario['pendenti'], $oggiRoma, '9999-12-31');
 } catch (Throwable $e) {
     // Fail closed: nessun feed parziale e nessun errore SQL al client.
     http_response_code(503);
@@ -163,7 +166,7 @@ $ics .= "PRODID:-//Ravioli S.p.A.//Levante HR//IT\r\n";
 $ics .= "CALSCALE:GREGORIAN\r\n";
 $ics .= "METHOD:PUBLISH\r\n";
 $ics .= icsLine('X-WR-CALNAME', icsEscape('Levante - ' . $nomeUtente));
-$ics .= icsLine('X-WR-CALDESC', icsEscape('Calendario Levante con le persone e i dettagli autorizzati nel portale'));
+$ics .= icsLine('X-WR-CALDESC', icsEscape('Calendario Levante da oggi in avanti con le persone e i dettagli autorizzati nel portale'));
 
 foreach ($eventi as $evento) {
     $tipoPeriodo = strtoupper(trim((string)($evento['tipo_periodo'] ?? '')));
@@ -241,4 +244,3 @@ header('X-Robots-Tag: noindex, nofollow');
 header('X-Content-Type-Options: nosniff');
 
 echo $ics;
-
