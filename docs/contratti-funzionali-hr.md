@@ -54,7 +54,7 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 
 ### Causali HR riservate
 
-- Le causali `MALATTIA`, `ALLATTAMENTO` e `CONGEDO_STRAORDINARIO_DISABILI` sono selezionabili e registrabili dagli utenti con ruolo `hr_responsabile_personale` e dall'amministratore globale (`utenteAdminGlobale()`), indipendentemente dal prefisso `test_`. In `assenze.php` la stessa capacità abilita le funzioni HR di riclassificazione Altro, inserimento retroattivo e gestione dei mesi chiusi. Restano i controlli sui benefici individuali e sulle sovrapposizioni; il profilo corrente in "Visualizza come" non eredita le capacità dell'amministratore originario. L'estensione non assegna ruoli HR né modifica i destinatari dei riepiloghi email.
+- Le causali `MALATTIA` e `CONGEDO_STRAORDINARIO_DISABILI` sono selezionabili e registrabili dagli utenti con ruolo `hr_responsabile_personale` e dall'amministratore globale (`utenteAdminGlobale()`), indipendentemente dal prefisso `test_`. In `assenze.php` la stessa capacità abilita le funzioni HR di riclassificazione Altro, inserimento retroattivo e gestione dei mesi chiusi. Restano i controlli sui benefici individuali e sulle sovrapposizioni; il profilo corrente in "Visualizza come" non eredita le capacità dell'amministratore originario. L'estensione non assegna ruoli HR né modifica i destinatari dei riepiloghi email.
 - La rinomina di un account non deve modificarne password, ruoli, permessi o diritti HR.
 - La restrizione deve esistere sia nell'interfaccia sia nella validazione server, per impedire inserimenti forzati da altri utenti.
 - Le due causali sono disponibili per un dipendente solo se il corrispondente diritto e' attivo in `hr_benefici_utenti` per l'intero periodo richiesto.
@@ -218,3 +218,19 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Conservati i filtri HR/admin, benefici configurati, visibilità di Altro, selezione del modulo e ordine preesistente dentro ciascun gruppo.
 - Backend, salvataggi, durate, approvazioni, notifiche/email e permessi invariati; nessuna migrazione SQL.
 - Verificati lint PHP e rendering prima/dopo per sette combinazioni di ruolo, Altro e benefici; stessi ID e selezioni, nuova etichetta e ordinamento corretto.
+
+
+
+## 2026-10-09 — Chiusure aziendali e allattamento a ore
+
+- HR (`hr_responsabile_personale`) e amministratore globale gestiscono le chiusure aziendali dalla pagina `chiusure_aziendali.php`, raggiungibile dal menu e da Configurazione assenze. Inserimento, modifica e disattivazione richiedono permesso di scrittura e CSRF; Visualizza come resta in sola lettura.
+- `hr_chiusure_aziendali` è l'unico archivio delle chiusure. È distinto dalle chiusure mensili amministrative: gli intervalli aziendali bloccano tutte le causali, inclusi gli inserimenti HR/admin, ore/giorni e richieste che attraversano anche un solo giorno di chiusura. Estremi compresi.
+- Non vengono generate richieste fittizie per i dipendenti né cancellate le richieste preesistenti. La gestione chiusure mostra il numero di richieste approvate/in attesa sovrapposte da verificare; HR le gestisce in Assenze. Le approvazioni di richieste che comprendono una chiusura sono bloccate; annullamento e rifiuto rimangono possibili secondo i permessi precedenti.
+- Le chiusure attive sono consultabili anche nel modulo Nuova richiesta. Nessuna modifica allo scope del calendario o all'ICS.
+- La validità dell'allattamento usa le date già presenti in `hr_benefici_utenti`: HR/admin devono indicare dal e al. Nessuna duplicazione delle assegnazioni. Le assegnazioni vecchie senza data finale rimangono registrate ma non consentono nuove richieste finché HR completa il periodo.
+- ALLATTAMENTO è ora disponibile anche al dipendente abilitato nel perimetro autorizzato, solo a ore per un giorno alla volta. Dal/al compresi, massimo fisso di 120 minuti complessivi per dipendente/giorno, anche sommando richieste distinte o più periodi della stessa richiesta.
+- Nel conteggio entrano APPROVATA e IN_ATTESA; ANNULLATA e RIFIUTATA non consumano il limite. Le vecchie registrazioni a giorni sono conservate e occupano l'intero limite dei giorni coinvolti.
+- Lo stesso controllo server viene eseguito su nuova richiesta, riclassificazione Altro verso ALLATTAMENTO e approvazione, escludendo dal conteggio la richiesta riclassificata/approvata. Non sono previsti bypass per HR/admin.
+- `includes/hr_regole_assenze.php` è il servizio comune. Prima delle letture di controllo ogni transazione acquisisce FOR UPDATE sulla risorsa esistente `pagina.assenze` (nessun cambiamento ai permessi): richieste, assegnazioni e chiusure condividono l'ordine di acquisizione per impedire invii simultanei oltre il limite o salvataggi concorrenti durante una nuova chiusura.
+- Tipologie, approvazioni, Legge 104, altri benefici, privacy, email, token e password conservano le regole precedenti salvo le modifiche esplicite sopra. Le operazioni di scrittura sui benefici restano riservate a HR/admin con il relativo permesso.
+- Eseguire prima la migration `sql/2026-10-09_chiusure_aziendali_allattamento.sql`, poi caricare il servizio comune e tutti i PHP indicati in `docs/aggiornamento-2026-10-09-chiusure-allattamento.md`. La migration è ripetibile e non assegna date finali arbitrarie.

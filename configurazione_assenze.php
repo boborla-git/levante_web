@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/ui.php';
+require_once __DIR__ . '/includes/hr_regole_assenze.php';
 
 richiediPermessoLettura('configurazione_assenze');
 
@@ -215,6 +216,7 @@ layoutHeader('Configurazione assenze');
                 <div class="meta">Tipologie, colori, regole principali e impostazioni del modulo HR.</div>
             </div>
             <div class="section-head-actions hr-config-actions">
+                <?php if (hrRegoleOperatoreHr()): ?><a class="btn" href="chiusure_aziendali.php">Chiusure aziendali</a><a class="btn" href="benefici_hr.php">Benefici e diritti</a><?php endif; ?>
                 <a class="btn" href="relazioni_organizzative.php"><i class="la la-sitemap" aria-hidden="true"></i> Relazioni</a>
                 <a class="btn" href="gruppi_lavoro.php"><i class="la la-users-cog" aria-hidden="true"></i> Team</a>
                 <a class="btn" href="recapiti_utenti.php"><i class="la la-envelope" aria-hidden="true"></i> Recapiti</a>
@@ -382,3 +384,4 @@ layoutHeader('Configurazione assenze');
 </div>
 
 <?php layoutFooter(); ?>
+

@@ -9,6 +9,8 @@ require_once __DIR__ . '/includes/hr_riepilogo_assenze.php';
 require_once __DIR__ . '/includes/ui.php';
 require_once __DIR__ . '/includes/badge.php';
 
+require_once __DIR__ . '/includes/hr_regole_assenze.php';
+
 richiediPermessoLettura('approvazioni_assenze');
 
 $idUtente = (int)($_SESSION['id_utente'] ?? 0);
@@ -169,6 +171,7 @@ try {
             die('Accesso negato.');
         }
 
+        hrRegoleVerificaCsrf();
         $azione = trim((string)($_POST['azione'] ?? ''));
         if (!in_array($azione, ['approva_richiesta', 'rifiuta_richiesta'], true)) {
             throw new RuntimeException('Azione non valida.');
@@ -186,6 +189,7 @@ try {
         }
 
         $pdo->beginTransaction();
+        hrRegoleBloccaScrittura($pdo);
 
         $filtroPost = $puoConfigurare ? '' : ' AND a.id_approvatore_assegnato = :id_utente ';
         $stmtRichiesta = $pdo->prepare("\n            SELECT\n                r.id_richiesta,\n                r.id_utente_richiedente,\n                a.id_richiesta_approvazione,\n                a.id_approvatore_assegnato,\n                te.descrizione AS tipologia,\n                CONCAT(COALESCE(au.nome, ''), ' ', COALESCE(au.cognome, '')) AS richiedente_nome\n            FROM hr_richieste r\n            INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta\n            INNER JOIN hr_richieste_approvazioni a ON a.id_richiesta = r.id_richiesta\n            INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento\n            INNER JOIN aut_utenti au ON au.id_utente = r.id_utente_richiedente\n            WHERE r.id_richiesta = :id_richiesta\n              AND sr.codice = 'IN_ATTESA'\n              AND a.stato_approvazione = 'IN_ATTESA'\n              {$filtroPost}\n            ORDER BY a.livello_approvazione ASC, a.id_richiesta_approvazione ASC\n            LIMIT 1\n            FOR UPDATE\n        ");
@@ -210,6 +214,10 @@ try {
         }
 
         $gestioneHr = $puoConfigurare && (int)$richiesta['id_approvatore_assegnato'] !== $idUtente;
+        if ($azione === 'approva_richiesta') {
+            hrRegoleVerificaRichiestaEsistente($pdo, $idRichiesta);
+        }
+
         $codiceStato = $azione === 'approva_richiesta' ? 'APPROVATA' : 'RIFIUTATA';
         $idStato = hrIdStatoRichiesta($pdo, $codiceStato);
         $azioneStorico = $azione === 'approva_richiesta' ? 'APPROVAZIONE' : 'RIFIUTO';
@@ -450,8 +458,8 @@ layoutHeader('Approvazioni assenze');
                                         <span class="text-muted">Periodo chiuso da HR. Contattare l'ufficio del personale.</span>
                                     <?php else: ?>
                                         <div class="approvals-actions">
-                                            <form method="post" class="approvals-action-form"><input type="hidden" name="azione" value="approva_richiesta"><input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>"><input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>"><input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione"><button type="submit" class="btn btn-sm btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>><i class="la la-check"></i> Approva</button></form>
-                                            <form method="post" class="approvals-action-form"><input type="hidden" name="azione" value="rifiuta_richiesta"><input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>"><input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>"><input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required><button type="submit" class="btn btn-sm btn-outline-danger" <?= $puoScrivere ? '' : 'disabled' ?>><i class="la la-times"></i> Rifiuta</button></form>
+                                            <form method="post" class="approvals-action-form"><input type="hidden" name="csrf_token" value="<?= h(hrRegoleCsrfToken()) ?>"><input type="hidden" name="azione" value="approva_richiesta"><input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>"><input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>"><input type="text" name="nota_approvatore" placeholder="Nota opzionale" aria-label="Nota opzionale per approvazione"><button type="submit" class="btn btn-sm btn-primary" <?= $puoScrivere ? '' : 'disabled' ?>><i class="la la-check"></i> Approva</button></form>
+                                            <form method="post" class="approvals-action-form"><input type="hidden" name="csrf_token" value="<?= h(hrRegoleCsrfToken()) ?>"><input type="hidden" name="azione" value="rifiuta_richiesta"><input type="hidden" name="id_richiesta" value="<?= (int)$richiesta['id_richiesta'] ?>"><input type="hidden" name="redirect_query" value="<?= h($redirectFiltri) ?>"><input type="text" name="nota_approvatore" placeholder="Motivo rifiuto obbligatorio" aria-label="Motivo rifiuto obbligatorio" required><button type="submit" class="btn btn-sm btn-outline-danger" <?= $puoScrivere ? '' : 'disabled' ?>><i class="la la-times"></i> Rifiuta</button></form>
                                         </div>
                                     <?php endif; ?>
                                 <?php else: ?>
@@ -488,3 +496,4 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <?php layoutFooter(); ?>
+

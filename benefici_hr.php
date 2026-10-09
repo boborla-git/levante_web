@@ -4,11 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/hr_regole_assenze.php';
 
 richiediPermessoLettura('benefici_hr');
 
 $pdo = db();
-$puoScrivere = haPermessoScrittura('benefici_hr');
+$puoScrivere = haPermessoScrittura('benefici_hr') && hrRegoleOperatoreHr();
 $idOperatore = (int)($_SESSION['id_utente'] ?? $_SESSION['utente_id'] ?? 0);
 $errore = '';
 $messaggio = '';
@@ -66,6 +67,10 @@ function hrBeneficioSalva(
     string $note,
     int $idOperatore
 ): void {
+    hrRegoleValidaDate($dataInizio, $dataFine !== '' ? $dataFine : $dataInizio);
+    if ($tipoBeneficio === 'ALLATTAMENTO' && $dataFine === '') {
+        throw new RuntimeException('Per l’allattamento devi indicare sia la data iniziale sia la data finale.');
+    }
     if ($tipoBeneficio === 'LEGGE_104') {
         if ($giorni <= 0 || $ore <= 0 || $oreGiornata <= 0) {
             throw new RuntimeException('Per la Legge 104 indica plafond giorni, plafond ore ed equivalenza giornata maggiori di zero.');
@@ -87,13 +92,13 @@ function hrBeneficioSalva(
              note_hr, attivo, aggiornato_da, data_aggiornamento)
          VALUES
             (:id_utente, :codice_beneficio, :data_inizio, :data_fine,
-             1, 1,
+             :consente_giorni, 1,
              :plafond_giorni_mese, :plafond_minuti_mese, :minuti_giornata_equivalenza,
              :note_hr, 1, :aggiornato_da, NOW())
          ON DUPLICATE KEY UPDATE
             data_inizio = VALUES(data_inizio),
             data_fine = VALUES(data_fine),
-            consente_giorni = 1,
+            consente_giorni = VALUES(consente_giorni),
             consente_ore = 1,
             plafond_giorni_mese = VALUES(plafond_giorni_mese),
             plafond_minuti_mese = VALUES(plafond_minuti_mese),
@@ -106,6 +111,7 @@ function hrBeneficioSalva(
 
     $stmt->execute([
         'id_utente' => $idUtente,
+        'consente_giorni' => $tipoBeneficio === 'ALLATTAMENTO' ? 0 : 1,
         'codice_beneficio' => $tipoBeneficio,
         'data_inizio' => $dataInizio,
         'data_fine' => $dataFine !== '' ? $dataFine : null,
@@ -123,6 +129,7 @@ try {
             throw new RuntimeException('Non hai i permessi di modifica.');
         }
 
+        hrRegoleVerificaCsrf();
         $azione = trim((string)($_POST['azione'] ?? ''));
         $idUtente = (int)($_POST['id_utente'] ?? 0);
         $tipoBeneficio = strtoupper(trim((string)($_POST['tipo_beneficio'] ?? '')));
@@ -134,6 +141,8 @@ try {
             throw new RuntimeException('Seleziona un dipendente.');
         }
 
+        $pdo->beginTransaction();
+        hrRegoleBloccaScrittura($pdo);
         hrBeneficioValidaUtente($pdo, $idUtente);
 
         if ($azione === 'revoca_beneficio') {
@@ -187,6 +196,7 @@ try {
         } else {
             throw new RuntimeException('Azione non valida.');
         }
+        $pdo->commit();
     }
 
     $utentiDisponibili = $pdo->query(
@@ -243,6 +253,7 @@ try {
         }
     }
 } catch (Throwable $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
     $errore = $e->getMessage();
     $utentiDisponibili = $utentiDisponibili ?? [];
     $beneficiAssegnati = $beneficiAssegnati ?? [];
@@ -306,7 +317,7 @@ layoutHeader('Benefici e diritti HR');
         <div class="section-head">
             <div>
                 <h2>Assegna beneficio/diritto</h2>
-                <div class="meta">Seleziona dipendente e diritto. Se l'assegnazione esiste già, viene riattivata e aggiornata.</div>
+                <div class="meta">Seleziona dipendente e diritto. Se l'assegnazione esiste già, viene riattivata e aggiornata. Per l’allattamento sono obbligatorie entrambe le date: il dipendente potrà inserire al massimo 2 ore complessive al giorno, solo in quel periodo.</div>
             </div>
         </div>
 
@@ -314,6 +325,7 @@ layoutHeader('Benefici e diritti HR');
             <div class="info-box">Il tuo profilo può consultare i benefici ma non modificarli.</div>
         <?php else: ?>
             <form method="post" id="form-nuovo-beneficio">
+                <input type="hidden" name="csrf_token" value="<?= h(hrRegoleCsrfToken()) ?>">
                 <input type="hidden" name="azione" value="assegna_beneficio">
 
                 <div class="hr-benefit-form-grid">
@@ -417,6 +429,7 @@ layoutHeader('Benefici e diritti HR');
                         <?php
                         $formId = 'beneficio-' . (int)$beneficio['id_beneficio_utente'];
                         $is104 = (string)$beneficio['codice_beneficio'] === 'LEGGE_104';
+                        $isAllattamento = (string)$beneficio['codice_beneficio'] === 'ALLATTAMENTO';
                         $oreMese = ((int)$beneficio['plafond_minuti_mese']) / 60;
                         $oreGiornata = ((int)$beneficio['minuti_giornata_equivalenza']) / 60;
                         ?>
@@ -424,6 +437,7 @@ layoutHeader('Benefici e diritti HR');
                             <td>
                                 <strong><?= h(trim((string)$beneficio['nominativo']) !== '' ? (string)$beneficio['nominativo'] : (string)$beneficio['username']) ?></strong>
                                 <form method="post" id="<?= h($formId) ?>">
+                                    <input type="hidden" name="csrf_token" value="<?= h(hrRegoleCsrfToken()) ?>">
                                     <input type="hidden" name="id_utente" value="<?= (int)$beneficio['id_utente'] ?>">
                                     <input type="hidden" name="tipo_beneficio" value="<?= h((string)$beneficio['codice_beneficio']) ?>">
                                 </form>
@@ -433,7 +447,8 @@ layoutHeader('Benefici e diritti HR');
                                 <input form="<?= h($formId) ?>" type="date" name="data_inizio" value="<?= h((string)$beneficio['data_inizio']) ?>" required>
                             </td>
                             <td class="benefit-date">
-                                <input form="<?= h($formId) ?>" type="date" name="data_fine" value="<?= h((string)($beneficio['data_fine'] ?? '')) ?>">
+                                <input form="<?= h($formId) ?>" type="date" name="data_fine" value="<?= h((string)($beneficio['data_fine'] ?? '')) ?>" <?= $isAllattamento ? 'required' : '' ?>>
+                                <?php if ($isAllattamento && empty($beneficio['data_fine'])): ?><strong>Completa il periodo per abilitare le richieste.</strong><?php endif; ?>
                             </td>
                             <td class="benefit-params">
                                 <?php if ($is104): ?>
@@ -452,7 +467,7 @@ layoutHeader('Benefici e diritti HR');
                                         </label>
                                     </div>
                                 <?php else: ?>
-                                    <span class="hr-benefit-no-limit">— Nessun plafond</span>
+                                    <span class="hr-benefit-no-limit"><?= $isAllattamento ? 'Massimo 2 ore al giorno · solo a ore' : '— Nessun plafond' ?></span>
                                     <input form="<?= h($formId) ?>" type="hidden" name="plafond_giorni_mese" value="0">
                                     <input form="<?= h($formId) ?>" type="hidden" name="plafond_ore_mese" value="0">
                                     <input form="<?= h($formId) ?>" type="hidden" name="ore_giornata_equivalenza" value="0">
@@ -465,7 +480,7 @@ layoutHeader('Benefici e diritti HR');
                                 <?php if ($puoScrivere): ?>
                                     <div class="hr-benefit-actions">
                                         <button form="<?= h($formId) ?>" type="submit" name="azione" value="salva_beneficio" class="btn btn-light"><i class="la la-save" aria-hidden="true"></i> Salva</button>
-                                        <button form="<?= h($formId) ?>" type="submit" name="azione" value="revoca_beneficio" class="btn btn-danger" onclick="return confirm('Revocare questo beneficio/diritto?');"><i class="la la-ban" aria-hidden="true"></i> Revoca</button>
+                                        <button form="<?= h($formId) ?>" type="submit" name="azione" value="revoca_beneficio" formnovalidate class="btn btn-danger" onclick="return confirm('Revocare questo beneficio/diritto?');"><i class="la la-ban" aria-hidden="true"></i> Revoca</button>
                                     </div>
                                 <?php else: ?>
                                     <span class="meta">Sola lettura</span>
@@ -489,6 +504,8 @@ layoutHeader('Benefici e diritti HR');
 
     function aggiornaCampi104() {
         campi104.style.display = tipo.value === 'LEGGE_104' ? 'contents' : 'none';
+        const fine = document.getElementById('data_fine');
+        if (fine) fine.required = tipo.value === 'ALLATTAMENTO';
     }
 
     tipo.addEventListener('change', aggiornaCampi104);
@@ -497,3 +514,4 @@ layoutHeader('Benefici e diritti HR');
 </script>
 
 <?php layoutFooter(); ?>
+

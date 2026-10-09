@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/layout.php';
 require_once __DIR__ . '/includes/hr_notifiche.php';
 require_once __DIR__ . '/includes/hr_riepilogo_assenze.php';
+require_once __DIR__ . '/includes/hr_regole_assenze.php';
 
 richiediPermessoLettura('assenze');
 
@@ -35,6 +36,8 @@ $utenteSelezionato = null;
 $emailHrDaInviare = [];
 $primaDataInseribile = '';
 $mesiChiusiInserimento = [];
+$chiusureAziendali = [];
+$periodoAllattamento = null;
 
 $form = [
     'id_utente' => '',
@@ -291,6 +294,7 @@ function hrUtenteHaBeneficioConfigurato(PDO $pdo, int $idUtente, string $codiceB
            AND codice_beneficio = :codice
            AND attivo = 1
            AND (data_fine IS NULL OR data_fine >= CURDATE())
+           AND (codice_beneficio <> 'ALLATTAMENTO' OR data_fine IS NOT NULL)
          LIMIT 1"
     );
     $stmt->execute([
@@ -513,6 +517,7 @@ try {
          ORDER BY ordinamento, descrizione"
     );
     $tipologie = $stmtTipologie->fetchAll(PDO::FETCH_ASSOC);
+    $chiusureAziendali = hrRegoleChiusure($pdo);
 
     $utentiGestibili = hrUtentiNelPerimetro($pdo, $idUtenteLoggato, $puoConfigurare);
 
@@ -530,6 +535,11 @@ try {
     $isDelegato = $idUtenteTarget !== $idUtenteLoggato;
     $puoUsareAltro = $isDelegato && hrUtenteERiportoDiretto($pdo, $idUtenteLoggato, $idUtenteTarget);
     $form['id_utente'] = (string)$idUtenteTarget;
+    $stmtAllattamento = $pdo->prepare("SELECT data_inizio, data_fine FROM hr_benefici_utenti
+        WHERE id_utente = :utente AND codice_beneficio = 'ALLATTAMENTO' AND attivo = 1
+          AND data_fine IS NOT NULL LIMIT 1");
+    $stmtAllattamento->execute(['utente' => $idUtenteTarget]);
+    $periodoAllattamento = $stmtAllattamento->fetch(PDO::FETCH_ASSOC) ?: null;
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$puoScrivere) {
@@ -537,6 +547,7 @@ try {
             die('Accesso negato.');
         }
 
+        hrRegoleVerificaCsrf();
         $azione = trim((string)($_POST['azione'] ?? ''));
 
         if ($azione === 'nuova_richiesta') {
@@ -632,18 +643,10 @@ try {
                 throw new RuntimeException('La gestione delle assenze per malattia è riservata a HR o all’amministratore.');
             }
             if (
-                in_array($codiceTipologia, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true)
+                $codiceTipologia === 'CONGEDO_STRAORDINARIO_DISABILI'
                 && !$puoOperareComeHr
             ) {
                 throw new RuntimeException('Questa causale è riservata a HR o all’amministratore.');
-            }
-            if ($codiceTipologia === 'ALLATTAMENTO') {
-                if (
-                    !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'ALLATTAMENTO', $dataDa)
-                    || !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'ALLATTAMENTO', $dataA)
-                ) {
-                    throw new RuntimeException('Il dipendente selezionato non ha un diritto Allattamento attivo per tutto il periodo richiesto.');
-                }
             }
             if ($codiceTipologia === 'CONGEDO_STRAORDINARIO_DISABILI') {
                 if (
@@ -672,6 +675,14 @@ try {
             if ($modalita === 'ore' && (int)$tipologiaSelezionata['consente_ore'] !== 1) {
                 throw new RuntimeException('Questa tipologia non consente richieste a ore.');
             }
+
+            $pdo->beginTransaction();
+            hrRegoleBloccaScrittura($pdo);
+            hrRegoleVerificaRichiesta($pdo, $idUtenteTarget, $codiceTipologia, [[
+                'data_da' => $dataDa, 'data_a' => $dataA,
+                'tipo_periodo' => $modalita === 'ore' ? 'ORE' : 'GIORNI',
+                'ora_da' => $oraDa, 'ora_a' => $oraA,
+            ]]);
 
             $sovrapposizione = hrEsisteSovrapposizioneRichiesta($pdo, $idUtenteTarget, $dataDa, $dataA, $modalita, $oraDa, $oraA);
             if ($sovrapposizione !== null) {
@@ -734,8 +745,6 @@ try {
                     $minutiTotali = (int)round(($fine - $inizio) / 60);
                 }
             }
-
-            $pdo->beginTransaction();
 
             $stmtIns = $pdo->prepare(
                 "INSERT INTO hr_richieste (
@@ -981,6 +990,8 @@ try {
                 throw new RuntimeException('Dati di riclassificazione non validi.');
             }
 
+            $pdo->beginTransaction();
+            hrRegoleBloccaScrittura($pdo);
             $stmtCorrente = $pdo->prepare(
                 "SELECT r.id_tipologia_evento, te.codice, te.descrizione
                  FROM hr_richieste r
@@ -1014,7 +1025,7 @@ try {
                 throw new RuntimeException('Nuova tipologia non valida.');
             }
 
-            $pdo->beginTransaction();
+            hrRegoleVerificaRichiestaEsistente($pdo, $idRichiesta, (string)$nuova['codice']);
 
             $stmtUpdTipologia = $pdo->prepare(
                 "UPDATE hr_richieste
@@ -1393,11 +1404,23 @@ layoutHeader('Assenze e permessi');
 
 <div class="card card-form hr-form-card">
     <h2>Nuova richiesta</h2>
+    <?php if ($periodoAllattamento): ?>
+    <div class="info-box">Allattamento abilitato dal <?= h(date('d/m/Y', strtotime($periodoAllattamento['data_inizio']))) ?> al <?= h(date('d/m/Y', strtotime($periodoAllattamento['data_fine']))) ?>, estremi compresi. Massimo 2 ore complessive al giorno, solo a ore.</div>
+    <?php endif; ?>
+    <?php if ($chiusureAziendali): ?>
+    <details><summary>Chiusure aziendali: in questi giorni non puoi inserire richieste</summary><ul>
+        <?php $oggiChiusure = (new DateTimeImmutable('today', new DateTimeZone('Europe/Rome')))->format('Y-m-d'); ?>
+        <?php foreach ($chiusureAziendali as $chiusura): if ($chiusura['data_a'] < $oggiChiusure) continue; ?>
+            <li><?= h($chiusura['descrizione']) ?>: <?= h(date('d/m/Y', strtotime($chiusura['data_da']))) ?> – <?= h(date('d/m/Y', strtotime($chiusura['data_a']))) ?></li>
+        <?php endforeach; ?>
+    </ul></details>
+    <?php endif; ?>
 
     <?php if (!$puoScrivere): ?>
         <div class="info-box">Il tuo profilo può consultare la pagina ma non inserire richieste.</div>
     <?php else: ?>
         <form method="post" action="assenze.php" id="form-richiesta-assenza">
+            <input type="hidden" name="csrf_token" value="<?= h(hrRegoleCsrfToken()) ?>">
             <input type="hidden" name="azione" value="nuova_richiesta">
 
             <div class="hr-request-layout">
@@ -1431,7 +1454,7 @@ layoutHeader('Assenze e permessi');
                                 $codiceOpzione = strtoupper(trim((string)$tipologia['codice']));
                                 if ($codiceOpzione === 'MALATTIA' && !$puoOperareComeHr) { continue; }
                                 if (
-                                    in_array($codiceOpzione, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true)
+                                    $codiceOpzione === 'CONGEDO_STRAORDINARIO_DISABILI'
                                     && !$puoOperareComeHr
                                 ) { continue; }
                                 if (
@@ -1454,7 +1477,7 @@ layoutHeader('Assenze e permessi');
                                 <?php if (!$opzioniTipologia) { continue; } ?>
                                 <?php if ($gruppoTipologia !== 'altro'): ?><optgroup label="<?= h($etichetteGruppiTipologie[$gruppoTipologia]) ?>"><?php endif; ?>
                                 <?php foreach ($opzioniTipologia as $tipologia): ?>
-                                <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= (int)$form['id_tipologia_evento'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
+                                <option data-codice="<?= h((string)$tipologia['codice']) ?>" value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= (int)$form['id_tipologia_evento'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
                                     <?= h(strtoupper(trim((string)$tipologia['codice'])) === 'PERMESSO' ? 'Permesso (ROL)' : (string)$tipologia['descrizione']) ?>
                                 </option>
                                 <?php endforeach; ?>
@@ -1606,6 +1629,7 @@ layoutHeader('Assenze e permessi');
                             <td>
                                 <?php if ($riclassificabileHr && $puoScrivere): ?>
                                     <form method="post" action="assenze.php" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+                                        <input type="hidden" name="csrf_token" value="<?= h(hrRegoleCsrfToken()) ?>">
                                         <input type="hidden" name="azione" value="riclassifica_altro">
                                         <input type="hidden" name="id_richiesta" value="<?= (int)$r['id_richiesta'] ?>">
                                         <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
@@ -1622,6 +1646,7 @@ layoutHeader('Assenze e permessi');
                                 <?php endif; ?>
                                 <?php if ($puoScrivere && $annullabile): ?>
                                     <form method="post" action="assenze.php" onsubmit="return confirm('Confermi l\'annullamento della richiesta?');">
+                                        <input type="hidden" name="csrf_token" value="<?= h(hrRegoleCsrfToken()) ?>">
                                         <input type="hidden" name="azione" value="annulla_richiesta">
                                         <input type="hidden" name="id_richiesta" value="<?= (int)$r['id_richiesta'] ?>">
                                         <input type="hidden" name="id_utente" value="<?= (int)$idUtenteTarget ?>">
@@ -1643,11 +1668,13 @@ layoutHeader('Assenze e permessi');
 </div>
 
 <script>
+window.hrChiusureAziendali = <?= json_encode($chiusureAziendali, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 window.hrPuoUsareAltro = <?= $puoUsareAltro ? 'true' : 'false' ?>;
 window.hrPrimaDataInseribile = <?= json_encode($primaDataInseribile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 window.hrMesiChiusiInserimento = <?= json_encode($mesiChiusiInserimento, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 (function () {
     const modalita = document.getElementById('modalita');
+    const tipologia = document.getElementById('id_tipologia_evento');
     if (!modalita) {
         return;
     }
@@ -1774,6 +1801,10 @@ window.hrMesiChiusiInserimento = <?= json_encode($mesiChiusiInserimento, JSON_UN
     }
 
     function aggiornaCampi() {
+        const allattamento = tipologia && tipologia.selectedOptions[0] && tipologia.selectedOptions[0].dataset.codice === 'ALLATTAMENTO';
+        const opzioneGiorni = modalita.querySelector('option[value="giorni"]');
+        if (opzioneGiorni) opzioneGiorni.disabled = !!allattamento;
+        if (allattamento) modalita.value = 'ore';
         const isOre = modalita.value === 'ore';
 
         toggleBlock(gruppoDataA, !isOre);
@@ -1807,6 +1838,7 @@ window.hrMesiChiusiInserimento = <?= json_encode($mesiChiusiInserimento, JSON_UN
     }
 
     modalita.addEventListener('change', aggiornaCampi);
+    if (tipologia) tipologia.addEventListener('change', aggiornaCampi);
 
     if (dataDa) {
         dataDa.addEventListener('change', function () {
@@ -1858,6 +1890,13 @@ window.hrMesiChiusiInserimento = <?= json_encode($mesiChiusiInserimento, JSON_UN
                 event.preventDefault();
                 return;
             }
+            const fine = modalita.value === 'ore' ? dataDa.value : dataA.value;
+            const chiusura = (window.hrChiusureAziendali || []).find(c => dataDa.value && fine && c.data_da <= fine && c.data_a >= dataDa.value);
+            if (chiusura) {
+                event.preventDefault();
+                alert('Il periodo comprende una chiusura aziendale: ' + chiusura.descrizione + '. Scegli un periodo senza giorni di chiusura.');
+                return;
+            }
             if (modalita.value === 'ore') {
                 sincronizzaOraNascosta(oraDa, oraDaOre, oraDaMinuti);
                 sincronizzaOraNascosta(oraA, oraAOre, oraAMinuti);
@@ -1873,3 +1912,4 @@ window.hrMesiChiusiInserimento = <?= json_encode($mesiChiusiInserimento, JSON_UN
 
 
 <?php layoutFooter(); ?>
+
