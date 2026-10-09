@@ -234,3 +234,15 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - `includes/hr_regole_assenze.php` è il servizio comune. Prima delle letture di controllo ogni transazione acquisisce FOR UPDATE sulla risorsa esistente `pagina.assenze` (nessun cambiamento ai permessi): richieste, assegnazioni e chiusure condividono l'ordine di acquisizione per impedire invii simultanei oltre il limite o salvataggi concorrenti durante una nuova chiusura.
 - Tipologie, approvazioni, Legge 104, altri benefici, privacy, email, token e password conservano le regole precedenti salvo le modifiche esplicite sopra. Le operazioni di scrittura sui benefici restano riservate a HR/admin con il relativo permesso.
 - Eseguire prima la migration `sql/2026-10-09_chiusure_aziendali_allattamento.sql`, poi caricare il servizio comune e tutti i PHP indicati in `docs/aggiornamento-2026-10-09-chiusure-allattamento.md`. La migration è ripetibile e non assegna date finali arbitrarie.
+
+
+
+## 2026-10-09 — Visualizzazione chiusure e controllo password nel login
+
+- In Calendario assenze, nelle viste Giorno, 2 settimane e Mese, le chiusure aziendali attive sono lette da `hr_chiusure_aziendali`, con gli stessi estremi inclusivi del blocco di inserimento.
+- Il grigio tenue e un quadratino identificano le chiusure, con relativa legenda. Una riga aziendale dedicata e il riepilogo dei periodi le rendono visibili anche quando non ci sono assenze individuali, senza creare richieste fittizie o ampliare l'elenco delle persone visualizzate.
+- Nelle celle delle persone già visualizzate, i giorni chiusi non appaiono disponibili. Le richieste eventualmente preesistenti restano visibili insieme alla chiusura, con i loro colori e le loro regole di riservatezza. Il popup mostra la chiusura e le informazioni individuali già autorizzate, senza annunciare disponibilità nei giorni chiusi.
+- Clic, tocco, Invio e Spazio aprono il dettaglio. Scope, filtro Vedi solo assenze/Vedi tutti, ordinamento delle persone, privacy delle causali, visibilità dei pendenti e feed ICS conservano il comportamento precedente. Sabato e domenica rimangono esclusi dalla griglia lavorativa di mese/2 settimane; il riepilogo della chiusura conserva l'intero intervallo e la vista Giorno la mostra anche nel weekend.
+- Nel login, un pulsante con l'occhio dentro il campo Password alterna testo visibile/nascosto. È un button type=button, con etichetta accessibile, aria-pressed e area di tocco di 44 pixel. Non invia il modulo né modifica il valore, il nome del campo o la verifica delle credenziali.
+- La password è nascosta inizialmente, all'invio e alla riapertura della pagina. Senza JavaScript il campo rimane una normale password e il pulsante è nascosto. Nessuna password viene inserita nell'HTML dal server o salvata dal nuovo controllo.
+- Aggiornamento applicativo: solo `calendario_assenze.php` e `login.php` nella cartella principale del sito; nessuno script SQL aggiuntivo. Test e documentazione rimangono su GitHub.

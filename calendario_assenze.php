@@ -182,8 +182,23 @@ function hrIconaScopeCalendario(array $u, int $corrente): string
 }
 
 $eventsByUserDay = [];
+$chiusureNelPeriodo = [];
+$chiusureByDay = [];
 $error = '';
 try {
+    // Le chiusure sono aziendali: non vengono trasformate in richieste personali.
+    $stmtChiusure = $pdo->prepare('SELECT descrizione, data_da, data_a
+        FROM hr_chiusure_aziendali WHERE attivo = 1 AND data_da <= :fine AND data_a >= :inizio
+        ORDER BY data_da, id_chiusura');
+    $stmtChiusure->execute(['fine' => $finePeriodo->format('Y-m-d'), 'inizio' => $inizioPeriodo->format('Y-m-d')]);
+    $chiusureNelPeriodo = $stmtChiusure->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($chiusureNelPeriodo as $chiusura) {
+        $da = max($chiusura['data_da'], $inizioPeriodo->format('Y-m-d'));
+        $a = min($chiusura['data_a'], $finePeriodo->format('Y-m-d'));
+        for ($d = new DateTimeImmutable($da); $d->format('Y-m-d') <= $a; $d = $d->modify('+1 day')) {
+            $chiusureByDay[$d->format('Y-m-d')][] = $chiusura;
+        }
+    }
     if ($scopeIds !== []) {
         $eventiCalendario = hrEventiCalendario(
             $pdo, $idUtente, $scopeIds, $puoVederePendentiGlobali,
@@ -294,6 +309,11 @@ function hrTitoloCella(array $events): string
     return implode(' | ', $parts);
 }
 
+function hrTitoloChiusura(array $chiusure): string
+{
+    return implode(' | ', array_map(static fn(array $c): string => 'Chiusura aziendale · ' . $c['descrizione'], $chiusure));
+}
+
 $giorni=[];
 if ($vista === 'mese') {
     for ($d=$inizioPeriodo; $d<=$finePeriodo; $d=$d->modify('+1 day')) {
@@ -315,7 +335,9 @@ if (!$mostraTutti) {
     ));
 }
 
-$detailsJson = json_encode($eventsByUserDay, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?: '{}';
+$flagsJson = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+$detailsJson = json_encode($eventsByUserDay, $flagsJson) ?: '{}';
+$chiusureJson = json_encode($chiusureByDay, $flagsJson) ?: '{}';
 layoutHeader('Calendario assenze');
 ?>
 <style>
@@ -329,6 +351,15 @@ layoutHeader('Calendario assenze');
 .hr-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:0 4px}
 .hr-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;color:#475569}
 .hr-legend span{display:inline-flex;align-items:center;gap:6px}.hr-status-dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid rgba(15,23,42,.12)}
+.hr-closure-square{display:inline-block;width:14px;height:14px;border-radius:3px;background:#cbd5e1;border:1px solid #94a3b8;box-sizing:border-box;flex-shrink:0}
+.hr-closure-note{background:#f1f3f5;border:1px solid #d1d5db;border-radius:12px;padding:12px 16px;color:#374151}
+.hr-closure-note strong{display:inline-flex;align-items:center;gap:8px}.hr-closure-note ul{margin:8px 0 0;padding-left:22px}
+.hr-closure-name{font-size:12px!important;color:#475569!important;background:#f1f3f5!important;white-space:normal;gap:6px;line-height:1.3}
+.hr-matrix-cell.is-closure,.hr-time-cell.is-closure,.hr-time-head.is-closure{background:#f1f3f5}
+.hr-daycell.is-closure{gap:5px}.hr-daycell .hr-closure-square,.hr-closure-cell .hr-closure-square{width:20px;height:20px}
+.hr-closure-cell:not(.is-empty){cursor:pointer}.hr-closure-cell:focus-visible{outline:2px solid #0068c9;outline-offset:-2px}
+.hr-daycell.is-closure.is-today{background:#f1f3f5}
+.hr-time-cell.is-closure{position:relative}.hr-time-cell.is-closure:after{content:"";position:absolute;inset:20px 9px;background:#cbd5e1;border:1px solid #94a3b8;border-radius:2px}
 .hr-empty{padding:26px 18px;text-align:center;color:#475569;background:#fff;border:1px solid #dbe3ec;border-radius:14px;font-weight:600}
 .hr-status-free{background:#e9f7ee}.hr-status-pending{background:#ffd84d}.hr-status-personal,.hr-status-absent{background:#e85b5b}.hr-status-work{background:#42a5e8}.hr-status-smart{background:#22a447}.hr-status-off{background:#e5e7eb}
 .hr-matrix-wrap{overflow:auto;border-radius:14px;border:1px solid #dbe3ec;background:#fff;-webkit-overflow-scrolling:touch}
@@ -398,6 +429,7 @@ layoutHeader('Calendario assenze');
   <span><i class="hr-status-dot hr-status-personal"></i>Assenza personale</span>
   <span><i class="hr-status-dot hr-status-smart"></i>Smart working</span>
   <span><i class="hr-status-dot hr-status-work"></i>Impegno di lavoro</span>
+  <span><i class="hr-closure-square" aria-hidden="true"></i>Chiusura aziendale</span>
   <?php if ($vista !== 'giorno'): ?>
   <span title="Forma indicatore"><i class="hr-status-dot hr-status-off"></i>Giornata <i class="hr-status-dot hr-status-off hr-duration-hours" style="width:14px;height:14px;border-radius:50%;box-sizing:border-box;background-color:#fff;background-image:linear-gradient(to right,#e5e7eb 0,#e5e7eb 50%,transparent 50%,transparent 100%);background-clip:padding-box;border:1px solid rgba(15,23,42,.16)"></i>Ore</span>
   <?php endif; ?>
@@ -409,13 +441,24 @@ layoutHeader('Calendario assenze');
  </a>
 </div>
 
-<?php if ($utentiVisualizzati === []): ?>
+<?php if ($chiusureNelPeriodo !== []): ?>
+<div class="hr-closure-note"><strong><i class="hr-closure-square" aria-hidden="true"></i>Chiusure aziendali nel periodo</strong><ul>
+ <?php foreach ($chiusureNelPeriodo as $c): ?><li><?= h($c['descrizione']) ?>: <?= h(date('d/m/Y', strtotime($c['data_da']))) ?> – <?= h(date('d/m/Y', strtotime($c['data_a']))) ?></li><?php endforeach; ?>
+</ul></div>
+<?php endif; ?>
+
+<?php if ($utentiVisualizzati === [] && $chiusureNelPeriodo === []): ?>
 <div class="hr-empty">Nessuna assenza o richiesta nel periodo visualizzato.</div>
 <?php elseif ($vista === 'giorno'): ?>
 <div class="hr-day-view">
  <div class="hr-timeline">
   <div class="hr-time-head hr-matrix-name">Persona</div>
   <?php for($m=8*60;$m<17*60;$m+=15): ?><div class="hr-time-head"><?= ($m % 30) === 0 ? h(sprintf('%02d:%02d',intdiv($m,60),$m%60)) : '&nbsp;' ?></div><?php endfor; ?>
+  <?php $chiusureGiorno = $chiusureByDay[$dataRif->format('Y-m-d')] ?? []; ?>
+  <?php if ($chiusureGiorno !== []): ?>
+  <div class="hr-time-name hr-closure-name"><i class="hr-closure-square" aria-hidden="true"></i>Chiusura aziendale</div>
+  <?php for($m=8*60;$m<17*60;$m+=15): ?><div class="hr-time-cell is-closure hr-closure-cell" tabindex="0" role="button" data-closure="1" data-day="<?= h($dataRif->format('Y-m-d')) ?>" title="<?= h(hrTitoloChiusura($chiusureGiorno)) ?>" aria-label="<?= h(hrTitoloChiusura($chiusureGiorno)) ?>"></div><?php endfor; ?>
+  <?php endif; ?>
   <?php foreach($utentiVisualizzati as $u): $uid=(int)$u['id_utente']; $key=$dataRif->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; ?>
    <div class="hr-time-name <?= $uid===$idUtente?'is-me':'' ?>"><?= hrIconaScopeCalendario($u,$idUtente) ?><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
    <?php for($m=8*60;$m<17*60;$m+=15):
@@ -428,7 +471,10 @@ layoutHeader('Calendario assenze');
         if($a<$slotEnd && $b>$m) $slotEvents[]=$e;
       }
       $st=hrStatoCella($slotEvents);
-   ?><div<?= $slotEvents !== [] ? ' tabindex="0"' : '' ?> class="hr-time-cell<?= $slotEvents === [] ? ' is-empty' : '' ?> <?= $st==='pending'?'is-pending':($st==='smart'?'is-smart':($st==='work'?'is-work':($st==='personal'?'is-personal':''))) ?>"<?= $slotEvents !== [] ? ' data-user="'.$uid.'" data-day="'.h($key).'" data-slot="'.$m.'" title="'.h(hrTitoloCella($slotEvents)).'"' : '' ?>></div><?php endfor; ?>
+      $haDettaglio = $slotEvents !== [] || $chiusureGiorno !== [];
+      $titoloSlot = $chiusureGiorno !== [] ? hrTitoloChiusura($chiusureGiorno) : '';
+      if ($slotEvents !== []) $titoloSlot .= ($titoloSlot !== '' ? ' | ' : '') . hrTitoloCella($slotEvents);
+   ?><div<?= $haDettaglio ? ' tabindex="0" role="button"' : '' ?> class="hr-time-cell<?= !$haDettaglio ? ' is-empty' : '' ?> <?= $slotEvents === [] && $chiusureGiorno !== [] ? 'is-closure' : ($st==='pending'?'is-pending':($st==='smart'?'is-smart':($st==='work'?'is-work':($st==='personal'?'is-personal':'')))) ?>"<?= $haDettaglio ? ' data-user="'.$uid.'" data-day="'.h($key).'" data-slot="'.$m.'" title="'.h($titoloSlot).'" aria-label="'.h($titoloSlot).'"' : '' ?>></div><?php endfor; ?>
   <?php endforeach; ?>
  </div>
 </div>
@@ -437,10 +483,21 @@ layoutHeader('Calendario assenze');
  <div class="hr-matrix" style="--cols:<?= count($giorni) ?>">
   <div class="hr-matrix-cell hr-matrix-header hr-matrix-name">Persona</div>
   <?php foreach($giorni as $d): ?><div class="hr-matrix-cell hr-matrix-header <?= $d->format('Y-m-d')===$oggi->format('Y-m-d')?'is-today':'' ?>"><span><?= h(hrNomeGiornoBreve($d)) ?></span><strong><?= h($d->format('d/m')) ?></strong></div><?php endforeach; ?>
+  <?php if ($chiusureNelPeriodo !== []): ?>
+   <div class="hr-matrix-cell hr-matrix-name hr-closure-name"><i class="hr-closure-square" aria-hidden="true"></i>Chiusura aziendale</div>
+   <?php foreach ($giorni as $d): $key = $d->format('Y-m-d'); $chiusureCella = $chiusureByDay[$key] ?? []; ?>
+    <div class="hr-matrix-cell hr-closure-cell <?= $chiusureCella !== [] ? 'is-closure' : 'is-empty' ?>"<?= $chiusureCella !== [] ? ' tabindex="0" role="button" data-closure="1" data-day="'.h($key).'" title="'.h(hrTitoloChiusura($chiusureCella)).'" aria-label="'.h(hrTitoloChiusura($chiusureCella)).'"' : '' ?>><?= $chiusureCella !== [] ? '<i class="hr-closure-square" aria-hidden="true"></i>' : '<span aria-label="Nessuna chiusura">—</span>' ?></div>
+   <?php endforeach; ?>
+  <?php endif; ?>
   <?php foreach($utentiVisualizzati as $u): $uid=(int)$u['id_utente']; ?>
    <div class="hr-matrix-cell hr-matrix-name <?= $uid===$idUtente?'is-me':'' ?>"><?= hrIconaScopeCalendario($u,$idUtente) ?><?= h(hrNomeCompatto($u,$idUtente)) ?></div>
-   <?php foreach($giorni as $d): $key=$d->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; $st=hrStatoCella($evs); $forma=hrFormaIndicatoreCella($evs); ?>
-    <div<?= $evs !== [] ? ' tabindex="0" role="button"' : '' ?> class="hr-matrix-cell hr-daycell<?= $evs === [] ? ' is-empty' : '' ?> <?= $key===$oggi->format('Y-m-d')?'is-today':'' ?>"<?= $evs !== [] ? ' data-user="'.$uid.'" data-day="'.h($key).'" title="'.h(hrTitoloCella($evs)).'"' : '' ?>><i class="hr-status-dot hr-status-<?= h($st) ?> hr-duration-<?= h($forma) ?>"></i></div>
+   <?php foreach($giorni as $d): $key=$d->format('Y-m-d'); $evs=$eventsByUserDay[$uid][$key]??[]; $st=hrStatoCella($evs); $forma=hrFormaIndicatoreCella($evs);
+    $chiusureCella = $chiusureByDay[$key] ?? [];
+    $haDettaglio = $evs !== [] || $chiusureCella !== [];
+    $titoloCella = $chiusureCella !== [] ? hrTitoloChiusura($chiusureCella) : hrTitoloCella($evs);
+    if ($chiusureCella !== [] && $evs !== []) $titoloCella .= ' | ' . hrTitoloCella($evs);
+   ?>
+    <div<?= $haDettaglio ? ' tabindex="0" role="button"' : '' ?> class="hr-matrix-cell hr-daycell<?= !$haDettaglio ? ' is-empty' : '' ?> <?= $chiusureCella !== [] ? 'is-closure' : '' ?> <?= $key===$oggi->format('Y-m-d')?'is-today':'' ?>"<?= $haDettaglio ? ' data-user="'.$uid.'" data-day="'.h($key).'" title="'.h($titoloCella).'" aria-label="'.h($titoloCella).'"' : '' ?>><?php if ($chiusureCella !== []): ?><i class="hr-closure-square" aria-hidden="true"></i><?php endif; ?><?php if ($evs !== [] || $chiusureCella === []): ?><i class="hr-status-dot hr-status-<?= h($st) ?> hr-duration-<?= h($forma) ?>"></i><?php endif; ?></div>
    <?php endforeach; ?>
   <?php endforeach; ?>
  </div>
@@ -455,6 +512,7 @@ layoutHeader('Calendario assenze');
 
 <script>
 (function(){
+ const closures=<?= $chiusureJson ?>;
  const data=<?= $detailsJson ?>, pop=document.getElementById('hrDetailPop'), title=document.getElementById('hrDetailTitle'), body=document.getElementById('hrDetailBody');
  const names={<?php foreach($utentiVisualizzati as $u): ?><?= (int)$u['id_utente'] ?>:<?= json_encode(hrNomeCompatto($u,$idUtente),JSON_UNESCAPED_UNICODE) ?>,<?php endforeach; ?>};
  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
@@ -465,20 +523,23 @@ layoutHeader('Calendario assenze');
      const a=Number(el.dataset.slot),b=a+15;
      evs=all.filter(e=>{if(e.tipo_periodo!=='ORE')return true;const x=e.ora_da.split(':').map(Number),y=e.ora_a.split(':').map(Number);return x[0]*60+x[1]<b&&y[0]*60+y[1]>a;});
    }
-   title.textContent=(names[uid]||'Persona')+' · '+day.split('-').reverse().join('/');
-   body.innerHTML=evs.length?evs.map(e=>'<div class="hr-detail-item"><strong>'+esc(e.label)+'</strong>'+(e.oggetto?'<div><b>Oggetto:</b> '+esc(e.oggetto)+'</div>':'')+'<div>'+esc(e.tipo_periodo==='ORE'&&e.ora_da&&e.ora_a?e.ora_da+' - '+e.ora_a:'Giornata')+(e.stato==='IN_ATTESA'?' · Da approvare':'')+'</div></div>').join(''):'<div class="hr-detail-item"><strong>Nessuna assenza registrata</strong>Disponibile nel periodo selezionato.</div>';
+   const chiusure = closures[day] || [];
+   title.textContent=(el.dataset.closure === '1' ? 'Chiusura aziendale' : (names[uid]||'Persona'))+' · '+day.split('-').reverse().join('/');
+   const dettaglioChiusure = chiusure.map(c=>'<div class="hr-detail-item"><strong>Chiusura aziendale</strong><div>'+esc(c.descrizione)+'</div><div>Dal '+esc(c.data_da.split('-').reverse().join('/'))+' al '+esc(c.data_a.split('-').reverse().join('/'))+'</div></div>').join('');
+   body.innerHTML=dettaglioChiusure + (evs.length?evs.map(e=>'<div class="hr-detail-item"><strong>'+esc(e.label)+'</strong>'+(e.oggetto?'<div><b>Oggetto:</b> '+esc(e.oggetto)+'</div>':'')+'<div>'+esc(e.tipo_periodo==='ORE'&&e.ora_da&&e.ora_a?e.ora_da+' - '+e.ora_a:'Giornata')+(e.stato==='IN_ATTESA'?' · Da approvare':'')+'</div></div>').join(''):(chiusure.length ? '' : '<div class="hr-detail-item"><strong>Nessuna assenza registrata</strong>Disponibile nel periodo selezionato.</div>'));
    pop.classList.add('is-open');
    const r=el.getBoundingClientRect(),w=Math.min(360,window.innerWidth-24);
    pop.style.left=Math.max(12,Math.min(window.innerWidth-w-12,r.left))+'px';
    pop.style.top=Math.max(12,Math.min(window.innerHeight-pop.offsetHeight-12,r.bottom+8))+'px';
  }
- document.querySelectorAll('.hr-daycell:not(.is-empty),.hr-time-cell:not(.is-empty)').forEach(el=>{
+ document.querySelectorAll('.hr-daycell:not(.is-empty),.hr-time-cell:not(.is-empty),.hr-closure-cell:not(.is-empty)').forEach(el=>{
    el.addEventListener('click',()=>show(el));
    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show(el);}});
  });
  document.getElementById('hrDetailClose').addEventListener('click',()=>pop.classList.remove('is-open'));
- document.addEventListener('click',e=>{if(pop.classList.contains('is-open')&&!pop.contains(e.target)&&!e.target.closest('.hr-daycell,.hr-time-cell'))pop.classList.remove('is-open');});
+ document.addEventListener('click',e=>{if(pop.classList.contains('is-open')&&!pop.contains(e.target)&&!e.target.closest('.hr-daycell,.hr-time-cell,.hr-closure-cell'))pop.classList.remove('is-open');});
 })();
 </script>
 <?php layoutFooter(); ?>
+
 

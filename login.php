@@ -200,6 +200,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="/assets/style.css">
         <link rel="stylesheet" href="/assets/design-system.css">
     <link rel="icon" type="image/png" href="/assets/favicon.png">
+    <style>
+    .login-password-field{position:relative}
+    .login-card #username,.login-card #password{min-height:44px;font-size:16px;box-sizing:border-box}
+    .login-password-field #password{padding-right:54px}
+    .login-password-field #password::-ms-reveal,.login-password-field #password::-ms-clear{display:none}
+    .login-card .login-password-toggle{position:absolute;right:2px;top:0;width:44px;min-width:44px;min-height:44px;height:100%;padding:0;border:0!important;background:transparent!important;color:#475569!important;border-radius:8px}
+    .login-card .login-password-toggle:hover{color:#0068c9!important}
+    .login-card .login-password-toggle:focus-visible{outline:2px solid #0068c9;outline-offset:1px}
+    .login-password-toggle svg{width:22px;height:22px;pointer-events:none}
+    .login-password-toggle[hidden],.login-password-toggle svg[hidden]{display:none!important}
+    </style>
 </head>
 <body class="login-page">
     <div class="login-panel">
@@ -229,12 +240,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input
-                        type="password"
-                        name="password"
-                        id="password"
-                        required
-                    >
+                    <div class="login-password-field">
+                        <input
+                            type="password"
+                            name="password"
+                            id="password"
+                            autocomplete="current-password"
+                            autocapitalize="off"
+                            spellcheck="false"
+                            required
+                        >
+                        <button type="button" class="login-password-toggle hr-icon-btn" id="login-password-toggle" aria-controls="password" aria-label="Mostra password" aria-pressed="false" title="Mostra password" hidden>
+                            <svg id="login-eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg id="login-eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" hidden><path d="M3 3l18 18M10.6 5.1A12 12 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-3.2 4.1M6.1 6.1A19 19 0 0 0 2 12s3.5 7 10 7a12 12 0 0 0 5.9-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn">Accedi</button>
@@ -243,5 +263,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="login-note">Accesso riservato agli utenti autorizzati.</div>
     </div>
+<script>
+(function () {
+    const campo = document.getElementById('password');
+    const pulsante = document.getElementById('login-password-toggle');
+    const mostra = document.getElementById('login-eye-show');
+    const nascondi = document.getElementById('login-eye-hide');
+    if (!campo || !pulsante || !mostra || !nascondi) return;
+    pulsante.hidden = false;
+    function impostaVisibilita(visibile) {
+        campo.type = visibile ? 'text' : 'password';
+        const etichetta = visibile ? 'Nascondi password' : 'Mostra password';
+        pulsante.setAttribute('aria-label', etichetta);
+        pulsante.setAttribute('aria-pressed', visibile ? 'true' : 'false');
+        pulsante.title = etichetta;
+        mostra.hidden = visibile;
+        nascondi.hidden = !visibile;
+    }
+    pulsante.addEventListener('click', function (event) {
+        const inizio = campo.selectionStart;
+        const fine = campo.selectionEnd;
+        impostaVisibilita(campo.type === 'password');
+        if (event.detail > 0) {
+            campo.focus({preventScroll: true});
+            if (inizio !== null && fine !== null) campo.setSelectionRange(inizio, fine);
+        }
+    });
+    // Il campo torna nascosto quando viene inviata o riaperta la pagina.
+    campo.form.addEventListener('submit', function () { impostaVisibilita(false); });
+    window.addEventListener('pageshow', function () { impostaVisibilita(false); });
+})();
+</script>
 </body>
 </html>
