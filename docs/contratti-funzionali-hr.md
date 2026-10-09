@@ -209,3 +209,12 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - ICS include oggi e futuro secondo Europe/Rome; esclude i periodi terminati prima di oggi.
 - Assenze iniziate prima di oggi ma ancora in corso restano incluse con date e UID originali.
 - Nessun cambiamento a token, password, scope, privacy, pendenti o storico del calendario web.
+
+## Tipologie nella combobox Assenze — 9 ottobre 2026
+
+- Raggruppamento visivo: Permessi e assenze personali prima, Assenze per lavoro dopo; Altro, quando consentito, è l’ultima opzione.
+- Visita cliente, Visita fornitore, Formazione, Fiera, Trasferta e Smart working sono nel gruppo di lavoro; le altre tipologie restano nel gruppo personale.
+- Permesso è visualizzato come Permesso (ROL) nella combobox principale. Codice PERMESSO, ID e descrizione nel database non sono modificati.
+- Conservati i filtri HR/admin, benefici configurati, visibilità di Altro, selezione del modulo e ordine preesistente dentro ciascun gruppo.
+- Backend, salvataggi, durate, approvazioni, notifiche/email e permessi invariati; nessuna migrazione SQL.
+- Verificati lint PHP e rendering prima/dopo per sette combinazioni di ruolo, Altro e benefici; stessi ID e selezioni, nuova etichetta e ordinamento corretto.

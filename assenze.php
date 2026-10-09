@@ -1423,10 +1423,11 @@ layoutHeader('Assenze e permessi');
 
                     <div class="form-group hr-field-tipologia">
                         <label for="id_tipologia_evento">Tipologia</label>
-                        <select name="id_tipologia_evento" id="id_tipologia_evento" required>
-                            <option value="">Seleziona...</option>
-                            <?php foreach ($tipologie as $tipologia): ?>
-                                <?php
+                        <?php
+                        // Raggruppamento solo visivo: IDs e regole HR restano invariati.
+                        $gruppiTipologie = ['personali' => [], 'lavoro' => [], 'altro' => []];
+                        $codiciLavoro = ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE', 'FIERA', 'TRASFERTA', 'SMART'];
+                        foreach ($tipologie as $tipologia) {
                                 $codiceOpzione = strtoupper(trim((string)$tipologia['codice']));
                                 if ($codiceOpzione === 'MALATTIA' && !$puoOperareComeHr) { continue; }
                                 if (
@@ -1442,10 +1443,22 @@ layoutHeader('Assenze e permessi');
                                     && !hrUtenteHaBeneficioConfigurato($pdo, $idUtenteTarget, 'CONGEDO_STRAORDINARIO_DISABILI')
                                 ) { continue; }
                                 if ($codiceOpzione === 'ALTRO' && !$puoUsareAltro) { continue; }
-                                ?>
+                                $gruppoTipologia = $codiceOpzione === 'ALTRO' ? 'altro' : (in_array($codiceOpzione, $codiciLavoro, true) ? 'lavoro' : 'personali');
+                                $gruppiTipologie[$gruppoTipologia][] = $tipologia;
+                        }
+                        $etichetteGruppiTipologie = ['personali' => 'Permessi e assenze personali', 'lavoro' => 'Assenze per lavoro'];
+                        ?>
+                        <select name="id_tipologia_evento" id="id_tipologia_evento" required>
+                            <option value="">Seleziona...</option>
+                            <?php foreach ($gruppiTipologie as $gruppoTipologia => $opzioniTipologia): ?>
+                                <?php if (!$opzioniTipologia) { continue; } ?>
+                                <?php if ($gruppoTipologia !== 'altro'): ?><optgroup label="<?= h($etichetteGruppiTipologie[$gruppoTipologia]) ?>"><?php endif; ?>
+                                <?php foreach ($opzioniTipologia as $tipologia): ?>
                                 <option value="<?= (int)$tipologia['id_tipologia_evento'] ?>" <?= (int)$form['id_tipologia_evento'] === (int)$tipologia['id_tipologia_evento'] ? 'selected' : '' ?>>
-                                    <?= h((string)$tipologia['descrizione']) ?>
+                                    <?= h(strtoupper(trim((string)$tipologia['codice'])) === 'PERMESSO' ? 'Permesso (ROL)' : (string)$tipologia['descrizione']) ?>
                                 </option>
+                                <?php endforeach; ?>
+                                <?php if ($gruppoTipologia !== 'altro'): ?></optgroup><?php endif; ?>
                             <?php endforeach; ?>
                         </select>
                     </div>
