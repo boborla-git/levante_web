@@ -12,20 +12,32 @@ $errore = '';
 $messaggio = '';
 $livelliValidi = ['none', 'read', 'write'];
 
-function livelloCorrenteRuolo(array $permessiRuoliMappa, int $idRuolo, int $idRisorsa): string
+function dettaglioPermessiRuolo(array $permessiRuoliMappa, int $idRuolo, int $idRisorsa, bool $pagina = true): array
 {
-    $view = (int)($permessiRuoliMappa[$idRuolo][$idRisorsa]['view'] ?? 0);
-    $edit = (int)($permessiRuoliMappa[$idRuolo][$idRisorsa]['edit'] ?? 0);
-
-    if ($view === 1 && $edit === 1) {
-        return 'write';
+    $p = $permessiRuoliMappa[$idRuolo][$idRisorsa] ?? [];
+    // Stessa precedenza dell'autorizzazione: read/write espliciti vincono,
+    // anche se negati. Il fallback legacy include tutte le azioni di scrittura.
+    $legacyScrittura = false;
+    foreach (['edit', 'write', 'create', 'delete', 'execute'] as $azione) {
+        if ((int)($p[$azione] ?? 0) === 1) $legacyScrittura = true;
     }
+    $legacyLettura = $legacyScrittura || (int)($p['view'] ?? 0) === 1 || (int)($p['read'] ?? 0) === 1;
+    $legacyLettura = $pagina && $legacyLettura;
+    $legacyScrittura = $pagina && $legacyScrittura;
+    $lettura = array_key_exists('read', $p) ? (int)$p['read'] === 1 : $legacyLettura;
+    $scrittura = array_key_exists('write', $p) ? (int)$p['write'] === 1 : $legacyScrittura;
+    $livello = !$lettura ? 'none' : ($scrittura ? 'write' : 'read');
+    // Evidenzia il conflitto con le impostazioni che mostrava il vecchio editor.
+    $vecchioLivello = (int)($p['view'] ?? 0) !== 1 ? 'none' : ((int)($p['edit'] ?? 0) === 1 ? 'write' : 'read');
+    $haLegacy = array_key_exists('view', $p) || array_key_exists('edit', $p);
+    return ['livello' => $livello, 'precedente' => $vecchioLivello,
+        'disallineato' => $haLegacy && $vecchioLivello !== $livello,
+        'scrittura_senza_lettura' => $scrittura && !$lettura];
+}
 
-    if ($view === 1) {
-        return 'read';
-    }
-
-    return 'none';
+function livelloCorrenteRuolo(array $permessiRuoliMappa, int $idRuolo, int $idRisorsa, bool $pagina = true): string
+{
+    return dettaglioPermessiRuolo($permessiRuoliMappa, $idRuolo, $idRisorsa, $pagina)['livello'];
 }
 
 function menuCorrenteRuolo(array $permessiRuoliMappa, int $idRuolo, array $risorsa): bool
@@ -167,19 +179,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salva_permessi'])) {
             $viewConsentito = ($livello === 'read' || $livello === 'write') ? 1 : 0;
             $editConsentito = ($livello === 'write') ? 1 : 0;
 
-            $stmtView = $pdo->prepare("\n                INSERT INTO aut_ruoli_permessi\n                (\n                    id_ruolo,\n                    id_risorsa,\n                    permesso,\n                    consentito\n                )\n                VALUES\n                (\n                    :id_ruolo,\n                    :id_risorsa,\n                    'view',\n                    :consentito\n                )\n                ON DUPLICATE KEY UPDATE\n                    consentito = VALUES(consentito)\n            ");
-            $stmtView->execute([
-                'id_ruolo' => $idRuoloSelezionato,
-                'id_risorsa' => $idRisorsa,
-                'consentito' => $viewConsentito,
-            ]);
-
-            $stmtEdit = $pdo->prepare("\n                INSERT INTO aut_ruoli_permessi\n                (\n                    id_ruolo,\n                    id_risorsa,\n                    permesso,\n                    consentito\n                )\n                VALUES\n                (\n                    :id_ruolo,\n                    :id_risorsa,\n                    'edit',\n                    :consentito\n                )\n                ON DUPLICATE KEY UPDATE\n                    consentito = VALUES(consentito)\n            ");
-            $stmtEdit->execute([
-                'id_ruolo' => $idRuoloSelezionato,
-                'id_risorsa' => $idRisorsa,
-                'consentito' => $editConsentito,
-            ]);
+            // Un unico salvataggio mantiene coerenti permessi effettivi e alias.
+            $stmtPermesso = $pdo->prepare(
+                'INSERT INTO aut_ruoli_permessi (id_ruolo, id_risorsa, permesso, consentito)
+                 VALUES (:id_ruolo, :id_risorsa, :permesso, :consentito)
+                 ON DUPLICATE KEY UPDATE consentito = VALUES(consentito)'
+            );
+            foreach (['read' => $viewConsentito, 'write' => $editConsentito,
+                      'view' => $viewConsentito, 'edit' => $editConsentito] as $nomePermesso => $consentito) {
+                $stmtPermesso->execute([
+                    'id_ruolo' => $idRuoloSelezionato,
+                    'id_risorsa' => $idRisorsa,
+                    'permesso' => $nomePermesso,
+                    'consentito' => $consentito,
+                ]);
+            }
         }
 
         $pdo->commit();
@@ -260,7 +274,7 @@ foreach ($risorseGerarchiche as $risorsaConteggio) {
     }
 
     $totaleRisorseProtette++;
-    $livelloConteggio = livelloCorrenteRuolo($permessiRuoliMappa, $idRuoloSelezionato, (int)$risorsaConteggio['id_risorsa']);
+    $livelloConteggio = livelloCorrenteRuolo($permessiRuoliMappa, $idRuoloSelezionato, (int)$risorsaConteggio['id_risorsa'], str_starts_with((string)$risorsaConteggio['codice_risorsa'], 'pagina.'));
     if ($livelloConteggio === 'write') {
         $totaleScrittura++;
     } elseif ($livelloConteggio === 'read') {
@@ -310,7 +324,7 @@ layoutHeader('Permessi ruoli');
     <div class="hr-filter-toolbar admin-section-toolbar">
         <div class="admin-section-title">
             <h2>Ruolo selezionato</h2>
-            <div class="meta">Scegli il ruolo da configurare. Le modifiche ai permessi e al menu vengono salvate solo con il pulsante finale.</div>
+            <div class="meta">Sono mostrati i permessi effettivi del ruolo. Le modifiche ai permessi e al menu vengono salvate solo con il pulsante finale. Per mostrare una pagina nel menu occorrono sia l’accesso in lettura sia Mostra nel menu.</div>
         </div>
 
         <form method="get" id="formRuolo" class="permissions-role-form">
@@ -367,7 +381,8 @@ layoutHeader('Permessi ruoli');
                     <?php foreach ($risorseGerarchiche as $risorsa): ?>
                         <?php
                         $idRisorsa = (int)$risorsa['id_risorsa'];
-                        $livelloCorrente = livelloCorrenteRuolo($permessiRuoliMappa, $idRuoloSelezionato, $idRisorsa);
+                        $dettaglioPermesso = dettaglioPermessiRuolo($permessiRuoliMappa, $idRuoloSelezionato, $idRisorsa, str_starts_with((string)$risorsa['codice_risorsa'], 'pagina.'));
+                        $livelloCorrente = $dettaglioPermesso['livello'];
                         $depth = (int)($risorsa['depth'] ?? 0);
                         $percorso = trim((string)($risorsa['percorso'] ?? ''));
                         $chiave = 'permesso_risorsa_' . $idRisorsa;
@@ -383,6 +398,8 @@ layoutHeader('Permessi ruoli');
                             <td class="permissions-resource-cell <?= htmlspecialchars($depthClass) ?>">
                                 <span class="permissions-tree-prefix"><?= htmlspecialchars($prefisso) ?></span>
                                 <strong><?= htmlspecialchars((string)$risorsa['descrizione']) ?></strong>
+                                <?php if (!$contenitorePuro && $dettaglioPermesso['disallineato']): ?><div class="meta">Impostazione precedente: <?= htmlspecialchars(adminPermissionLevelLabel($dettaglioPermesso['precedente'])) ?>. Accesso effettivo: <?= htmlspecialchars(adminPermissionLevelLabel($livelloCorrente)) ?>.</div><?php endif; ?>
+                                <?php if (!$contenitorePuro && $dettaglioPermesso['scrittura_senza_lettura']): ?><div class="meta">Scrittura assegnata senza lettura: la pagina non è accessibile. Se necessario, seleziona Lettura e scrittura.</div><?php endif; ?>
                                 <span class="permissions-mobile-meta"><?= htmlspecialchars(adminPermissionLevelLabel($livelloCorrente)) ?> · Menu <?= $visibileMenu ? 'sì' : 'no' ?></span>
                             </td>
 
@@ -449,3 +466,4 @@ layoutHeader('Permessi ruoli');
 </script>
 
 <?php layoutFooter(); ?>
+

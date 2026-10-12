@@ -246,3 +246,15 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Nel login, un pulsante con l'occhio dentro il campo Password alterna testo visibile/nascosto. È un button type=button, con etichetta accessibile, aria-pressed e area di tocco di 44 pixel. Non invia il modulo né modifica il valore, il nome del campo o la verifica delle credenziali.
 - La password è nascosta inizialmente, all'invio e alla riapertura della pagina. Senza JavaScript il campo rimane una normale password e il pulsante è nascosto. Nessuna password viene inserita nell'HTML dal server o salvata dal nuovo controllo.
 - Aggiornamento applicativo: solo `calendario_assenze.php` e `login.php` nella cartella principale del sito; nessuno script SQL aggiuntivo. Test e documentazione rimangono su GitHub.
+
+
+
+## 2026-10-12 — Editor ruoli coerente con le autorizzazioni effettive
+
+- `permessi_ruoli.php` deve valutare `read/write` espliciti prima degli alias `view/edit`, anche quando negati, come `haPermesso`. Il fallback legacy si applica alle sole risorse `pagina.*`, non alle azioni atomiche.
+- La vecchia pagina mostrava e salvava soltanto view/edit: poteva quindi mostrare Scrittura mentre read/write già presenti continuavano a negare menu e accesso. La correzione evidenzia il livello precedente discordante e l'eventuale scrittura senza lettura, senza disattivare i dinieghi nel runtime.
+- Salva permessi scrive read/write e gli alias compatibili view/edit nella stessa transazione, soltanto per il ruolo scelto. Il checkbox Menu resta una regola distinta: occorrono lettura e visibilità menu. I contenitori puri ricevono soltanto la regola menu. Le altre azioni create/delete/execute esplicite non vengono riscritte.
+- Nessuna modifica ad autorizzazioni.php, layout.php, impersonazione, ruoli utente, calendario, scope, privacy, permessi HR speciali o bypass dell'amministratore globale.
+- Per correggere una configurazione preesistente, caricare il file completo `permessi_ruoli.php` nella cartella principale, aprire il ruolo interessato, riselezionare i livelli voluti e salvare. Le eventuali sessioni legacy vanno aggiornate uscendo/rientrando; Visualizza come va riaperto dal profilo amministratore.
+- Per operativo_ordini, le impostazioni richieste dalla schermata sono Scrittura + Menu per Assenze e permessi, Permessi tutelati e Calendario assenze; ciò non comporta accesso a tutte le persone, alle causali riservate, alle richieste pendenti globali o alla configurazione HR.
+- Test: 162 combinazioni confrontate con le funzioni di autorizzazione reali, oltre a GET dell'editor, salvataggio dei tre livelli, visibilità menu indipendente, isolamento del ruolo selezionato, dinieghi delle azioni riservate e rollback in caso di errore. PDO sostituito: nessuna modifica al database del sito.
