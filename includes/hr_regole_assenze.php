@@ -131,11 +131,33 @@ function hrRegoleVerificaAllattamento(PDO $pdo, int $utente, array $periodi, int
     }
 }
 
+function hrRegoleVerificaCongedo(PDO $pdo, int $utente, array $periodi): void
+{
+    $stmt = $pdo->prepare("SELECT data_inizio, data_fine FROM hr_benefici_utenti
+        WHERE id_utente = :utente AND codice_beneficio = 'CONGEDO_STRAORDINARIO_DISABILI' AND attivo = 1 LIMIT 1");
+    $stmt->execute(['utente' => $utente]);
+    $beneficio = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$beneficio || empty($beneficio['data_fine'])) {
+        throw new RuntimeException('HR deve assegnare un periodo Congedo Straordinario Disabili completo, con data iniziale e finale.');
+    }
+    foreach ($periodi as $p) {
+        if (strtoupper((string)$p['tipo_periodo']) !== 'GIORNI') {
+            throw new RuntimeException('Il Congedo Straordinario Disabili può essere inserito solo a giorni.');
+        }
+        if ($p['data_da'] < $beneficio['data_inizio'] || $p['data_a'] > $beneficio['data_fine']) {
+            throw new RuntimeException('Il periodo richiesto non rientra nella validità del Congedo Straordinario Disabili assegnata da HR.');
+        }
+    }
+}
+
 function hrRegoleVerificaRichiesta(PDO $pdo, int $utente, string $codice, array $periodi, int $escludiRichiesta = 0): void
 {
     if (!$periodi) throw new RuntimeException('La richiesta non contiene un periodo valido.');
     foreach ($periodi as $p) {
         hrRegoleVerificaChiusura($pdo, (string)$p['data_da'], (string)$p['data_a']);
+    }
+    if (strtoupper($codice) === 'CONGEDO_STRAORDINARIO_DISABILI') {
+        hrRegoleVerificaCongedo($pdo, $utente, $periodi);
     }
     if (strtoupper($codice) === 'ALLATTAMENTO') {
         hrRegoleVerificaAllattamento($pdo, $utente, $periodi, $escludiRichiesta);
@@ -156,3 +178,4 @@ function hrRegoleVerificaRichiestaEsistente(PDO $pdo, int $richiesta, ?string $c
     hrRegoleVerificaRichiesta($pdo, (int)$r['id_utente_richiedente'], $codiceNuovo ?? (string)$r['codice'],
         $stmt->fetchAll(PDO::FETCH_ASSOC), $richiesta);
 }
+

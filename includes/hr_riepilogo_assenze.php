@@ -111,6 +111,7 @@ if (!function_exists('hrRiepilogoAssenzeRighe')) {
                 u.nome,
                 u.cognome,
                 u.username,
+                te.codice AS codice_tipologia,
                 te.descrizione AS tipologia,
                 te.descrizione_calendario,
                 te.mostra_dettaglio_hr,
@@ -212,7 +213,8 @@ if (!function_exists('hrRiepilogoAssenzeHtml')) {
             $cella = [['html' => hrEmailH($nominativo), 'grassetto' => true]];
             if ($livello === 'HR') $cella[] = ['html' => hrEmailH(hrRiepilogoAssenzeMotivo($riga, $livello))];
             $cella[] = ['html' => hrEmailH(hrRiepilogoAssenzePeriodo($riga))];
-            $oggettoBreve = trim((string)($riga['oggetto'] ?? ''));
+            $oggettoBreve = $livello !== 'HR' && ($riga['codice_tipologia'] ?? '') === 'CONGEDO_STRAORDINARIO_DISABILI'
+                ? '' : trim((string)($riga['oggetto'] ?? ''));
             $cella[] = ['html' => hrEmailH($oggettoBreve !== '' ? $oggettoBreve : '–')];
             $celle[] = $cella;
         }
@@ -549,4 +551,5 @@ if (!function_exists('hrRiepilogoAssenzeInviaAggiornamentoSeNecessario')) {
         hrRiepilogoAssenzeInvia($pdo, $oggi, 'AGGIORNAMENTO', $idRichiesta, $soloLivello);
     }
 }
+
 

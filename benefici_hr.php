@@ -17,7 +17,7 @@ $messaggio = '';
 $beneficiDisponibili = [
     'LEGGE_104' => 'Permesso Legge 104',
     'ALLATTAMENTO' => 'Allattamento',
-    'CONGEDO_STRAORDINARIO_DISABILI' => 'Congedo straordinario disabili',
+    'CONGEDO_STRAORDINARIO_DISABILI' => 'Congedo Straordinario Disabili',
     'SMART_WORKING' => 'Smart working',
 ];
 
@@ -68,8 +68,8 @@ function hrBeneficioSalva(
     int $idOperatore
 ): void {
     hrRegoleValidaDate($dataInizio, $dataFine !== '' ? $dataFine : $dataInizio);
-    if ($tipoBeneficio === 'ALLATTAMENTO' && $dataFine === '') {
-        throw new RuntimeException('Per l’allattamento devi indicare sia la data iniziale sia la data finale.');
+    if (in_array($tipoBeneficio, ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'], true) && $dataFine === '') {
+        throw new RuntimeException('Per questo diritto devi indicare sia la data iniziale sia la data finale.');
     }
     if ($tipoBeneficio === 'LEGGE_104') {
         if ($giorni <= 0 || $ore <= 0 || $oreGiornata <= 0) {
@@ -92,14 +92,14 @@ function hrBeneficioSalva(
              note_hr, attivo, aggiornato_da, data_aggiornamento)
          VALUES
             (:id_utente, :codice_beneficio, :data_inizio, :data_fine,
-             :consente_giorni, 1,
+             :consente_giorni, :consente_ore,
              :plafond_giorni_mese, :plafond_minuti_mese, :minuti_giornata_equivalenza,
              :note_hr, 1, :aggiornato_da, NOW())
          ON DUPLICATE KEY UPDATE
             data_inizio = VALUES(data_inizio),
             data_fine = VALUES(data_fine),
             consente_giorni = VALUES(consente_giorni),
-            consente_ore = 1,
+            consente_ore = VALUES(consente_ore),
             plafond_giorni_mese = VALUES(plafond_giorni_mese),
             plafond_minuti_mese = VALUES(plafond_minuti_mese),
             minuti_giornata_equivalenza = VALUES(minuti_giornata_equivalenza),
@@ -112,6 +112,7 @@ function hrBeneficioSalva(
     $stmt->execute([
         'id_utente' => $idUtente,
         'consente_giorni' => $tipoBeneficio === 'ALLATTAMENTO' ? 0 : 1,
+        'consente_ore' => $tipoBeneficio === 'CONGEDO_STRAORDINARIO_DISABILI' ? 0 : 1,
         'codice_beneficio' => $tipoBeneficio,
         'data_inizio' => $dataInizio,
         'data_fine' => $dataFine !== '' ? $dataFine : null,
@@ -317,7 +318,7 @@ layoutHeader('Benefici e diritti HR');
         <div class="section-head">
             <div>
                 <h2>Assegna beneficio/diritto</h2>
-                <div class="meta">Seleziona dipendente e diritto. Se l'assegnazione esiste già, viene riattivata e aggiornata. Per l’allattamento sono obbligatorie entrambe le date: il dipendente potrà inserire al massimo 2 ore complessive al giorno, solo in quel periodo.</div>
+                <div class="meta">Seleziona dipendente e diritto. Se l'assegnazione esiste già, viene riattivata e aggiornata. Per il Congedo Straordinario Disabili indica entrambe le date: può essere registrato solo da HR/admin e solo a giorni. Per l’allattamento sono obbligatorie entrambe le date: il dipendente potrà inserire al massimo 2 ore complessive al giorno, solo in quel periodo.</div>
             </div>
         </div>
 
@@ -430,6 +431,7 @@ layoutHeader('Benefici e diritti HR');
                         $formId = 'beneficio-' . (int)$beneficio['id_beneficio_utente'];
                         $is104 = (string)$beneficio['codice_beneficio'] === 'LEGGE_104';
                         $isAllattamento = (string)$beneficio['codice_beneficio'] === 'ALLATTAMENTO';
+                        $isCongedo = (string)$beneficio['codice_beneficio'] === 'CONGEDO_STRAORDINARIO_DISABILI';
                         $oreMese = ((int)$beneficio['plafond_minuti_mese']) / 60;
                         $oreGiornata = ((int)$beneficio['minuti_giornata_equivalenza']) / 60;
                         ?>
@@ -447,8 +449,8 @@ layoutHeader('Benefici e diritti HR');
                                 <input form="<?= h($formId) ?>" type="date" name="data_inizio" value="<?= h((string)$beneficio['data_inizio']) ?>" required>
                             </td>
                             <td class="benefit-date">
-                                <input form="<?= h($formId) ?>" type="date" name="data_fine" value="<?= h((string)($beneficio['data_fine'] ?? '')) ?>" <?= $isAllattamento ? 'required' : '' ?>>
-                                <?php if ($isAllattamento && empty($beneficio['data_fine'])): ?><strong>Completa il periodo per abilitare le richieste.</strong><?php endif; ?>
+                                <input form="<?= h($formId) ?>" type="date" name="data_fine" value="<?= h((string)($beneficio['data_fine'] ?? '')) ?>" <?= ($isAllattamento || $isCongedo) ? 'required' : '' ?>>
+                                <?php if (($isAllattamento || $isCongedo) && empty($beneficio['data_fine'])): ?><strong>Completa il periodo per abilitare le richieste.</strong><?php endif; ?>
                             </td>
                             <td class="benefit-params">
                                 <?php if ($is104): ?>
@@ -467,7 +469,7 @@ layoutHeader('Benefici e diritti HR');
                                         </label>
                                     </div>
                                 <?php else: ?>
-                                    <span class="hr-benefit-no-limit"><?= $isAllattamento ? 'Massimo 2 ore al giorno · solo a ore' : '— Nessun plafond' ?></span>
+                                    <span class="hr-benefit-no-limit"><?= $isAllattamento ? 'Massimo 2 ore al giorno · solo a ore' : ($isCongedo ? 'Solo a giorni · inserimento HR/admin' : '— Nessun plafond') ?></span>
                                     <input form="<?= h($formId) ?>" type="hidden" name="plafond_giorni_mese" value="0">
                                     <input form="<?= h($formId) ?>" type="hidden" name="plafond_ore_mese" value="0">
                                     <input form="<?= h($formId) ?>" type="hidden" name="ore_giornata_equivalenza" value="0">
@@ -505,7 +507,7 @@ layoutHeader('Benefici e diritti HR');
     function aggiornaCampi104() {
         campi104.style.display = tipo.value === 'LEGGE_104' ? 'contents' : 'none';
         const fine = document.getElementById('data_fine');
-        if (fine) fine.required = tipo.value === 'ALLATTAMENTO';
+        if (fine) fine.required = ['ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI'].includes(tipo.value);
     }
 
     tipo.addEventListener('change', aggiornaCampi104);
@@ -514,4 +516,5 @@ layoutHeader('Benefici e diritti HR');
 </script>
 
 <?php layoutFooter(); ?>
+
 

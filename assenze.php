@@ -294,7 +294,7 @@ function hrUtenteHaBeneficioConfigurato(PDO $pdo, int $idUtente, string $codiceB
            AND codice_beneficio = :codice
            AND attivo = 1
            AND (data_fine IS NULL OR data_fine >= CURDATE())
-           AND (codice_beneficio <> 'ALLATTAMENTO' OR data_fine IS NOT NULL)
+           AND (codice_beneficio NOT IN ('ALLATTAMENTO', 'CONGEDO_STRAORDINARIO_DISABILI') OR data_fine IS NOT NULL)
          LIMIT 1"
     );
     $stmt->execute([
@@ -648,22 +648,14 @@ try {
             ) {
                 throw new RuntimeException('Questa causale è riservata a HR o all’amministratore.');
             }
-            if ($codiceTipologia === 'CONGEDO_STRAORDINARIO_DISABILI') {
-                if (
-                    !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'CONGEDO_STRAORDINARIO_DISABILI', $dataDa)
-                    || !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'CONGEDO_STRAORDINARIO_DISABILI', $dataA)
-                ) {
-                    throw new RuntimeException('Il dipendente selezionato non ha un diritto Congedo straordinario disabili attivo per tutto il periodo richiesto.');
-                }
-            }
             if ($codiceTipologia === 'LEGGE_104' && !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'LEGGE_104', $dataDa)) {
                 throw new RuntimeException('Il dipendente selezionato non è abilitato da HR ai permessi Legge 104.');
             }
             if ($codiceTipologia === 'SMART' && !hrUtenteHaBeneficioAttivo($pdo, $idUtenteTarget, 'SMART_WORKING', $dataDa)) {
                 throw new RuntimeException('Il dipendente selezionato non è abilitato da HR allo smart working.');
             }
-            if ($codiceTipologia === 'ALTRO' && !$puoUsareAltro) {
-                throw new RuntimeException('La tipologia Altro può essere utilizzata solo da un responsabile per un proprio riporto diretto.');
+            if ($codiceTipologia === 'ALTRO') {
+                throw new RuntimeException('La tipologia Altro non è più disponibile per nuove richieste.');
             }
             if (in_array($codiceTipologia, ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE', 'FIERA', 'ALTRO'], true) && trim($oggetto) === '') {
                 throw new RuntimeException('Per questa tipologia è obbligatorio compilare il campo Oggetto breve.');
@@ -1465,7 +1457,7 @@ layoutHeader('Assenze e permessi');
                                     $codiceOpzione === 'CONGEDO_STRAORDINARIO_DISABILI'
                                     && !hrUtenteHaBeneficioConfigurato($pdo, $idUtenteTarget, 'CONGEDO_STRAORDINARIO_DISABILI')
                                 ) { continue; }
-                                if ($codiceOpzione === 'ALTRO' && !$puoUsareAltro) { continue; }
+                                if ($codiceOpzione === 'ALTRO') { continue; }
                                 $gruppoTipologia = $codiceOpzione === 'ALTRO' ? 'altro' : (in_array($codiceOpzione, $codiciLavoro, true) ? 'lavoro' : 'personali');
                                 $gruppiTipologie[$gruppoTipologia][] = $tipologia;
                         }
@@ -1611,12 +1603,15 @@ layoutHeader('Assenze e permessi');
                         <tr>
                             <td><strong><?= h((string)$r['codice_richiesta']) ?></strong></td>
                             <td><?= h((string)$r['richiedente']) ?></td>
-                            <td><?= h((string)$r['tipologia']) ?></td>
+                            <td><?= h(!$puoOperareComeHr && strtoupper((string)$r['tipologia_codice']) === 'CONGEDO_STRAORDINARIO_DISABILI' ? 'Assente' : (string)$r['tipologia']) ?></td>
                             <td><?= $periodo ?></td>
                             <td><span class="status-badge <?= hrClasseStato((string)$r['stato_codice']) ?>"><?= h((string)$r['stato']) ?></span></td>
                             <td><?= h(trim((string)$r['responsabile']) !== '' ? (string)$r['responsabile'] : 'Nessun responsabile') ?></td>
                             <td><?= h((string)$r['data_creazione_fmt']) ?></td>
                             <td>
+                                <?php if (!$puoOperareComeHr && strtoupper((string)$r['tipologia_codice']) === 'CONGEDO_STRAORDINARIO_DISABILI'): ?>
+                                    <span class="meta">—</span>
+                                <?php else: ?>
                                 <?php if (trim((string)$r['oggetto']) !== ''): ?>
                                     <strong><?= h((string)$r['oggetto']) ?></strong><br>
                                 <?php endif; ?>
@@ -1624,6 +1619,7 @@ layoutHeader('Assenze e permessi');
                                     <?= nl2br(h((string)$r['note_richiedente'])) ?>
                                 <?php else: ?>
                                     <span class="meta">Nessuna nota</span>
+                                <?php endif; ?>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -1912,4 +1908,5 @@ window.hrMesiChiusiInserimento = <?= json_encode($mesiChiusiInserimento, JSON_UN
 
 
 <?php layoutFooter(); ?>
+
 

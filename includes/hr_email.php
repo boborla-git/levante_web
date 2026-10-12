@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/hr_calendario.php';
+
 /**
  * Helper email HR.
  *
@@ -685,6 +687,17 @@ if (!function_exists('hrEmailTestoPrincipale')) {
     }
 }
 
+function hrEmailFiltraCongedo(array $richiesta, bool $operatoreHr): array
+{
+    if (!$operatoreHr && ($richiesta['tipologia_codice'] ?? '') === 'CONGEDO_STRAORDINARIO_DISABILI') {
+        $richiesta['tipologia'] = 'Assente';
+        $richiesta['tipologia_codice'] = 'ASSENTE';
+        $richiesta['oggetto'] = '';
+        $richiesta['note_richiedente'] = '';
+    }
+    return $richiesta;
+}
+
 if (!function_exists('hrEmailHtml')) {
     function hrEmailHtml(
         PDO $pdo,
@@ -697,6 +710,10 @@ if (!function_exists('hrEmailHtml')) {
     ): string {
         $url = hrUrlAssoluto($pdo, $link);
         $richiesta = hrEmailRichiestaDettaglio($pdo, $idRichiesta);
+        if ($richiesta !== null && ($richiesta['tipologia_codice'] ?? '') === 'CONGEDO_STRAORDINARIO_DISABILI') {
+            $operatoreHr = $idDestinatario !== null && !empty(hrCalendarioPermessiUtente($pdo, $idDestinatario)['hr']);
+            $richiesta = hrEmailFiltraCongedo($richiesta, $operatoreHr);
+        }
         $nomeDestinatario = $idDestinatario !== null ? hrEmailNomeUtente($pdo, $idDestinatario) : '';
         if ($nomeDestinatario === '' && $richiesta !== null && !empty($richiesta['richiedente'])) {
             $nomeDestinatario = (string)$richiesta['richiedente'];
@@ -791,4 +808,5 @@ if (!function_exists('hrInviaEmail')) {
         ];
     }
 }
+
 

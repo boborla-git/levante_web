@@ -52,11 +52,11 @@ function icsUtc(?string $value, DateTimeZone $rome, DateTimeZone $utc): ?string
     }
 }
 
-function icsPresentazioneEvento(array $evento, array $scopeMap, int $idUtente, bool $puoConfigurare, bool $puoVedereTipologie): array
+function icsPresentazioneEvento(array $evento, array $scopeMap, int $idUtente, bool $puoConfigurare, bool $puoVedereTipologie, bool $operatoreHr = false): array
 {
-    $dettaglio = hrMostraDettaglioCalendario($evento, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologie);
+    $dettaglio = hrMostraDettaglioCalendario($evento, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologie, $operatoreHr);
     $persona = hrNomeUtente($evento);
-    $titolo = hrEtichettaCalendario($evento, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologie);
+    $titolo = hrEtichettaCalendario($evento, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologie, $operatoreHr);
     if (($evento['codice_stato_richiesta'] ?? '') === 'IN_ATTESA') {
         $titolo = '[In attesa] ' . $titolo;
     }
@@ -175,7 +175,7 @@ foreach ($eventi as $evento) {
 
     $presentazione = icsPresentazioneEvento(
         $evento, $scopeMap, $idUtente,
-        $permessiCalendario['configurare'], $permessiCalendario['tipologie']
+        $permessiCalendario['configurare'], $permessiCalendario['tipologie'], (bool)($permessiCalendario['hr'] ?? false)
     );
     $titolo = $presentazione['titolo'];
     $descrizione = $presentazione['descrizione'];
@@ -244,3 +244,4 @@ header('X-Robots-Tag: noindex, nofollow');
 header('X-Content-Type-Options: nosniff');
 
 echo $ics;
+

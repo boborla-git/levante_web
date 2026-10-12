@@ -12,8 +12,10 @@ declare(strict_types=1);
 function hrCalendarioValutaPermessi(string $username, array $righe): array
 {
     $admin = strtolower(trim($username)) === 'admin';
+    $hr = false;
     $regole = [];
     foreach ($righe as $riga) {
+        if (($riga['codice_ruolo'] ?? '') === 'hr_responsabile_personale') $hr = true;
         if (in_array(strtolower(trim((string)($riga['codice_ruolo'] ?? ''))), ['admin', 'admin_portale', 'amministratore'], true)) {
             $admin = true;
         }
@@ -39,6 +41,7 @@ function hrCalendarioValutaPermessi(string $username, array $righe): array
     };
     $configurare = $consentito('pagina.configurazione_assenze', 'write');
     return [
+        'hr' => $admin || $hr,
         'leggere' => $consentito('pagina.calendario_assenze', 'read'),
         'configurare' => $configurare,
         'tutte' => $configurare || $consentito('azione.hr.assenze.visualizza_tutte', 'read'),
@@ -49,7 +52,7 @@ function hrCalendarioValutaPermessi(string $username, array $righe): array
 
 function hrCalendarioPermessiUtente(PDO $pdo, int $idUtente): array
 {
-    $negati = ['leggere' => false, 'configurare' => false, 'tutte' => false, 'tipologie' => false, 'pendenti' => false];
+    $negati = ['hr' => false, 'leggere' => false, 'configurare' => false, 'tutte' => false, 'tipologie' => false, 'pendenti' => false];
     if ($idUtente <= 0) return $negati;
     $stmt = $pdo->prepare('SELECT username FROM aut_utenti WHERE id_utente = ? AND attivo = 1 LIMIT 1');
     $stmt->execute([$idUtente]);
@@ -235,8 +238,11 @@ function hrScopeUtentiCalendario(PDO $pdo, int $idUtente, bool $puoVedereTutteAs
 }
 
 
-function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare, bool $puoVedereTipologieAssenze): bool
+function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare, bool $puoVedereTipologieAssenze, bool $operatoreHr = false): bool
 {
+    if (strtoupper((string)($row['codice_tipologia'] ?? '')) === 'CONGEDO_STRAORDINARIO_DISABILI') {
+        return $operatoreHr;
+    }
     $idRichiedente = (int)($row['id_utente_richiedente'] ?? 0);
 
     if ($idRichiedente === $idUtenteCorrente) {
@@ -261,14 +267,15 @@ function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteC
 }
 
 
-function hrEtichettaCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare, bool $puoVedereTipologieAssenze): string
+function hrEtichettaCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare, bool $puoVedereTipologieAssenze, bool $operatoreHr = false): string
 {
     $statoPresenza = trim((string)($row['stato_presenza_breve'] ?: $row['stato_presenza'] ?: 'Assente'));
     $dettaglio = trim((string)($row['descrizione_calendario'] ?: $row['tipologia'] ?: 'Assenza'));
 
-    if (hrMostraDettaglioCalendario($row, $scopeMap, $idUtenteCorrente, $puoConfigurare, $puoVedereTipologieAssenze)) {
+    if (hrMostraDettaglioCalendario($row, $scopeMap, $idUtenteCorrente, $puoConfigurare, $puoVedereTipologieAssenze, $operatoreHr)) {
         return $dettaglio !== '' ? $dettaglio : $statoPresenza;
     }
 
     return $statoPresenza !== '' ? $statoPresenza : 'Assente';
 }
+

@@ -52,7 +52,7 @@ class RegoleStmt extends PDOStatement {
                 $this->rows[] = $cl;
             }
         }
-        elseif (str_starts_with($s, 'SELECT data_inizio, data_fine FROM hr_benefici')) { $this->rows = $b ? [$b] : []; }
+        elseif (str_starts_with($s, 'SELECT data_inizio, data_fine FROM hr_benefici')) { $this->rows = $b && (!str_contains($s, 'data_fine IS NOT NULL') || !empty($b['data_fine'])) ? [$b] : []; }
         elseif (str_starts_with($s, 'SELECT 1 FROM hr_benefici')) {
             $valid = (bool)$b;
             if (isset($p['data_rif'])) $valid = $valid && $b['data_inizio'] <= $p['data_rif'] && (!$b['data_fine'] || $b['data_fine'] >= $p['data_rif']);
@@ -79,7 +79,7 @@ class RegoleStmt extends PDOStatement {
         }
         elseif (str_contains($s, 'FROM hr_tipologie_evento') && str_contains($s, 'ORDER BY ordinamento')) {
             foreach (['FERIE','ALLATTAMENTO','MALATTIA','VISITA_CLIENTE','CONGEDO_STRAORDINARIO_DISABILI','ALTRO'] as $i => $code) {
-                $this->rows[] = ['id_tipologia_evento'=>$i+1,'codice'=>$code,'descrizione'=>$code,'richiede_approvazione'=>0,'approvazione_obbligatoria'=>0,'consente_giorni'=>$code === 'ALLATTAMENTO' ? 0 : 1,'consente_ore'=>1];
+                $this->rows[] = ['id_tipologia_evento'=>$i+1,'codice'=>$code,'descrizione'=>$code,'richiede_approvazione'=>0,'approvazione_obbligatoria'=>0,'consente_giorni'=>$code === 'ALLATTAMENTO' ? 0 : 1,'consente_ore'=>$code === 'CONGEDO_STRAORDINARIO_DISABILI' ? 0 : 1];
             }
         }
         elseif (str_starts_with($s, 'SELECT u.id_utente,')) { $this->rows = [['id_utente'=>1,'nome'=>'Persona','cognome'=>'Demo','nominativo'=>'Persona Demo']]; }
@@ -126,3 +126,4 @@ try {
         eval('?>' . $source);
     }
 } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); $caught = $e->getMessage(); }
+

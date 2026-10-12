@@ -450,13 +450,14 @@ function layoutRenderAssenzeRegoleScript(): void
         const puoUsareAltro=window.hrPuoUsareAltro===true;
         if(!tipologia||!modalita)return;
         const modalitaOriginali=Array.from(modalita.options).map(function(option){return{value:option.value,text:option.textContent};});
-        const tipologieOriginali=Array.from(tipologia.options).map(function(option){return{value:option.value,text:option.textContent};});
+        const tipologieOriginali=Array.from(tipologia.options).map(function(option){return{value:option.value,text:option.textContent,codice:option.dataset.codice||'',gruppo:option.parentElement&&option.parentElement.tagName==='OPTGROUP'?option.parentElement.label:''};});
         function idUtenteSelezionato(){const campo=document.querySelector('[name="id_utente"]');return campo?parseInt(campo.value||'0',10):0;}
         function utenteHa104(){return utenti104.indexOf(idUtenteSelezionato())!==-1;}
         function utenteHaSmart(){return utentiSmart.indexOf(idUtenteSelezionato())!==-1;}
         function ricostruisciTipologie(){
             const precedente=tipologia.value;
             tipologia.innerHTML='';
+            const gruppi=new Map();
             tipologieOriginali.forEach(function(item){
                 const id=parseInt(item.value||'0',10);
                 const rule=rules[id]||null;
@@ -465,9 +466,10 @@ function layoutRenderAssenzeRegoleScript(): void
                     if(codice==='LEGGE_104'&&!utenteHa104())return;
                     if(codice==='SMART'&&!utenteHaSmart())return;
                     if(codice==='MALATTIA'&&!puoGestireMalattia)return;
-                    if(codice==='ALTRO'&&!puoUsareAltro)return;
+                    if(codice==='ALTRO')return;
                 }
-                const opt=document.createElement('option');opt.value=item.value;opt.textContent=item.text;tipologia.appendChild(opt);
+                const opt=document.createElement('option');opt.value=item.value;opt.textContent=item.text;opt.dataset.codice=item.codice||(rule?String(rule.codice||'').toUpperCase():'');
+                let contenitore=tipologia;if(item.gruppo){if(!gruppi.has(item.gruppo)){const gruppo=document.createElement('optgroup');gruppo.label=item.gruppo;gruppi.set(item.gruppo,gruppo);tipologia.appendChild(gruppo);}contenitore=gruppi.get(item.gruppo);}contenitore.appendChild(opt);
             });
             const esiste=Array.from(tipologia.options).some(function(opt){return opt.value===precedente;});
             tipologia.value=esiste?precedente:'';
@@ -499,7 +501,7 @@ function layoutRenderAssenzeRegoleScript(): void
             if(codice==='LEGGE_104'&&!utenteHa104()){event.preventDefault();tipologia.value='';applicaRegole();alert('Il dipendente selezionato non è abilitato da HR ai permessi Legge 104.');return;}
             if(codice==='SMART'&&!utenteHaSmart()){event.preventDefault();tipologia.value='';applicaRegole();alert('Il dipendente selezionato non è abilitato da HR allo smart working.');return;}
             if(codice==='MALATTIA'&&!puoGestireMalattia){event.preventDefault();tipologia.value='';applicaRegole();alert('La gestione delle assenze per malattia è riservata a HR.');return;}
-            if(codice==='ALTRO'&&!puoUsareAltro){event.preventDefault();tipologia.value='';applicaRegole();alert('La tipologia Altro può essere usata solo da un responsabile per un proprio riporto diretto.');return;}
+            if(codice==='ALTRO'){event.preventDefault();tipologia.value='';applicaRegole();alert('La tipologia Altro non è più disponibile per nuove richieste.');return;}
             if(oggetto&&oggetto.required&&oggetto.value.trim()===''){event.preventDefault();oggetto.focus();alert('Compila il campo Oggetto breve per questa tipologia.');return;}
             if(rule&&rule.motivazione_obbligatoria&&note&&note.value.trim()===''){event.preventDefault();note.focus();alert('Compila le note del richiedente per questa tipologia.');}
         });
@@ -516,3 +518,4 @@ function layoutFooter(): void
     (function(){var html=document.documentElement,drawer=document.querySelector('.nav-drawer'),backdrop=document.querySelector('.nav-drawer-backdrop'),toggle=document.querySelector('.nav-drawer-toggle'),closeBtn=document.querySelector('.nav-drawer-close');function openDrawer(){if(!drawer)return;html.classList.add('drawer-open');if(toggle)toggle.setAttribute('aria-expanded','true');}function closeDrawer(){html.classList.remove('drawer-open');if(toggle)toggle.setAttribute('aria-expanded','false');}if(toggle)toggle.addEventListener('click',openDrawer);if(closeBtn)closeBtn.addEventListener('click',closeDrawer);if(backdrop)backdrop.addEventListener('click',closeDrawer);document.addEventListener('keydown',function(event){if(event.key==='Escape'){closeDrawer();document.querySelectorAll('.topnav-dropdown.is-open').forEach(function(item){item.classList.remove('is-open');var button=item.querySelector('.topnav-parent');if(button)button.setAttribute('aria-expanded','false');});}});document.querySelectorAll('.nav-drawer details.drawer-group').forEach(function(group){group.addEventListener('toggle',function(){if(!group.open)return;document.querySelectorAll('.nav-drawer details.drawer-group[open]').forEach(function(other){if(other!==group&&!group.contains(other))other.open=false;});});});var desktopParents=document.querySelectorAll('.topnav-dropdown > .topnav-parent');desktopParents.forEach(function(btn){btn.addEventListener('click',function(event){if(window.innerWidth<=1100)return;event.preventDefault();var dropdown=btn.closest('.topnav-dropdown'),isOpen=dropdown.classList.contains('is-open');document.querySelectorAll('.topnav-dropdown.is-open').forEach(function(item){if(item!==dropdown){item.classList.remove('is-open');var other=item.querySelector('.topnav-parent');if(other)other.setAttribute('aria-expanded','false');}});dropdown.classList.toggle('is-open',!isOpen);btn.setAttribute('aria-expanded',isOpen?'false':'true');});});document.addEventListener('click',function(event){if(!event.target.closest('.topnav'))document.querySelectorAll('.topnav-dropdown.is-open').forEach(function(item){item.classList.remove('is-open');var button=item.querySelector('.topnav-parent');if(button)button.setAttribute('aria-expanded','false');});});function normalizzaFiltroRapido(valore){return(valore||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}function applicaFiltroRapido(input,table){var filtro=normalizzaFiltroRapido(input.value),righe=table.querySelectorAll('tbody tr'),visibili=0;righe.forEach(function(row){var testoFonte=row.getAttribute('data-filter-text')||row.textContent||'',testo=normalizzaFiltroRapido(testoFonte),mostra=testo.indexOf(filtro)!==-1;row.style.display=mostra?'':'none';if(mostra)visibili++;});var empty=document.querySelector('[data-quick-filter-empty="'+table.id+'"]');if(empty)empty.style.display=visibili===0?'':'none';}document.querySelectorAll('[data-table-filter], [data-quick-filter]').forEach(function(input){var tableId=input.getAttribute('data-table-filter')||input.getAttribute('data-quick-filter');if(!tableId)return;var table=document.getElementById(tableId);if(!table)return;applicaFiltroRapido(input,table);input.addEventListener('input',function(){applicaFiltroRapido(input,table);});});window.addEventListener('resize',function(){if(window.innerWidth>1100)closeDrawer();});})();
     </script><?php layoutRenderAssenzeRegoleScript(); ?></body></html><?php
 }
+

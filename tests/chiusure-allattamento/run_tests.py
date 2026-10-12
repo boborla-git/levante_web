@@ -114,3 +114,24 @@ run('refusal still allowed',dict(page='approvazioni_assenze.php',role='hr',metho
 d = run('impersonated POST denied',dict(role='admin',method='POST',post=post,impersonate=True))
 assert d['status'] == 403 and not d['writes']
 print(f'{total} scenari PASS (PHP reale, DB e notifiche sostituiti).')
+
+
+# Congedo Straordinario Disabili: solo HR/admin, giorni e validità completa.
+congedo = post | dict(id_tipologia_evento='5', modalita='giorni', data_da='2099-06-01',data_a='2099-06-30')
+for role in ['hr','admin']:
+    run('congedo giorni '+role,dict(method='POST',post=congedo,role=role),committed=True)
+    run('congedo ore '+role,dict(method='POST',post=congedo | dict(modalita='ore'),role=role),'non consente richieste a ore')
+    run('congedo scaduto '+role,dict(method='POST',post=congedo,role=role,benefit=dict(data_inizio='2099-06-01',data_fine='2099-06-15')),'non rientra')
+    d=run('congedo scelta HR '+role,dict(role=role))
+    assert 'data-codice="CONGEDO_STRAORDINARIO_DISABILI"' in d['html']
+run('congedo privato',dict(method='POST',post=congedo),'riservata a HR')
+d=run('congedo nascosto utente',{})
+assert 'data-codice="CONGEDO_STRAORDINARIO_DISABILI"' not in d['html']
+run('congedo senza al',dict(method='POST',post=congedo,role='hr',benefit=dict(data_inizio='2099-01-01',data_fine=None)),'periodo Congedo Straordinario')
+run('congedo assegna',dict(page='benefici_hr.php',role='hr',method='POST',post=assign | dict(tipo_beneficio='CONGEDO_STRAORDINARIO_DISABILI')),committed=True)
+run('congedo assegna senza al',dict(page='benefici_hr.php',role='hr',method='POST',post=assign | dict(tipo_beneficio='CONGEDO_STRAORDINARIO_DISABILI',data_fine='')),'sia la data iniziale')
+for role in ['', 'hr','admin']:
+    run('altro bloccato '+role,dict(role=role,method='POST',post=post | dict(id_tipologia_evento='6',oggetto='Prova')),'non è più disponibile')
+    d=run('altro non elencato '+role,dict(role=role))
+    assert 'data-codice="ALTRO"' not in d['html']
+print(f'Totale {total} scenari PASS, inclusi congedo e rimozione Altro.')

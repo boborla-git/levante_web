@@ -258,3 +258,17 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Per correggere una configurazione preesistente, caricare il file completo `permessi_ruoli.php` nella cartella principale, aprire il ruolo interessato, riselezionare i livelli voluti e salvare. Le eventuali sessioni legacy vanno aggiornate uscendo/rientrando; Visualizza come va riaperto dal profilo amministratore.
 - Per operativo_ordini, le impostazioni richieste dalla schermata sono Scrittura + Menu per Assenze e permessi, Permessi tutelati e Calendario assenze; ciò non comporta accesso a tutte le persone, alle causali riservate, alle richieste pendenti globali o alla configurazione HR.
 - Test: 162 combinazioni confrontate con le funzioni di autorizzazione reali, oltre a GET dell'editor, salvataggio dei tre livelli, visibilità menu indipendente, isolamento del ruolo selezionato, dinieghi delle azioni riservate e rollback in caso di errore. PDO sostituito: nessuna modifica al database del sito.
+
+
+
+## 2026-10-12 — Congedo Straordinario Disabili e rimozione Altro
+
+- `CONGEDO_STRAORDINARIO_DISABILI` è un diritto tutelato assegnato in `hr_benefici_utenti`, nella pagina Benefici e diritti. HR (`hr_responsabile_personale`) e amministratore mantengono le stesse capacità, senza collegamenti al nome/username di Giorgia.
+- Le date dal/al sono obbligatorie ed inclusive. Il congedo si registra solo a giorni e solo entro il periodo assegnato; assegnazioni senza fine vanno completate. Nessun plafond mensile della Legge 104 viene applicato al congedo.
+- Nuova richiesta, riclassificazione e approvazione condividono il controllo server della validità e della modalità. Restano attivi sovrapposizioni, chiusure aziendali, mesi chiusi e transazioni. La causale non è selezionabile da dipendenti/responsabili ordinari.
+- Nel calendario web e ICS la causale e il suo oggetto sono visibili soltanto a HR/admin, anche rispetto al proprietario e a permessi estesi di visualizzazione tipologie. Gli altri vedono Assente, senza categoria ICS o codice della causale nel payload del calendario. Il livello HR è ricavato dai ruoli DB del proprietario del feed, non dalla sessione del browser.
+- Nella pagina Assenze, per chi non è HR/admin, le registrazioni di congedo sono etichettate Assente e non mostrano oggetto/note. Anche le email individuali mascherano tipologia, oggetto e note per destinatari non HR/admin; il riepilogo BASE non mostra l'oggetto di questa causale. Il riepilogo HR mantiene il motivo dettagliato e il layout esistente.
+- ALTRO non compare più fra le nuove richieste per nessun ruolo. Il server ne blocca l'inserimento; le richieste preesistenti rimangono registrate, visibili con le regole precedenti e riclassificabili da HR/admin. La tipologia non viene disattivata nel DB perché ciò nasconderebbe lo storico dal calendario.
+- Il ricostruttore JavaScript comune conserva optgroup personali/lavoro, codici delle opzioni e selezione; non reinserisce ALTRO. Restano invariati Permesso (ROL), Allattamento e gli altri diritti.
+- Migration `sql/2026-10-12_congedo_straordinario_disabili.sql` ripetibile, da eseguire prima dei PHP: inserisce la causale se mancante e aggiorna modalità/privacy senza cancellare richieste, token o periodi assegnati.
+- Verifiche: 94 scenari dei flussi con PHP reale/PDO sostituito, 20 combinazioni privacy calendario/ICS, filtro email HR/non HR e ricostruzione select eseguita in JavaScript. Nessuna modifica al DB del sito né invio di email reale.

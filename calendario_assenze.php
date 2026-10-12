@@ -209,7 +209,7 @@ try {
             $start = new DateTimeImmutable((string)$row['data_da']);
             $end = new DateTimeImmutable((string)$row['data_a']);
             $uid = (int)$row['id_utente_richiedente'];
-            $showDetail = hrMostraDettaglioCalendario($row, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologieAssenze);
+            $showDetail = hrMostraDettaglioCalendario($row, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologieAssenze, (bool)($permessiCalendario['hr'] ?? false));
             $label = $showDetail
                 ? trim((string)($row['descrizione_calendario'] ?: $row['tipologia'] ?: 'Assenza'))
                 : trim((string)($row['stato_presenza_breve'] ?: $row['stato_presenza'] ?: 'Assente'));
@@ -219,7 +219,7 @@ try {
                 $eventsByUserDay[$uid][$key][] = [
                     'id'=>(int)$row['id_richiesta'],
                     'label'=>$label !== '' ? $label : 'Assenza',
-                    'codice_tipologia'=>strtoupper(trim((string)($row['codice_tipologia'] ?? ''))),
+                    'codice_tipologia'=>!$showDetail && strtoupper((string)($row['codice_tipologia'] ?? '')) === 'CONGEDO_STRAORDINARIO_DISABILI' ? 'ASSENZA_PERSONALE' : strtoupper(trim((string)($row['codice_tipologia'] ?? ''))),
                     'stato'=>(string)$row['codice_stato_richiesta'],
                     'stato_label'=>(string)$row['stato_richiesta'],
                     'tipo_periodo'=>(string)$row['tipo_periodo'],
@@ -541,5 +541,6 @@ layoutHeader('Calendario assenze');
 })();
 </script>
 <?php layoutFooter(); ?>
+
 
 
