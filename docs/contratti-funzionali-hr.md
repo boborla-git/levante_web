@@ -287,3 +287,12 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - La pagina Relazioni distingue nella mappa la relazione gerarchica da quella informativa e conserva entrambe quando le persone coincidono. Il calendario aggiunge l'icona occhio e la legenda Solo calendario; ordine di sé, riporti e gruppi precedente preservato.
 - Eseguire la migration ripetibile `sql/2026-10-13_visibilita_calendario.sql`, poi caricare i cinque PHP elencati in `docs/aggiornamento-2026-10-13-visibilita-calendario.md`. Nessuna relazione viene assegnata automaticamente.
 - Verifica: 46 controlli su servizi, direzione, date, revoca, scope gestionale distinto e privacy web/ICS; regressione del servizio responsabili; 19 scenari del calendario e relativo JavaScript. PHP reale, PDO sostituito; nessuna modifica al database del sito.
+
+
+## 2026-10-13 — Gruppi di relazione nella mappa organizzativa
+
+- Nei riquadri dei referenti, le persone sono raggruppate per relazione: una sola intestazione Risponde funzionalmente a e una sola intestazione Mostra nel calendario di, con i rispettivi nominativi sotto.
+- Responsabile diretto e funzionale condividono il gruppo visivo precedente; le relazioni informative sono separate e usano l'icona occhio. I gruppi vuoti non vengono mostrati.
+- Periodi, note, badge, filtro rapido, conteggio delle persone e archivio restano disponibili. La stessa persona con entrambe le relazioni compare nei due gruppi; il totale del referente continua a contare persone distinte.
+- Modifica soltanto al rendering di relazioni_organizzative.php: backend, query, CSRF, dati e autorizzazioni invariati. Nessuno script SQL necessario.
+- Verifica PHP e rendering dei casi misto, solo gerarchia, solo calendario e vuoto; intestazioni uniche e conservazione di persone, date e note.

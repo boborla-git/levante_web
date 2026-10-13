@@ -198,6 +198,10 @@ layoutHeader('Relazioni organizzative');
 <link rel="stylesheet" href="/assets/hr.css">
 
 
+<style>
+.hr-org-relation-group + .hr-org-relation-group{margin-top:20px;padding-top:16px;border-top:1px solid #dbe3ec}
+.hr-org-relation-group-title{margin:0 0 12px;font-size:15px;font-weight:700;color:#005aa9}
+</style>
 <div class="card card-compact hr-org-hero">
     <div class="section-head">
         <div>
@@ -314,6 +318,11 @@ layoutHeader('Relazioni organizzative');
                 $responsabile = $gruppo['responsabile'];
                 $collaboratori = $gruppo['collaboratori'] ?? [];
                 $numeroCollaboratori = count(array_unique(array_map(static fn(array $r): int => (int)$r['id_utente'], $collaboratori)));
+                $collaboratoriPerTipo = ['risponde funzionalmente a' => [], 'mostra nel calendario di' => []];
+                foreach ($collaboratori as $r) {
+                    $tipoVisualizzato = descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione']);
+                    $collaboratoriPerTipo[$tipoVisualizzato][] = $r;
+                }
                 $searchText = strtolower((string)$responsabile['nome'] . ' ' . (string)$responsabile['username']);
                 foreach ($collaboratori as $collab) {
                     $searchText .= ' ' . strtolower(hrRelazioneNomeUtente($collab, 'utente') . ' ' . hrRelazioneUsername($collab, 'utente') . ' ' . (string)($collab['note'] ?? ''));
@@ -329,15 +338,18 @@ layoutHeader('Relazioni organizzative');
                     </summary>
                     <div class="hr-org-manager-body">
                         <div class="hr-org-manager-note">Persone collegate a questo referente. La relazione indicata distingue responsabilità e sola visibilità del calendario.</div>
-                        <div class="hr-org-compact-relations">
-                            <?php foreach ($collaboratori as $r): ?>
+                        <?php foreach ($collaboratoriPerTipo as $tipoVisualizzato => $persone): if ($persone === []) continue; ?>
+                        <section class="hr-org-relation-group">
+                            <h3 class="hr-org-relation-group-title"><?= h(ucfirst($tipoVisualizzato)) ?></h3>
+                            <div class="hr-org-compact-relations">
+                            <?php foreach ($persone as $r): ?>
                                 <div class="hr-org-compact-relation">
                                     <div class="hr-org-compact-person">
-                                        <span class="hr-org-relation-icon"><i class="la la-user-check" aria-hidden="true"></i></span>
+                                        <span class="hr-org-relation-icon"><i class="la <?= (string)$r['codice'] === 'VISIBILITA_CALENDARIO' ? 'la-eye' : 'la-user-check' ?>" aria-hidden="true"></i></span>
                                         <div>
                                             <div class="hr-org-person"><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></div>
                                             <div class="hr-org-compact-meta">
-                                                <span><?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></span> · <span><?= h(hrRelazionePeriodo($r)) ?></span>
+                                                <span><?= h(hrRelazionePeriodo($r)) ?></span>
                                                 <?= hrRelazioneTestBadge(hrRelazioneUsername($r, 'utente')) ?>
                                             </div>
                                             <?php if (trim((string)($r['note'] ?? '')) !== ''): ?>
@@ -347,7 +359,9 @@ layoutHeader('Relazioni organizzative');
                                     </div>
                                 </div>
                             <?php endforeach; ?>
-                        </div>
+                            </div>
+                        </section>
+                        <?php endforeach; ?>
                     </div>
                 </details>
             <?php endforeach; ?>
@@ -418,4 +432,5 @@ layoutHeader('Relazioni organizzative');
 <script src="/assets/hr-common.js"></script>
 
 <?php layoutFooter(); ?>
+
 
