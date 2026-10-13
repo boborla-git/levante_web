@@ -154,6 +154,19 @@ function hrIdsDirettiCalendario(PDO $pdo, int $idUtente): array
 }
 
 
+function hrIdsVisibilitaCalendario(PDO $pdo, int $idUtente): array
+{
+    $stmt = $pdo->prepare("SELECT DISTINCT ro.id_utente
+        FROM hr_relazioni_organizzative ro
+        INNER JOIN hr_tipi_relazione_organizzativa tro ON tro.id_tipo_relazione = ro.id_tipo_relazione
+          AND tro.attivo = 1 AND tro.codice = 'VISIBILITA_CALENDARIO'
+        INNER JOIN aut_utenti u ON u.id_utente = ro.id_utente AND u.attivo = 1
+        WHERE ro.id_utente_collegato = :id_utente AND ro.attiva = 1
+          AND ro.data_inizio <= CURDATE() AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE())");
+    $stmt->execute(['id_utente' => $idUtente]);
+    return array_values(array_unique(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN))));
+}
+
 function hrIdsGruppoCalendario(PDO $pdo, int $idUtente): array
 {
     $stmt = $pdo->prepare(
@@ -188,7 +201,11 @@ function hrScopeUtentiCalendario(PDO $pdo, int $idUtente, bool $puoVedereTutteAs
              ORDER BY cognome, nome, username"
         );
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $visibili = hrIdsVisibilitaCalendario($pdo, $idUtente);
+        foreach ($rows as &$row) $row['scope_calendario'] = in_array((int)$row['id_utente'], $visibili, true) ? 1 : 0;
+        unset($row);
+        return $rows;
     }
 
     $map = [];
@@ -211,6 +228,11 @@ function hrScopeUtentiCalendario(PDO $pdo, int $idUtente, bool $puoVedereTutteAs
         $map[$uid]['scope_gruppo'] = true;
     }
 
+    foreach (hrIdsVisibilitaCalendario($pdo, $idUtente) as $uid) {
+        if (!isset($map[$uid])) $map[$uid] = ['scope_gerarchia' => false, 'scope_gruppo' => false];
+        $map[$uid]['scope_calendario'] = true;
+    }
+
     $ids = array_keys($map);
     if ($ids === []) {
         return [];
@@ -231,6 +253,7 @@ function hrScopeUtentiCalendario(PDO $pdo, int $idUtente, bool $puoVedereTutteAs
         $uid = (int)$row['id_utente'];
         $row['scope_gerarchia'] = !empty($map[$uid]['scope_gerarchia']) ? 1 : 0;
         $row['scope_gruppo'] = !empty($map[$uid]['scope_gruppo']) ? 1 : 0;
+        $row['scope_calendario'] = !empty($map[$uid]['scope_calendario']) ? 1 : 0;
     }
     unset($row);
 
@@ -247,6 +270,11 @@ function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteC
 
     if ($idRichiedente === $idUtenteCorrente) {
         return true;
+    }
+
+    if (!$operatoreHr && !empty($scopeMap[$idRichiedente]['calendario'])) {
+        return in_array(strtoupper((string)($row['codice_tipologia'] ?? '')), ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE', 'FIERA', 'TRASFERTA', 'SMART'], true)
+            && (int)($row['mostra_dettaglio_responsabili'] ?? 1) === 1;
     }
 
     if ($puoConfigurare || $puoVedereTipologieAssenze) {
@@ -269,6 +297,9 @@ function hrMostraDettaglioCalendario(array $row, array $scopeMap, int $idUtenteC
 
 function hrEtichettaCalendario(array $row, array $scopeMap, int $idUtenteCorrente, bool $puoConfigurare, bool $puoVedereTipologieAssenze, bool $operatoreHr = false): string
 {
+    $uid = (int)($row['id_utente_richiedente'] ?? 0);
+    if (!$operatoreHr && $uid !== $idUtenteCorrente && !empty($scopeMap[$uid]['calendario'])
+        && !in_array(strtoupper((string)($row['codice_tipologia'] ?? '')), ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE', 'FIERA', 'TRASFERTA', 'SMART'], true)) return 'Assente';
     $statoPresenza = trim((string)($row['stato_presenza_breve'] ?: $row['stato_presenza'] ?: 'Assente'));
     $dettaglio = trim((string)($row['descrizione_calendario'] ?: $row['tipologia'] ?: 'Assenza'));
 
@@ -278,4 +309,5 @@ function hrEtichettaCalendario(array $row, array $scopeMap, int $idUtenteCorrent
 
     return $statoPresenza !== '' ? $statoPresenza : 'Assente';
 }
+
 

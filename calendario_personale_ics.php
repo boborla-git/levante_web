@@ -139,6 +139,7 @@ try {
             'label' => hrNomeUtente($persona),
             'gerarchia' => (int)($persona['scope_gerarchia'] ?? 0) === 1,
             'gruppo' => (int)($persona['scope_gruppo'] ?? 0) === 1,
+            'calendario' => (int)($persona['scope_calendario'] ?? 0) === 1,
         ];
     }
     // Oggi in Italia, compreso: mantieni anche le assenze iniziate prima
@@ -244,4 +245,5 @@ header('X-Robots-Tag: noindex, nofollow');
 header('X-Content-Type-Options: nosniff');
 
 echo $ics;
+
 

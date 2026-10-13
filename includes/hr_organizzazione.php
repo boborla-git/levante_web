@@ -97,6 +97,40 @@ function hrOrgAssegnaResponsabile(PDO $pdo, int $utente, int $responsabile, int 
     }
 }
 
+/** Collegamento direzionale solo informativo: non sostituisce i responsabili. */
+function hrOrgAssegnaVisibilitaCalendario(PDO $pdo, int $utente, int $referente, int $tipo, string $inizio, ?string $fine, ?string $note = null): void
+{
+    if (!$pdo->inTransaction()) throw new LogicException('Transazione organizzativa non avviata.');
+    $inizio = hrOrgData($inizio);
+    $fine = $fine !== null && $fine !== '' ? hrOrgData($fine) : null;
+    if ($fine !== null && $fine < $inizio) throw new RuntimeException('La data fine non può precedere la data inizio.');
+    if ($utente <= 0 || $referente <= 0 || $utente === $referente) throw new RuntimeException('Utente e referente non validi.');
+    $stmt = $pdo->prepare('SELECT id_utente FROM aut_utenti WHERE id_utente = :id AND attivo = 1 FOR UPDATE');
+    $stmt->execute(['id' => $utente]);
+    if ($stmt->fetchColumn() === false) throw new RuntimeException('Utente non trovato o non attivo.');
+    $stmt = $pdo->prepare('SELECT id_utente FROM aut_utenti WHERE id_utente = :id AND attivo = 1');
+    $stmt->execute(['id' => $referente]);
+    if ($stmt->fetchColumn() === false) throw new RuntimeException('Referente non trovato o non attivo.');
+    $stmt = $pdo->prepare('SELECT codice FROM hr_tipi_relazione_organizzativa WHERE id_tipo_relazione = :id AND attivo = 1');
+    $stmt->execute(['id' => $tipo]);
+    if ($stmt->fetchColumn() !== 'VISIBILITA_CALENDARIO') throw new RuntimeException('Tipo di visibilità non valido.');
+    $stmt = $pdo->prepare('SELECT * FROM hr_relazioni_organizzative
+        WHERE id_utente = :utente AND id_utente_collegato = :referente AND id_tipo_relazione = :tipo
+          AND attiva = 1 AND (:fine IS NULL OR data_inizio <= :fine_confronto)
+          AND (data_fine IS NULL OR data_fine >= :inizio) FOR UPDATE');
+    $stmt->execute(['utente' => $utente, 'referente' => $referente, 'tipo' => $tipo,
+        'fine' => $fine, 'fine_confronto' => $fine, 'inizio' => $inizio]);
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        if ($r['data_inizio'] === $inizio && $r['data_fine'] === $fine && trim((string)$r['note']) === trim((string)$note)) return;
+        throw new RuntimeException('Esiste già una visibilità per queste persone nel periodo scelto. Verifica o chiudi il collegamento esistente.');
+    }
+    $stmt = $pdo->prepare('INSERT INTO hr_relazioni_organizzative
+        (id_utente,id_utente_collegato,id_tipo_relazione,data_inizio,data_fine,attiva,note)
+        VALUES (:utente,:responsabile,:tipo,:inizio,:fine,1,:note)');
+    $stmt->execute(['utente' => $utente, 'responsabile' => $referente, 'tipo' => $tipo,
+        'inizio' => $inizio, 'fine' => $fine, 'note' => $note]);
+}
+
 function hrOrgChiudiRelazione(PDO $pdo, int $idRelazione): void
 {
     if (!$pdo->inTransaction()) throw new LogicException('Transazione organizzativa non avviata.');
@@ -110,3 +144,4 @@ function hrOrgChiudiRelazione(PDO $pdo, int $idRelazione): void
     $stmt = $pdo->prepare('UPDATE hr_relazioni_organizzative SET attiva = 0, data_fine = CASE WHEN data_inizio > CURDATE() THEN data_fine WHEN data_fine IS NULL OR data_fine > CURDATE() THEN CURDATE() ELSE data_fine END WHERE id_relazione_organizzativa = :id');
     $stmt->execute(['id' => $idRelazione]);
 }
+

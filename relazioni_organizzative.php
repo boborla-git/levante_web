@@ -35,6 +35,7 @@ function h(?string $v): string
 
 function descrizioneRelazioneBreve(string $codice, string $fallback): string
 {
+    if ($codice === 'VISIBILITA_CALENDARIO') return 'mostra nel calendario di';
     if ($codice === 'RESPONSABILE_DIRETTO' || $codice === 'RESPONSABILE_FUNZIONALE') {
         return 'risponde funzionalmente a';
     }
@@ -104,7 +105,13 @@ try {
             }
 
             $pdo->beginTransaction();
-            hrOrgAssegnaResponsabile($pdo, $idUtente, $idCollegato, $idTipo, $dataInizio, $dataFine !== '' ? $dataFine : null, $note !== '' ? $note : null);
+            $stmtTipo = $pdo->prepare('SELECT codice FROM hr_tipi_relazione_organizzativa WHERE id_tipo_relazione = :id AND attivo = 1');
+            $stmtTipo->execute(['id' => $idTipo]);
+            if ($stmtTipo->fetchColumn() === 'VISIBILITA_CALENDARIO') {
+                hrOrgAssegnaVisibilitaCalendario($pdo, $idUtente, $idCollegato, $idTipo, $dataInizio, $dataFine !== '' ? $dataFine : null, $note !== '' ? $note : null);
+            } else {
+                hrOrgAssegnaResponsabile($pdo, $idUtente, $idCollegato, $idTipo, $dataInizio, $dataFine !== '' ? $dataFine : null, $note !== '' ? $note : null);
+            }
             $pdo->commit();
 
             header('Location: relazioni_organizzative.php?ok=1');
@@ -138,7 +145,7 @@ try {
          ORDER BY cognome, nome, username"
     )->fetchAll();
 
-    $tipiRelazione = $pdo->query("SELECT * FROM hr_tipi_relazione_organizzativa WHERE attivo = 1 AND codice IN ('RESPONSABILE_FUNZIONALE','RESPONSABILE_DIRETTO') ORDER BY CASE WHEN codice = 'RESPONSABILE_FUNZIONALE' THEN 0 ELSE 1 END, descrizione")->fetchAll();
+    $tipiRelazione = $pdo->query("SELECT * FROM hr_tipi_relazione_organizzativa WHERE attivo = 1 AND codice IN ('RESPONSABILE_FUNZIONALE','RESPONSABILE_DIRETTO','VISIBILITA_CALENDARIO') ORDER BY CASE WHEN codice = 'RESPONSABILE_FUNZIONALE' THEN 0 ELSE 1 END, descrizione")->fetchAll();
 
     $relazioni = $pdo->query(
         "SELECT ro.*, CASE WHEN ro.attiva = 1 AND ro.data_inizio <= CURDATE() AND (ro.data_fine IS NULL OR ro.data_fine >= CURDATE()) THEN 1 ELSE 0 END AS vigente, CASE WHEN ro.data_inizio > CURDATE() THEN 1 ELSE 0 END AS futura, tr.codice, tr.descrizione AS tipo_relazione,
@@ -164,7 +171,7 @@ try {
                 'nome' => hrRelazioneNomeUtente($r, 'collegato'),
                 'username' => hrRelazioneUsername($r, 'collegato'),
             ];
-            $collaboratoriPerResponsabile[$idResponsabile]['collaboratori'][$idCollaboratore] = $r;
+            $collaboratoriPerResponsabile[$idResponsabile]['collaboratori'][(int)$r['id_relazione_organizzativa']] = $r;
             $relazioniPerUtente[$idCollaboratore][] = $r;
         } else {
             $riepilogo['relazioni_chiuse']++;
@@ -195,7 +202,7 @@ layoutHeader('Relazioni organizzative');
     <div class="section-head">
         <div>
             <h1>Relazioni organizzative</h1>
-            <div class="meta">Mappa leggibile dei rapporti diretti: chi risponde funzionalmente a chi. La visibilita gerarchica resta al primo livello diretto.</div>
+            <div class="meta">Rapporti diretti e collegamenti di calendario. Mostra nel calendario di concede visibilità in una sola direzione, senza assegnare approvazioni.</div>
         </div>
         <div class="section-head-actions">
             <a class="btn btn-light" href="configurazione_assenze.php"><i class="la la-arrow-left" aria-hidden="true"></i> Torna alla configurazione</a>
@@ -230,7 +237,7 @@ layoutHeader('Relazioni organizzative');
         <form method="post" action="relazioni_organizzative.php">
             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
             <input type="hidden" name="azione" value="nuova_relazione">
-            <div class="info-box">Il salvataggio assegna un solo responsabile nel periodo scelto, conservando lo storico precedente. Un’altra assegnazione già pianificata nel periodo deve essere verificata prima di procedere.<br>Compila la frase organizzativa: <strong>Utente</strong> → <strong>risponde funzionalmente a</strong> → <strong>responsabile / referente</strong>.</div>
+            <div class="info-box">Risponde funzionalmente a assegna un solo responsabile nel periodo scelto. Mostra nel calendario di aggiunge soltanto visibilità: non cambia il responsabile e non abilita inserimenti o approvazioni.<br>Compila la frase organizzativa: <strong>Utente A</strong> → <strong>mostra nel calendario di</strong> → <strong>referente B</strong>: B vede A, senza visibilità inversa e senza diventare approvatore.</div>
             <div class="hr-wide-form-row hr-relazioni-form-row">
                 <div class="form-group">
                     <label for="id_utente">Utente</label>
@@ -306,7 +313,7 @@ layoutHeader('Relazioni organizzative');
                 <?php
                 $responsabile = $gruppo['responsabile'];
                 $collaboratori = $gruppo['collaboratori'] ?? [];
-                $numeroCollaboratori = count($collaboratori);
+                $numeroCollaboratori = count(array_unique(array_map(static fn(array $r): int => (int)$r['id_utente'], $collaboratori)));
                 $searchText = strtolower((string)$responsabile['nome'] . ' ' . (string)$responsabile['username']);
                 foreach ($collaboratori as $collab) {
                     $searchText .= ' ' . strtolower(hrRelazioneNomeUtente($collab, 'utente') . ' ' . hrRelazioneUsername($collab, 'utente') . ' ' . (string)($collab['note'] ?? ''));
@@ -321,7 +328,7 @@ layoutHeader('Relazioni organizzative');
                         <span class="hr-org-manager-count"><?= $numeroCollaboratori ?> <?= $numeroCollaboratori === 1 ? 'collaboratore' : 'collaboratori' ?></span>
                     </summary>
                     <div class="hr-org-manager-body">
-                        <div class="hr-org-manager-note">Collaboratori che rispondono funzionalmente a questo responsabile.</div>
+                        <div class="hr-org-manager-note">Persone collegate a questo referente. La relazione indicata distingue responsabilità e sola visibilità del calendario.</div>
                         <div class="hr-org-compact-relations">
                             <?php foreach ($collaboratori as $r): ?>
                                 <div class="hr-org-compact-relation">
@@ -330,7 +337,7 @@ layoutHeader('Relazioni organizzative');
                                         <div>
                                             <div class="hr-org-person"><?= h(hrRelazioneNomeUtente($r, 'utente')) ?></div>
                                             <div class="hr-org-compact-meta">
-                                                <span><?= h(hrRelazionePeriodo($r)) ?></span>
+                                                <span><?= h(descrizioneRelazioneBreve((string)$r['codice'], (string)$r['tipo_relazione'])) ?></span> · <span><?= h(hrRelazionePeriodo($r)) ?></span>
                                                 <?= hrRelazioneTestBadge(hrRelazioneUsername($r, 'utente')) ?>
                                             </div>
                                             <?php if (trim((string)($r['note'] ?? '')) !== ''): ?>
@@ -411,3 +418,4 @@ layoutHeader('Relazioni organizzative');
 <script src="/assets/hr-common.js"></script>
 
 <?php layoutFooter(); ?>
+

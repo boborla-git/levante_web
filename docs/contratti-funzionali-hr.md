@@ -272,3 +272,18 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Il ricostruttore JavaScript comune conserva optgroup personali/lavoro, codici delle opzioni e selezione; non reinserisce ALTRO. Restano invariati Permesso (ROL), Allattamento e gli altri diritti.
 - Migration `sql/2026-10-12_congedo_straordinario_disabili.sql` ripetibile, da eseguire prima dei PHP: inserisce la causale se mancante e aggiorna modalità/privacy senza cancellare richieste, token o periodi assegnati.
 - Verifiche: 94 scenari dei flussi con PHP reale/PDO sostituito, 20 combinazioni privacy calendario/ICS, filtro email HR/non HR e ricostruzione select eseguita in JavaScript. Nessuna modifica al DB del sito né invio di email reale.
+
+
+
+## 2026-10-13 — Visibilità direzionale del calendario
+
+- Nuovo tipo organizzativo `VISIBILITA_CALENDARIO`, descritto come mostra nel calendario di. Si usa la tabella esistente `hr_relazioni_organizzative`: id_utente=A è la persona mostrata, id_utente_collegato=B è il referente che la vede.
+- Il collegamento non crea visibilità inversa né transitiva e non modifica la relazione gerarchica o l'approvatore di A. Più A possono essere mostrati a B; A può essere mostrato a più referenti. Le autorizzazioni già provenienti da gruppi, gerarchia o permessi globali restano valide.
+- Il nuovo servizio `hrOrgAssegnaVisibilitaCalendario` valida utenti attivi, tipo, date, assenza di autoriferimenti e sovrapposizioni della stessa coppia. Condivide il lock del dipendente con gli altri salvataggi organizzativi, è idempotente per invii identici e non chiude/cancella i responsabili esistenti. I collegamenti si revocano con la chiusura relazione già disponibile.
+- Il collegamento è utilizzabile dal calendario solo quando attivo, iniziato e non scaduto, con estremi inclusivi. Come per le relazioni precedenti, la validità stabilisce quando B è autorizzato a consultare A; non ritaglia le date degli eventi. Nessuna nuova iscrizione o rotazione di token ICS.
+- Il perimetro calendario condiviso da web e ICS include direttamente A per B con flag scope_calendario. Questo flag non entra nei perimetri gestionali, approvativi o dei report/email. Non viene attribuita lettura della pagina Calendario a chi non la possiede già.
+- La sola visibilità calendario non abilita richieste pendenti: restano le regole di proprietario, approvatore assegnato ed eventuale permesso globale preesistente. Un caporeparto con il solo nuovo collegamento vede le richieste approvate.
+- Per B non HR/admin, nel nuovo collegamento tutte le assenze personali di A sono Assente, senza oggetto, motivo o categoria ICS specifica, anche rispetto a permessi estesi di tipologia. I dettagli degli impegni di lavoro (visite cliente/fornitore, formazione, fiera, trasferta, smart working) rispettano il flag di dettaglio per responsabili già configurato. HR/admin conservano le proprie autorizzazioni precedenti, incluso il congedo tutelato.
+- La pagina Relazioni distingue nella mappa la relazione gerarchica da quella informativa e conserva entrambe quando le persone coincidono. Il calendario aggiunge l'icona occhio e la legenda Solo calendario; ordine di sé, riporti e gruppi precedente preservato.
+- Eseguire la migration ripetibile `sql/2026-10-13_visibilita_calendario.sql`, poi caricare i cinque PHP elencati in `docs/aggiornamento-2026-10-13-visibilita-calendario.md`. Nessuna relazione viene assegnata automaticamente.
+- Verifica: 46 controlli su servizi, direzione, date, revoca, scope gestionale distinto e privacy web/ICS; regressione del servizio responsabili; 19 scenari del calendario e relativo JavaScript. PHP reale, PDO sostituito; nessuna modifica al database del sito.

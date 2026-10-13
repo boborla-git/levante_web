@@ -29,6 +29,7 @@ class CalStmt extends PDOStatement {
         $users=[['id_utente'=>1,'nome'=>'Mario','cognome'=>'Rossi','username'=>'MRossi'],['id_utente'=>2,'nome'=>'Luca','cognome'=>'Verdi','username'=>'LVerdi'],['id_utente'=>3,'nome'=>'Anna','cognome'=>'Bianchi','username'=>'ABianchi']];
         if (str_starts_with($s,'SELECT username FROM aut_utenti')) $this->rows=[[$c['admin'] ?? false ? 'admin' : 'MRossi']];
         elseif(str_starts_with($s,'SELECT ar.codice_ruolo')) $this->rows=[['codice_ruolo'=>'dipendente','codice_risorsa'=>'pagina.calendario_assenze','permesso'=>'read','consentito'=>empty($c['denied'])?1:0]];
+        elseif(str_contains($s,"tro.codice = 'VISIBILITA_CALENDARIO'")) $this->rows=[];
         elseif(str_contains($s,'FROM hr_relazioni_organizzative')) $this->rows=[['id_utente'=>2]];
         elseif(str_contains($s,'FROM hr_gruppi_utenti')) $this->rows=[];
         elseif(str_starts_with($s,'SELECT id_utente, nome, cognome, username')) {
@@ -64,3 +65,4 @@ $source=file_get_contents($root.'/calendario_assenze.php');
 $source=preg_replace('/^require_once .*;\s*$/m','',$source);
 $source=str_replace('declare(strict_types=1);','',$source);
 eval('?>'.$source);
+

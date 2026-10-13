@@ -123,6 +123,7 @@ foreach ($scopeUtenti as $u) {
         'label' => hrNomeUtente($u),
         'gerarchia' => (int)($u['scope_gerarchia'] ?? 0) === 1,
         'gruppo' => (int)($u['scope_gruppo'] ?? 0) === 1,
+        'calendario' => (int)($u['scope_calendario'] ?? 0) === 1,
     ];
 }
 
@@ -136,7 +137,8 @@ usort($scopeUtenti, static function(array $a, array $b) use ($idUtente): int {
         if ((int)$u['id_utente'] === $idUtente) return 0;
         if ((int)($u['scope_gerarchia'] ?? 0) === 1) return 1;
         if ((int)($u['scope_gruppo'] ?? 0) === 1) return 2;
-        return 3;
+        if ((int)($u['scope_calendario'] ?? 0) === 1) return 3;
+        return 4;
     };
 
     $ca = $categoria($a);
@@ -178,6 +180,7 @@ function hrIconaScopeCalendario(array $u, int $corrente): string
     if ((int)($u['scope_gruppo'] ?? 0) === 1) {
         return '<i class="la la-users hr-scope-icon hr-scope-icon-group" title="Membro del gruppo" aria-label="Membro del gruppo"></i>';
     }
+    if ((int)($u['scope_calendario'] ?? 0) === 1) return '<i class="la la-eye hr-scope-icon" title="Solo visibilità calendario" aria-label="Solo visibilità calendario"></i>';
     return '';
 }
 
@@ -210,16 +213,14 @@ try {
             $end = new DateTimeImmutable((string)$row['data_a']);
             $uid = (int)$row['id_utente_richiedente'];
             $showDetail = hrMostraDettaglioCalendario($row, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologieAssenze, (bool)($permessiCalendario['hr'] ?? false));
-            $label = $showDetail
-                ? trim((string)($row['descrizione_calendario'] ?: $row['tipologia'] ?: 'Assenza'))
-                : trim((string)($row['stato_presenza_breve'] ?: $row['stato_presenza'] ?: 'Assente'));
+            $label = hrEtichettaCalendario($row, $scopeMap, $idUtente, $puoConfigurare, $puoVedereTipologieAssenze, (bool)($permessiCalendario['hr'] ?? false));
             for ($d=$start; $d<=$end; $d=$d->modify('+1 day')) {
                 $key=$d->format('Y-m-d');
                 if ($key<$inizioPeriodo->format('Y-m-d') || $key>$finePeriodo->format('Y-m-d')) continue;
                 $eventsByUserDay[$uid][$key][] = [
                     'id'=>(int)$row['id_richiesta'],
                     'label'=>$label !== '' ? $label : 'Assenza',
-                    'codice_tipologia'=>!$showDetail && strtoupper((string)($row['codice_tipologia'] ?? '')) === 'CONGEDO_STRAORDINARIO_DISABILI' ? 'ASSENZA_PERSONALE' : strtoupper(trim((string)($row['codice_tipologia'] ?? ''))),
+                    'codice_tipologia'=>!$showDetail && (strtoupper((string)($row['codice_tipologia'] ?? '')) === 'CONGEDO_STRAORDINARIO_DISABILI' || !empty($scopeMap[$uid]['calendario'])) ? 'ASSENZA_PERSONALE' : strtoupper(trim((string)($row['codice_tipologia'] ?? ''))),
                     'stato'=>(string)$row['codice_stato_richiesta'],
                     'stato_label'=>(string)$row['stato_richiesta'],
                     'tipo_periodo'=>(string)$row['tipo_periodo'],
@@ -435,6 +436,7 @@ layoutHeader('Calendario assenze');
   <?php endif; ?>
   <span><i class="la la-sitemap hr-scope-icon hr-scope-icon-direct" aria-hidden="true"></i>Riporto diretto</span>
   <span><i class="la la-users hr-scope-icon hr-scope-icon-group" aria-hidden="true"></i>Gruppo</span>
+  <span><i class="la la-eye hr-scope-icon" aria-hidden="true"></i>Solo calendario</span>
  </div>
  <a class="btn btn-outline" href="?vista=<?= h($vista) ?>&data=<?= h($dataRif->format('Y-m-d')) ?><?= $mostraTutti ? '' : '&mostra=tutti' ?>">
    <?= $mostraTutti ? 'Vedi solo assenze' : 'Vedi tutti' ?>
@@ -541,6 +543,7 @@ layoutHeader('Calendario assenze');
 })();
 </script>
 <?php layoutFooter(); ?>
+
 
 
 
