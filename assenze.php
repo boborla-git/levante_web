@@ -643,7 +643,7 @@ try {
                 throw new RuntimeException('La gestione delle assenze per malattia è riservata a HR o all’amministratore.');
             }
             if (
-                $codiceTipologia === 'CONGEDO_STRAORDINARIO_DISABILI'
+                in_array($codiceTipologia, ['CONGEDO_STRAORDINARIO_DISABILI', 'ALLATTAMENTO'], true)
                 && !$puoOperareComeHr
             ) {
                 throw new RuntimeException('Questa causale è riservata a HR o all’amministratore.');
@@ -1065,15 +1065,18 @@ try {
                 throw new RuntimeException('Dipendente non valido.');
             }
 
+            $pdo->beginTransaction();
+            hrRegoleBloccaScrittura($pdo);
             $stmtCheck = $pdo->prepare(
-                "SELECT r.id_richiesta, sr.codice AS stato_codice,
+                "SELECT r.id_richiesta, sr.codice AS stato_codice, te.codice AS tipologia_codice,
                         MIN(p.data_da) AS data_da, MAX(p.data_a) AS data_a
                  FROM hr_richieste r
                  INNER JOIN hr_stati_richiesta sr ON sr.id_stato_richiesta = r.id_stato_richiesta
+                 INNER JOIN hr_tipologie_evento te ON te.id_tipologia_evento = r.id_tipologia_evento
                  LEFT JOIN hr_richieste_periodi p ON p.id_richiesta = r.id_richiesta
                  WHERE r.id_richiesta = :id_richiesta
                    AND r.id_utente_richiedente = :id_utente
-                 GROUP BY r.id_richiesta, sr.codice
+                 GROUP BY r.id_richiesta, sr.codice, te.codice
                  LIMIT 1"
             );
             $stmtCheck->execute([
@@ -1084,6 +1087,9 @@ try {
 
             if (!$riga) {
                 throw new RuntimeException('Richiesta non trovata.');
+            }
+            if (($riga['tipologia_codice'] ?? '') === 'ALLATTAMENTO' && !$puoOperareComeHr) {
+                throw new RuntimeException('La gestione dell’allattamento è riservata a HR e admin.');
             }
             if (!in_array((string)$riga['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true)) {
                 throw new RuntimeException('La richiesta non può essere annullata nello stato attuale.');
@@ -1096,7 +1102,6 @@ try {
             }
 
             $idStatoAnnullata = hrIdStatoRichiesta($pdo, 'ANNULLATA');
-            $pdo->beginTransaction();
 
             $annullataDaRichiedente = $idUtenteLoggato === $idUtenteTarget ? 1 : 0;
             $stmtUpd = $pdo->prepare(
@@ -1451,7 +1456,7 @@ layoutHeader('Assenze e permessi');
                                 ) { continue; }
                                 if (
                                     $codiceOpzione === 'ALLATTAMENTO'
-                                    && !hrUtenteHaBeneficioConfigurato($pdo, $idUtenteTarget, 'ALLATTAMENTO')
+                                    && (!$puoOperareComeHr || !hrUtenteHaBeneficioConfigurato($pdo, $idUtenteTarget, 'ALLATTAMENTO'))
                                 ) { continue; }
                                 if (
                                     $codiceOpzione === 'CONGEDO_STRAORDINARIO_DISABILI'
@@ -1594,6 +1599,7 @@ layoutHeader('Assenze e permessi');
                             $periodo .= '<br><span class="meta">' . h((string)$r['ora_da']) . ' - ' . h((string)$r['ora_a']) . '</span>';
                         }
                         $annullabile = in_array((string)$r['stato_codice'], ['BOZZA', 'IN_ATTESA', 'APPROVATA'], true);
+                        if (($r['tipologia_codice'] ?? '') === 'ALLATTAMENTO' && !$puoOperareComeHr) $annullabile = false;
                         $meseChiusoRichiesta = hrMeseChiusoTraDate($pdo, (string)($r['data_da_iso'] ?? ''), (string)($r['data_a_iso'] ?? ''));
                         if ($meseChiusoRichiesta !== null && !$puoOperareComeHr) {
                             $annullabile = false;
@@ -1908,5 +1914,6 @@ window.hrMesiChiusiInserimento = <?= json_encode($mesiChiusiInserimento, JSON_UN
 
 
 <?php layoutFooter(); ?>
+
 
 

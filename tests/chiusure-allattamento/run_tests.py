@@ -69,7 +69,7 @@ for code in ['FERIE','PERMESSO','MALATTIA','LEGGE_104','SMART','VISITA_CLIENTE',
 
 # Pagina Assenze completa: utente abilitato, HR e admin, POST e GET.
 post = dict(azione='nuova_richiesta', id_utente='1',id_tipologia_evento='2',modalita='ore',data_da='2099-06-01',data_a='2099-06-01',ora_da='08:00',ora_a='10:00')
-for role in ['', 'hr', 'admin']:
+for role in ['hr', 'admin']:
     run('page 2h '+role, dict(method='POST',post=post,role=role), committed=True)
     run('page closed '+role, dict(method='POST',post=post,role=role,closures=[dict(data_da='2099-06-01',data_a='2099-06-01')]), 'chiusura aziendale')
     run('page cumulative '+role, dict(method='POST',post=post,role=role,records=[record]), '2 ore complessive')
@@ -77,9 +77,9 @@ for role in ['', 'hr', 'admin']:
     assert 'data-codice="ALLATTAMENTO"' in d['html']
     assert ('data-codice="MALATTIA"' in d['html']) == (role in ['hr','admin'])
 run('tampered csrf',dict(method='POST',post=post,invalid_csrf=True),'sessione del modulo')
-run('page absent grant',dict(method='POST',post=post,benefit=False),'periodo Allattamento completo')
-run('page 3h',dict(method='POST',post=post | dict(ora_a='11:00')),'massimo 2 ore')
-run('page days',dict(method='POST',post=post | dict(modalita='giorni')),'non consente richieste a giorni')
+run('page absent grant',dict(method='POST',post=post,role='hr',benefit=False),'periodo Allattamento completo')
+run('page 3h',dict(method='POST',role='hr',post=post | dict(ora_a='11:00')),'massimo 2 ore')
+run('page days',dict(method='POST',role='hr',post=post | dict(modalita='giorni')),'non consente richieste a giorni')
 d = run('GET absent grant',dict(benefit=False))
 assert 'data-codice="ALLATTAMENTO"' not in d['html']
 
@@ -135,3 +135,16 @@ for role in ['', 'hr','admin']:
     d=run('altro non elencato '+role,dict(role=role))
     assert 'data-codice="ALTRO"' not in d['html']
 print(f'Totale {total} scenari PASS, inclusi congedo e rimozione Altro.')
+
+
+run('allattamento POST utente negato',dict(method='POST',post=post),'riservata a HR')
+d=run('allattamento nascosto utente',{})
+assert 'data-codice="ALLATTAMENTO"' not in d['html']
+print(f'Totale aggiornato: {total} scenari PASS, allattamento riservato a HR/admin.')
+
+cancel=dict(azione='annulla_richiesta',id_utente='1',id_richiesta='10')
+run('allattamento annullamento utente negato',dict(method='POST',post=cancel),'riservata a HR')
+for role in ['hr','admin']:
+    run('allattamento annullamento '+role,dict(method='POST',post=cancel,role=role),committed=True)
+run('altre causali annullamento utente invariato',dict(method='POST',post=cancel,existing_code='FERIE'),committed=True)
+print(f'Totale finale: {total} scenari PASS.')

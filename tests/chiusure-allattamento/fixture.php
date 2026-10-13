@@ -70,6 +70,10 @@ class RegoleStmt extends PDOStatement {
             }
             $this->rows = [[$used]];
         }
+        elseif (str_starts_with($s, 'SELECT r.id_richiesta, sr.codice AS stato_codice')) {
+            $this->rows = [['id_richiesta'=>10, 'stato_codice'=>'APPROVATA',
+                'tipologia_codice'=>$c['existing_code'] ?? 'ALLATTAMENTO', 'data_da'=>'2099-06-01', 'data_a'=>'2099-06-01']];
+        }
         elseif (str_starts_with($s, 'SELECT r.id_utente_richiedente, te.codice')) { $this->rows = [['id_utente_richiedente'=>1, 'codice'=>$c['existing_code'] ?? 'ALLATTAMENTO']]; }
         elseif (str_starts_with($s, 'SELECT data_da, data_a, tipo_periodo')) { $this->rows = $c['periods'] ?? []; }
         elseif (str_starts_with($s, 'SELECT r.id_tipologia_evento')) { $this->rows = [['id_tipologia_evento'=>9, 'codice'=>'ALTRO', 'descrizione'=>'Altro']]; }
@@ -126,4 +130,5 @@ try {
         eval('?>' . $source);
     }
 } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); $caught = $e->getMessage(); }
+
 

@@ -93,6 +93,7 @@ layoutHeader('Chiusure aziendali');
 @media(max-width:700px){.hr-closure-grid{grid-template-columns:1fr}}
 </style>
 <div class="page-container hr-closure-stack">
+    <?php if (haPermessoLettura('benefici_hr') && haPermessoLettura('assenze')): ?><div class="info-box">Se aggiungi o modifichi una chiusura, verifica gli inserimenti già presenti. In <a href="allattamento_programmato.php">Allattamento programmato</a> puoi annullare insieme le fasce del programma nei giorni di chiusura, dopo averne controllato l’anteprima.</div><?php endif; ?>
     <div class="card card-wide"><div class="section-head"><div>
         <h1>Chiusure aziendali</h1><div class="meta">Le date iniziale e finale sono comprese. Nessuno può inserire richieste durante una chiusura.</div>
     </div><a class="btn btn-light" href="configurazione_assenze.php">Configurazione assenze</a></div></div>
@@ -135,3 +136,4 @@ layoutHeader('Chiusure aziendali');
     </div>
 </div>
 <?php layoutFooter(); ?>
+

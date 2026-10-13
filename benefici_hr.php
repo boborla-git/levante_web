@@ -303,7 +303,9 @@ layoutHeader('Benefici e diritti HR');
                 <h1>Benefici e diritti HR</h1>
                 <div class="meta">Assegna i diritti individuali e visualizza solo i dipendenti che hanno un beneficio attivo.</div>
             </div>
-            <a class="btn btn-light" href="configurazione_assenze.php">Configurazione assenze</a>
+            <div class="hr-benefit-actions">
+            <?php if (hrRegoleOperatoreHr() && haPermessoLettura('assenze')): ?><a class="btn btn-light" href="allattamento_programmato.php">Allattamento programmato</a><?php endif; ?>
+            <a class="btn btn-light" href="configurazione_assenze.php">Configurazione assenze</a></div>
         </div>
     </div>
 
@@ -318,7 +320,7 @@ layoutHeader('Benefici e diritti HR');
         <div class="section-head">
             <div>
                 <h2>Assegna beneficio/diritto</h2>
-                <div class="meta">Seleziona dipendente e diritto. Se l'assegnazione esiste già, viene riattivata e aggiornata. Per il Congedo Straordinario Disabili indica entrambe le date: può essere registrato solo da HR/admin e solo a giorni. Per l’allattamento sono obbligatorie entrambe le date: il dipendente potrà inserire al massimo 2 ore complessive al giorno, solo in quel periodo.</div>
+                <div class="meta">Seleziona dipendente e diritto. Se l'assegnazione esiste già, viene riattivata e aggiornata. Per il Congedo Straordinario Disabili indica entrambe le date: può essere registrato solo da HR/admin e solo a giorni. Per l’allattamento sono obbligatorie entrambe le date: HR/admin potranno registrare al massimo 2 ore complessive al giorno, solo in quel periodo, anche con una programmazione ricorrente.</div>
             </div>
         </div>
 
@@ -516,5 +518,6 @@ layoutHeader('Benefici e diritti HR');
 </script>
 
 <?php layoutFooter(); ?>
+
 
 

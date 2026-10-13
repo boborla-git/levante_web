@@ -149,7 +149,8 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
         ?string $link,
         ?int $idRichiesta,
         ?int $creatoDa,
-        array $destinatari
+        array $destinatari,
+        ?int $idRichiedenteProgramma = null
     ): array {
         $riepilogo = [
             'tentate' => 0,
@@ -180,7 +181,7 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
             return $riepilogo;
         }
 
-        $idRichiedente = 0;
+        $idRichiedente = $tipoEvento === 'ALLATTAMENTO_PROGRAMMA' ? (int)($idRichiedenteProgramma ?? 0) : 0;
         if ($idRichiesta !== null && $idRichiesta > 0) {
             $stmtRichiedente = $pdo->prepare('SELECT id_utente_richiedente FROM hr_richieste WHERE id_richiesta = :id_richiesta LIMIT 1');
             $stmtRichiedente->execute(['id_richiesta' => $idRichiesta]);
@@ -292,3 +293,4 @@ if (!function_exists('hrCreaNotificaEmailPerUtenti')) {
         return $riepilogo;
     }
 }
+
