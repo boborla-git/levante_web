@@ -296,3 +296,14 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Periodi, note, badge, filtro rapido, conteggio delle persone e archivio restano disponibili. La stessa persona con entrambe le relazioni compare nei due gruppi; il totale del referente continua a contare persone distinte.
 - Modifica soltanto al rendering di relazioni_organizzative.php: backend, query, CSRF, dati e autorizzazioni invariati. Nessuno script SQL necessario.
 - Verifica PHP e rendering dei casi misto, solo gerarchia, solo calendario e vuoto; intestazioni uniche e conservazione di persone, date e note.
+
+
+## 2026-10-13 — Smart working esplicito nei riepiloghi email
+
+- Il riepilogo BASE aggiunge Disponibilità fra Dipendente e Periodo: SMART è Smart working — contattabile; le assenze personali sono Assente — non disturbare, senza motivo. Gli altri impegni di lavoro indicano contattabile/non disturbare secondo il flag disturbabile della tipologia già configurato.
+- Il riepilogo HR mantiene la colonna Motivo e tutti i dettagli già autorizzati; SMART è esplicitato come Smart working — contattabile anche qui. Nessuna colonna ridondante aggiunta alla versione HR.
+- Una nota chiarisce che la disponibilità si riferisce al periodo della riga e che smart working significa lavoro da remoto. Gli orari e i periodi multipli già gestiti rimangono invariati.
+- Oggetto conserva le regole precedenti, inclusa la mascheratura del congedo tutelato nel BASE. Font, cornice e tabella usano il layout email comune; le larghezze delle quattro colonne sommano 100 in entrambe le versioni.
+- Destinatari, livelli BASE/HR configurati, subject, cron delle 09:00 Europe/Rome, BCC admin, log/idempotenza e aggiornamenti della stessa giornata invariati. BASE continua a contenere solo APPROVATA, HR anche IN_ATTESA; una sola versione per destinatario.
+- Solo includes/hr_riepilogo_assenze.php da sostituire sul sito. Nessuno script SQL, variazione di autorizzazioni o invio manuale necessario.
+- Verifica PHP e 47 controlli di rendering/etichette BASE e HR, smart working, privacy personale, congedo, orari, oggetto, larghezze e flag di contattabilità del lavoro. Confronto delle sezioni di invio e dei filtri SQL: invariati, salvo lettura del campo disturbabile già esistente. Nessuna email reale inviata.

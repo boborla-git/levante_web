@@ -112,6 +112,7 @@ if (!function_exists('hrRiepilogoAssenzeRighe')) {
                 u.cognome,
                 u.username,
                 te.codice AS codice_tipologia,
+                te.disturbabile,
                 te.descrizione AS tipologia,
                 te.descrizione_calendario,
                 te.mostra_dettaglio_hr,
@@ -171,11 +172,26 @@ if (!function_exists('hrRiepilogoAssenzePeriodo')) {
     }
 }
 
+if (!function_exists('hrRiepilogoAssenzeDisponibilita')) {
+    function hrRiepilogoAssenzeDisponibilita(array $riga): string
+    {
+        $codice = strtoupper(trim((string)($riga['codice_tipologia'] ?? '')));
+        if ($codice === 'SMART') return 'Smart working — contattabile';
+        if (in_array($codice, ['VISITA_CLIENTE', 'VISITA_FORNITORE', 'FORMAZIONE', 'FIERA', 'TRASFERTA'], true)) {
+            return 'Impegno di lavoro — ' . ((int)($riga['disturbabile'] ?? 0) === 1 ? 'contattabile' : 'non disturbare');
+        }
+        return 'Assente — non disturbare';
+    }
+}
+
 if (!function_exists('hrRiepilogoAssenzeMotivo')) {
     function hrRiepilogoAssenzeMotivo(array $riga, string $livello): string
     {
         if ($livello !== 'HR') {
             return '';
+        }
+        if (strtoupper(trim((string)($riga['codice_tipologia'] ?? ''))) === 'SMART') {
+            return hrRiepilogoAssenzeDisponibilita($riga);
         }
 
         if ((int)($riga['mostra_dettaglio_hr'] ?? 1) === 1) {
@@ -202,16 +218,18 @@ if (!function_exists('hrRiepilogoAssenzeHtml')) {
         $dataObj = DateTimeImmutable::createFromFormat('Y-m-d', $data);
         $dataTitolo = $dataObj ? $dataObj->format('d/m/Y') : $data;
         $livello = strtoupper(trim($livello));
-        $colonne = [['titolo' => 'Dipendente', 'larghezza' => $livello === 'HR' ? 25 : 32]];
+        $colonne = [['titolo' => 'Dipendente', 'larghezza' => 25]];
         if ($livello === 'HR') $colonne[] = ['titolo' => 'Motivo', 'larghezza' => 23];
-        $colonne[] = ['titolo' => 'Periodo', 'larghezza' => $livello === 'HR' ? 29 : 36];
-        $colonne[] = ['titolo' => 'Oggetto', 'larghezza' => $livello === 'HR' ? 23 : 32];
+        else $colonne[] = ['titolo' => 'Disponibilità', 'larghezza' => 30];
+        $colonne[] = ['titolo' => 'Periodo', 'larghezza' => $livello === 'HR' ? 29 : 27];
+        $colonne[] = ['titolo' => 'Oggetto', 'larghezza' => $livello === 'HR' ? 23 : 18];
         $celle = [];
         foreach ($righe as $riga) {
             $nominativo = trim((string)($riga['nome'] ?? '') . ' ' . (string)($riga['cognome'] ?? ''));
             if ($nominativo === '') $nominativo = (string)($riga['username'] ?? '');
             $cella = [['html' => hrEmailH($nominativo), 'grassetto' => true]];
             if ($livello === 'HR') $cella[] = ['html' => hrEmailH(hrRiepilogoAssenzeMotivo($riga, $livello))];
+            else $cella[] = ['html' => hrEmailH(hrRiepilogoAssenzeDisponibilita($riga))];
             $cella[] = ['html' => hrEmailH(hrRiepilogoAssenzePeriodo($riga))];
             $oggettoBreve = $livello !== 'HR' && ($riga['codice_tipologia'] ?? '') === 'CONGEDO_STRAORDINARIO_DISABILI'
                 ? '' : trim((string)($riga['oggetto'] ?? ''));
@@ -221,6 +239,9 @@ if (!function_exists('hrRiepilogoAssenzeHtml')) {
         $contenuto = count($celle) > 0
             ? hrEmailTabellaHtml($colonne, $celle)
             : '<p style="margin:0;' . hrEmailStileTesto(13, '#475569') . '">Nessuna assenza prevista per oggi.</p>';
+        if (count($celle) > 0) {
+            $contenuto .= '<p style="margin:12px 0 0;' . hrEmailStileTesto(13, '#475569') . '">La disponibilità si riferisce al periodo indicato. In smart working la persona lavora da remoto ed è contattabile.</p>';
+        }
         return hrEmailCorniceHtml('Assenze del ' . $dataTitolo, $contenuto);
     }
 }
@@ -551,5 +572,6 @@ if (!function_exists('hrRiepilogoAssenzeInviaAggiornamentoSeNecessario')) {
         hrRiepilogoAssenzeInvia($pdo, $oggi, 'AGGIORNAMENTO', $idRichiesta, $soloLivello);
     }
 }
+
 
 
