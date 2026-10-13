@@ -298,12 +298,13 @@ Ogni modifica futura deve preservarli, salvo decisione esplicita contraria.
 - Verifica PHP e rendering dei casi misto, solo gerarchia, solo calendario e vuoto; intestazioni uniche e conservazione di persone, date e note.
 
 
-## 2026-10-13 — Smart working esplicito nei riepiloghi email
+## 2026-10-13 — Smart working soltanto nell'oggetto del riepilogo
 
-- Il riepilogo BASE aggiunge Disponibilità fra Dipendente e Periodo: SMART è Smart working — contattabile; le assenze personali sono Assente — non disturbare, senza motivo. Gli altri impegni di lavoro indicano contattabile/non disturbare secondo il flag disturbabile della tipologia già configurato.
-- Il riepilogo HR mantiene la colonna Motivo e tutti i dettagli già autorizzati; SMART è esplicitato come Smart working — contattabile anche qui. Nessuna colonna ridondante aggiunta alla versione HR.
-- Una nota chiarisce che la disponibilità si riferisce al periodo della riga e che smart working significa lavoro da remoto. Gli orari e i periodi multipli già gestiti rimangono invariati.
-- Oggetto conserva le regole precedenti, inclusa la mascheratura del congedo tutelato nel BASE. Font, cornice e tabella usano il layout email comune; le larghezze delle quattro colonne sommano 100 in entrambe le versioni.
+- Su richiesta dell'utente dopo la revisione dell'anteprima, ripristinato il layout precedente: BASE con Dipendente, Periodo, Oggetto (32/36/32); HR con Dipendente, Motivo, Periodo, Oggetto (25/23/29/23).
+- Nessuna colonna Disponibilità, etichetta di reperibilità o nota sulla contattabilità. Eliminata anche la lettura aggiuntiva di disturbabile dalla query.
+- Per SMART, la colonna Oggetto mostra Smart working; l'eventuale oggetto già inserito viene conservato dopo il prefisso. Se contiene già smart working, anche senza spazio o con maiuscole, non viene duplicato. Il valore è escapato come tutti gli altri oggetti.
+- Nel riepilogo HR il Motivo della sola riga SMART è un trattino: smart working compare soltanto nell'Oggetto. I motivi delle altre tipologie mantengono le regole precedenti.
+- Oggetti delle altre causali, privacy personale e mascheratura del congedo tutelato nel BASE restano invariati. Date, orari, font e cornice comune conservati.
 - Destinatari, livelli BASE/HR configurati, subject, cron delle 09:00 Europe/Rome, BCC admin, log/idempotenza e aggiornamenti della stessa giornata invariati. BASE continua a contenere solo APPROVATA, HR anche IN_ATTESA; una sola versione per destinatario.
-- Solo includes/hr_riepilogo_assenze.php da sostituire sul sito. Nessuno script SQL, variazione di autorizzazioni o invio manuale necessario.
-- Verifica PHP e 47 controlli di rendering/etichette BASE e HR, smart working, privacy personale, congedo, orari, oggetto, larghezze e flag di contattabilità del lavoro. Confronto delle sezioni di invio e dei filtri SQL: invariati, salvo lettura del campo disturbabile già esistente. Nessuna email reale inviata.
+- Solo includes/hr_riepilogo_assenze.php da sostituire sul sito. Nessuno script SQL necessario.
+- Verificati sintassi PHP e rendering BASE/HR con oggetto vuoto, valorizzato, già esplicito ed escapato, numero colonne, motivi, orari, privacy del congedo e riepilogo vuoto. Nessuna email reale inviata.
